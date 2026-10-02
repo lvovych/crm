@@ -1,5 +1,6 @@
 ---
 crm_domain: crm.srv.lauto.com.ua
 crm_root: /srv/crm
-# Keep the service private until DNS and initial administrator setup are ready.
-crm_public_https: false
+# DNS and initial administrator setup are complete.
+crm_public_https: true
+crm_image: ghcr.io/lvovych/crm@sha256:79c83ee63615076b39a90e4d9b2cd58def572839ad18f11ac9aabe687bc16e8b

@@ -1,0 +1,84 @@
+---
+- name: Configure encrypted off-server backups
+  hosts: crm
+  become: true
+  tasks:
+    - name: Install Restic
+      ansible.builtin.apt:
+        name: restic
+        state: present
+    - name: Create backup directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0700'
+      loop: [/etc/crm-backup, /var/lib/crm-backup]
+    - name: Copy backup access credentials
+      ansible.builtin.copy:
+        src: "../../.secrets/{{ item }}"
+        dest: "/etc/crm-backup/{{ item }}"
+        mode: '0600'
+      loop: [backup_ed25519, restic-password, known_hosts]
+      no_log: true
+    - name: Configure backup repository
+      ansible.builtin.template:
+        src: ../templates/backup.env.j2
+        dest: /etc/crm-backup.env
+        mode: '0600'
+    - name: Install backup script
+      ansible.builtin.copy:
+        src: ../files/crm-backup
+        dest: /usr/local/sbin/crm-backup
+        mode: '0700'
+    - name: Initialize a new encrypted repository only when explicitly requested
+      ansible.builtin.shell: |
+        set -a
+        . /etc/crm-backup.env
+        set +a
+        restic -o "sftp.command=$RESTIC_SFTP_COMMAND" init
+      when: initialize_backup_repository | default(false) | bool
+    - name: Install restore verification script
+      ansible.builtin.copy:
+        src: ../files/crm-restore-check
+        dest: /usr/local/sbin/crm-restore-check
+        mode: '0700'
+    - name: Configure monthly restore verification
+      ansible.builtin.copy:
+        dest: /etc/cron.d/crm-restore-check
+        mode: '0644'
+        content: "30 3 2 * * root /usr/local/sbin/crm-restore-check >> /var/log/crm-restore-check.log 2>&1\n"
+    - name: Configure backup service
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/crm-backup.service
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Consistent CRM backup to encrypted remote repository
+          After=docker.service network-online.target
+          Requires=docker.service
+          [Service]
+          Type=oneshot
+          ExecStart=/usr/local/sbin/crm-backup
+          TimeoutStartSec=1h
+          Nice=10
+          IOSchedulingClass=best-effort
+          IOSchedulingPriority=7
+    - name: Configure hourly backup timer
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/crm-backup.timer
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Hourly CRM backup
+          [Timer]
+          OnCalendar=hourly
+          RandomizedDelaySec=120
+          Persistent=true
+          [Install]
+          WantedBy=timers.target
+    - name: Enable backup timer
+      ansible.builtin.systemd_service:
+        name: crm-backup.timer
+        daemon_reload: true
+        enabled: true
+        state: started

@@ -1,0 +1,13 @@
+name: CRM public health
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+permissions: {}
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check HTTPS and database health
+        run: curl --fail --silent --show-error --max-time 20 --retry 2 --retry-delay 10 https://crm.srv.lauto.com.ua/api/v1/health

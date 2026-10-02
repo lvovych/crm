@@ -6,6 +6,7 @@ on:
     paths-ignore:
       - 'infra/**'
       - '**.md'
+      - '.github/workflows/crm-health.yml'
 permissions:
   contents: read
   packages: write

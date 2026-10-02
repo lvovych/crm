@@ -1,0 +1,26 @@
+#!/bin/bash
+set -Eeuo pipefail
+umask 077
+exec 9>/run/lock/crm-maintenance.lock
+flock -n 9 || exit 1
+cd /srv/crm
+source /etc/crm-backup.env
+export RESTIC_REPOSITORY RESTIC_PASSWORD_FILE RESTIC_SFTP_COMMAND
+stage=/var/lib/crm-backup/current
+mkdir -p "$stage"
+resume() { docker compose start app >/dev/null; }
+trap resume EXIT
+docker compose stop -t 60 app
+# App and background writers are stopped: database and uploads form one recovery set.
+docker compose exec -T db pg_dump -U crm -d crm -Fc > "$stage/database.dump.tmp"
+mv "$stage/database.dump.tmp" "$stage/database.dump"
+tar -czf "$stage/uploads.tar.gz.tmp" uploads
+mv "$stage/uploads.tar.gz.tmp" "$stage/uploads.tar.gz"
+cp .env compose.yml Caddyfile "$stage/"
+date -u +%FT%TZ > "$stage/created-at"
+docker compose images --format json > "$stage/images.json"
+resume
+trap - EXIT
+restic -o "sftp.command=$RESTIC_SFTP_COMMAND" backup "$stage" --tag crm-consistent
+restic -o "sftp.command=$RESTIC_SFTP_COMMAND" forget --tag crm-consistent --group-by host,paths --keep-hourly 48 --keep-daily 30 --keep-monthly 12
+date -u +%FT%TZ > /var/lib/crm-backup/last-success

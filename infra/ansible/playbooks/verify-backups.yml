@@ -1,0 +1,27 @@
+---
+- name: Verify backup and restore before handover
+  hosts: crm
+  become: true
+  tasks:
+    - name: Run a consistent off-server backup
+      ansible.builtin.systemd_service:
+        name: crm-backup.service
+        state: started
+    - name: Restore and verify the encrypted recovery set in isolation
+      ansible.builtin.command: /usr/local/sbin/crm-restore-check
+      register: restore_result
+      changed_when: true
+    - name: Report verification result
+      ansible.builtin.debug:
+        var: restore_result.stdout_lines
+    - name: Remove temporary operator registry credentials from the VM
+      ansible.builtin.command: docker logout ghcr.io
+      changed_when: true
+    - name: Verify application health after backup
+      ansible.builtin.uri:
+        url: http://127.0.0.1:3000/api/v1/health
+        status_code: 200
+      register: health
+      until: health.status == 200
+      retries: 12
+      delay: 5

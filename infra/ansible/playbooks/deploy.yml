@@ -2,6 +2,8 @@
 - name: Deploy the CRM application
   hosts: crm
   become: true
+  vars_files:
+    - ../group_vars/all/main.yml
   tasks:
     - name: Require a fixed image and URL-safe random secrets
       ansible.builtin.assert:
@@ -13,14 +15,19 @@
           - vault_integrations_key is match('^[a-f0-9]{64}$')
       no_log: true
 
-    - name: Create data directories
+    - name: Create PostgreSQL data directory with the postgres alpine UID
       ansible.builtin.file:
-        path: "{{ crm_root }}/{{ item }}"
+        path: "{{ crm_root }}/postgres"
         state: directory
-        owner: root
-        group: root
+        owner: '70'
+        group: '70'
         mode: '0700'
-      loop: [postgres, caddy]
+
+    - name: Create proxy data directory
+      ansible.builtin.file:
+        path: "{{ crm_root }}/caddy"
+        state: directory
+        mode: '0700'
 
     - name: Create uploads directory for the application user
       ansible.builtin.file:
@@ -54,10 +61,16 @@
       changed_when: false
 
     - name: Pull images
-      ansible.builtin.command: docker compose pull
+      ansible.builtin.command: docker compose pull --policy missing
       args:
         chdir: "{{ crm_root }}"
       changed_when: true
+
+    - name: Restart the app when explicitly requested for recovery
+      ansible.builtin.command: docker compose restart app
+      args:
+        chdir: "{{ crm_root }}"
+      when: crm_restart_app | default(false) | bool
 
     - name: Apply deployment with health checks
       ansible.builtin.command: docker compose up -d --wait --wait-timeout 240 --remove-orphans
@@ -67,7 +80,7 @@
 
     - name: Check local CRM endpoint
       ansible.builtin.uri:
-        url: http://127.0.0.1:3000/api/health
+        url: http://127.0.0.1:3000/api/v1/health
         status_code: 200
       register: crm_health
       until: crm_health.status == 200

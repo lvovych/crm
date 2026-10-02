@@ -1,0 +1,29 @@
+#!/bin/bash
+set -Eeuo pipefail
+umask 077
+exec 9>/run/lock/crm-maintenance.lock
+flock -n 9 || exit 1
+source /etc/crm-backup.env
+export RESTIC_REPOSITORY RESTIC_PASSWORD_FILE RESTIC_SFTP_COMMAND
+work=$(mktemp -d /var/lib/crm-backup/verify.XXXXXX)
+container="crm-restore-check-$$"
+cleanup(){ docker rm -f "$container" >/dev/null 2>&1 || true; rm -rf "$work"; }
+trap cleanup EXIT
+restic -o "sftp.command=$RESTIC_SFTP_COMMAND" check
+restic -o "sftp.command=$RESTIC_SFTP_COMMAND" restore latest --tag crm-consistent --target "$work"
+data="$work/var/lib/crm-backup/current"
+tar -tzf "$data/uploads.tar.gz" >/dev/null
+image=$(docker inspect crm-db-1 --format '{{.Image}}')
+docker run -d --name "$container" --network none -e POSTGRES_HOST_AUTH_METHOD=trust "$image" >/dev/null
+ready=false
+for n in {1..60}; do
+ if docker exec "$container" pg_isready -h 127.0.0.1 -U postgres >/dev/null 2>&1; then ready=true; break; fi
+ sleep 1
+done
+$ready || { echo 'Restore database did not start'; exit 1; }
+docker exec "$container" createdb -h 127.0.0.1 -U postgres crm
+docker exec -i "$container" pg_restore -U postgres -d crm --no-owner --no-privileges --exit-on-error < "$data/database.dump"
+count=$(docker exec "$container" psql -U postgres -d crm -tAc "SELECT count(*) FROM users WHERE email='ceo@lauto.com.ua' AND \"isSuperAdmin\"=true")
+[[ "$count" == 1 ]]
+date -u +%FT%TZ > /var/lib/crm-backup/last-restore-check
+echo 'Restore verified: remote backup decrypted, uploads archive readable, PostgreSQL restored, CEO present.'

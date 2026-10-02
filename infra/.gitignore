@@ -13,3 +13,5 @@ ansible/group_vars/all/vault.yml
 .ansible/
 *.retry
 # Commit .terraform.lock.hcl after terraform init.
+
+.secrets/

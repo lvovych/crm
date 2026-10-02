@@ -1,0 +1,60 @@
+---
+# Run bootstrap.yml and backups.yml (WITHOUT repository initialization) first.
+# Use ONLY an empty replacement server; this playbook refuses existing app data.
+- name: Restore CRM on an empty replacement server
+  hosts: crm
+  become: true
+  vars:
+    crm_root: /srv/crm
+    restore_target: /var/lib/crm-restore
+    restore_snapshot: latest
+  tasks:
+    - name: Require explicit restore selection
+      ansible.builtin.assert:
+        that:
+          - confirm_empty_server_restore | default(false) | bool
+    - name: Check that there is no existing Compose installation
+      ansible.builtin.stat:
+        path: "{{ crm_root }}/compose.yml"
+      register: existing_compose
+    - name: Check that there is no existing database directory
+      ansible.builtin.stat:
+        path: "{{ crm_root }}/postgres"
+      register: existing_postgres
+    - name: Refuse to overwrite an existing installation
+      ansible.builtin.assert:
+        that:
+          - not existing_compose.stat.exists
+          - not existing_postgres.stat.exists
+    - name: Restore encrypted backup from Storage Box
+      ansible.builtin.shell: |
+        set -a
+        . /etc/crm-backup.env
+        set +a
+        restic -o "sftp.command=$RESTIC_SFTP_COMMAND" restore {{ restore_snapshot | quote }} --tag crm-consistent --target {{ restore_target | quote }}
+    - name: Restore configuration and secrets
+      ansible.builtin.copy:
+        remote_src: true
+        src: "{{ restore_target }}/var/lib/crm-backup/current/{{ item }}"
+        dest: "{{ crm_root }}/{{ item }}"
+        mode: '0600'
+      loop: [.env, compose.yml, Caddyfile]
+      no_log: true
+    - name: Restore uploaded files
+      ansible.builtin.unarchive:
+        remote_src: true
+        src: "{{ restore_target }}/var/lib/crm-backup/current/uploads.tar.gz"
+        dest: "{{ crm_root }}"
+        owner: '1001'
+        group: '1001'
+    - name: Start only PostgreSQL
+      ansible.builtin.command: docker compose up -d --wait db
+      args:
+        chdir: "{{ crm_root }}"
+    - name: Restore database
+      ansible.builtin.shell: docker compose exec -T db pg_restore -U crm -d crm --no-owner --no-privileges --exit-on-error < {{ (restore_target + '/var/lib/crm-backup/current/database.dump') | quote }}
+      args:
+        chdir: "{{ crm_root }}"
+    - name: Report safe stopping point
+      ansible.builtin.debug:
+        msg: Data restored. Configure GHCR access, check DNS, then run docker compose up -d --wait in /srv/crm. App and outbound jobs remain stopped until that step.

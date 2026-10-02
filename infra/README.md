@@ -3,19 +3,11 @@
 Домен: `crm.srv.lauto.com.ua`. Старт: одна Hetzner CPX22, Debian 13,
 системний диск 80 GB, Docker Compose. Без Kubernetes і додаткових дисків.
 
-Terraform описує VM та firewall; Ansible готує Docker і каталоги.
-`playbooks/deploy.yml` та шаблони Compose готують запуск TorqVoice, PostgreSQL
-і Caddy. Вони ще не перевірені на VM. CI/CD, резервне копіювання, моніторинг
-та процедуру відновлення потрібно завершити перед production-запуском.
+Сервіс розгорнуто через Terraform та Ansible. Поточні адреси, доступ,
+деплой, бекапи та відновлення описані в [RUNBOOK.md](RUNBOOK.md).
 
-Домен — `crm.srv.lauto.com.ua`. `crm_public_https: false` залишає застосунок
-доступним лише на loopback сервера; HTTPS вмикається після налаштування DNS
-та початкового адміністратора. Для deploy потрібні `crm_image` з digest
-і три випадкові 64-символьні hex-секрети: `vault_postgres_password`,
-`vault_auth_secret`, `vault_integrations_key`. Передавати їх через зашифрований
-Ansible Vault (`--ask-vault-pass`), не через відкритий Git чи аргументи CLI.
-Приватний GHCR-образ потребує окремого налаштування registry authentication.
-Повторний deploy зі змінами схеми потребує перевіреного бекапа.
+Обліковий запис власника: `ceo@lauto.com.ua`. Пароль зберігається лише локально
+в `infra/.secrets/ceo-login.json`. Секрети та state не потрапляють у Git.
 
 ## Межі відповідальності
 
@@ -75,8 +67,7 @@ ansible-playbook playbooks/bootstrap.yml
 
 Ansible використовує SSH agent або ваш стандартний SSH config. Якщо потрібен
 інший ключ, передайте `--private-key /absolute/path/to/key`. Приватний ключ
-не копіюється в репозиторій чи на VM. Початковий користувач — `root` зі своїм
-SSH-ключем; окремого користувача для деплою додамо разом із CI/CD.
+не копіюється в репозиторій чи на VM. Адміністративний доступ — `root` лише через SSH-ключ; доступ обмежений firewall.
 
 Перевірка синтаксису без VM:
 
@@ -84,15 +75,12 @@ SSH-ключем; окремого користувача для деплою д
 ansible-playbook -i inventory/production.example.yml playbooks/bootstrap.yml --syntax-check
 ```
 
-## Наступні кроки
+## Подальші налаштування
 
-1. Compose: Caddy, власний зафіксований образ TorqVoice, PostgreSQL без public port.
-2. GitHub Actions: збірка в GHCR, контрольований деплой із перевіркою здоров'я.
-3. Секрети через Ansible Vault; пароль Vault зберігається поза Git.
-4. Зовнішнє сховище: узгоджені бекапи БД і uploads, retention, повідомлення про помилки.
-5. Restore playbook і перевірка відновлення на чистій VM до production-запуску.
-6. DNS, HTTPS, моніторинг диска/RAM/доступності та давності бекапів.
+- Підключити SMTP/провайдер email для листів і відновлення пароля через пошту.
+- Налаштувати зовнішній канал сповіщень про помилки бекапів.
+- Зберегти аварійну копію секретів та Terraform state у захищеному місці.
+- Для командної роботи перенести state у remote backend з блокуванням.
 
-Збільшення CPU/RAM починається зі зміни `server_type` і перевірки plan.
-Параметр `keep_disk = true` залишає системний диск попереднього розміру.
-Перед змінами розміру потрібні перевірений бекап та вікно обслуговування.
+Збільшення CPU/RAM: змінити `server_type`, перевірити plan, зробити бекап
+і запланувати вікно обслуговування. `keep_disk = true` зберігає розмір диска.
