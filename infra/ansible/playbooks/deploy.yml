@@ -1,0 +1,75 @@
+---
+- name: Deploy the CRM application
+  hosts: crm
+  become: true
+  tasks:
+    - name: Require a fixed image and URL-safe random secrets
+      ansible.builtin.assert:
+        that:
+          - crm_image is defined
+          - "'@sha256:' in crm_image"
+          - vault_postgres_password is match('^[a-f0-9]{64}$')
+          - vault_auth_secret is match('^[a-f0-9]{64}$')
+          - vault_integrations_key is match('^[a-f0-9]{64}$')
+      no_log: true
+
+    - name: Create data directories
+      ansible.builtin.file:
+        path: "{{ crm_root }}/{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0700'
+      loop: [postgres, caddy]
+
+    - name: Create uploads directory for the application user
+      ansible.builtin.file:
+        path: "{{ crm_root }}/uploads"
+        state: directory
+        owner: '1001'
+        group: '1001'
+        mode: '0750'
+
+    - name: Write application secrets
+      ansible.builtin.template:
+        src: ../templates/app.env.j2
+        dest: "{{ crm_root }}/.env"
+        mode: '0600'
+      no_log: true
+      diff: false
+
+    - name: Write Compose and proxy configuration
+      ansible.builtin.template:
+        src: "../templates/{{ item.src }}"
+        dest: "{{ crm_root }}/{{ item.dest }}"
+        mode: '0644'
+      loop:
+        - {src: compose.yml.j2, dest: compose.yml}
+        - {src: Caddyfile.j2, dest: Caddyfile}
+
+    - name: Validate Compose configuration
+      ansible.builtin.command: docker compose config --quiet
+      args:
+        chdir: "{{ crm_root }}"
+      changed_when: false
+
+    - name: Pull images
+      ansible.builtin.command: docker compose pull
+      args:
+        chdir: "{{ crm_root }}"
+      changed_when: true
+
+    - name: Apply deployment with health checks
+      ansible.builtin.command: docker compose up -d --wait --wait-timeout 240 --remove-orphans
+      args:
+        chdir: "{{ crm_root }}"
+      changed_when: true
+
+    - name: Check local CRM endpoint
+      ansible.builtin.uri:
+        url: http://127.0.0.1:3000/api/health
+        status_code: 200
+      register: crm_health
+      until: crm_health.status == 200
+      retries: 6
+      delay: 10

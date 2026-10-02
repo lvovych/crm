@@ -1,0 +1,4 @@
+ssh_key_name = "REPLACE_WITH_EXISTING_HETZNER_KEY_NAME"
+admin_cidrs  = ["203.0.113.10/32"] # Example only: replace with your public IP.
+location     = "nbg1"
+server_type  = "cpx22"

@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+# Local credentials, inventory, plans and Terraform state must never enter Git.
+terraform/.terraform/
+terraform/*.tfstate*
+terraform/*.tfplan
+terraform/*.tfvars
+terraform/*.tfvars.json
+terraform/crash*.log
+ansible/inventory/production.yml
+ansible/group_vars/all/vault.yml
+.ansible/
+*.retry
+# Commit .terraform.lock.hcl after terraform init.

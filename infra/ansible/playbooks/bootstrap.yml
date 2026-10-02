@@ -1,0 +1,67 @@
+---
+- name: Prepare the single CRM server
+  hosts: crm
+  become: true
+  vars:
+    crm_root: /srv/crm
+  tasks:
+    - name: Require the supported operating system
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.distribution == 'Debian'
+          - ansible_facts.distribution_major_version == '13'
+        fail_msg: This bootstrap supports Debian 13 only.
+
+    - name: Install the container runtime and base utilities
+      ansible.builtin.apt:
+        name:
+          - ca-certificates
+          - curl
+          - docker.io
+          - docker-cli
+          - docker-compose
+          - python3
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Create the Docker configuration directory
+      ansible.builtin.file:
+        path: /etc/docker
+        state: directory
+        mode: '0755'
+
+    - name: Configure bounded container logs
+      ansible.builtin.copy:
+        dest: /etc/docker/daemon.json
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          {
+            "log-driver": "local",
+            "log-opts": { "max-size": "10m", "max-file": "3" }
+          }
+      notify: Restart Docker
+
+    - name: Enable Docker at boot
+      ansible.builtin.systemd_service:
+        name: docker
+        enabled: true
+        state: started
+      when: not ansible_check_mode
+
+    - name: Create the private application configuration directory
+      ansible.builtin.file:
+        path: "{{ crm_root }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0700'
+
+  handlers:
+    - name: Restart Docker
+      ansible.builtin.systemd_service:
+        name: docker
+        state: restarted
+      when: not ansible_check_mode

@@ -1,0 +1,5 @@
+---
+crm_domain: crm.srv.lauto.com.ua
+crm_root: /srv/crm
+# Keep the service private until DNS and initial administrator setup are ready.
+crm_public_https: false
