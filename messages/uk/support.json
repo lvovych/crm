@@ -1,0 +1,33 @@
+{
+  "title": "Запит на підтримку",
+  "open": "Зв’язатися з підтримкою",
+  "close": "Закрити",
+  "subjectLabel": "Тема",
+  "subjectPlaceholder": "Коротко опишіть проблему",
+  "messageLabel": "Опис",
+  "messagePlaceholder": "Що сталося і що ви очікували натомість?",
+  "takeScreenshot": "Зробити знімок екрана",
+  "addFiles": "Додати файли",
+  "removeAttachment": "Вилучити долучення",
+  "attachmentSummary": "{count} з {max} вкладень · {size} МБ",
+  "send": "Надіслати запит",
+  "sending": "Надсилання…",
+  "sentTitle": "Запит надіслано",
+  "sentDescription": "Ми відповісте на адресу вашого облікового запису електронної пошти.",
+  "sendAnother": "Надіслати ще",
+  "hideButton": "Сховати кнопку підтримки",
+  "dragHint": "Перетягніть, щоб пересунути",
+  "move": "Пересунути",
+  "restore": "Показати кнопку підтримки",
+  "errors": {
+    "sendFailed": "Не вдалося надіслати запит. Будь ласка, спробуйте ще раз.",
+    "screenshotFailed": "Не вдалося зробити знімок екрана.",
+    "subject-required": "Вкажіть тему.",
+    "subject-too-long": "Тема занадто довга.",
+    "message-required": "Додайте опис.",
+    "message-too-long": "Опис надто довгий.",
+    "too-many-attachments": "Можна прикріпити не більше {max} файлів.",
+    "attachment-type-not-allowed": "Файл цього типу прив’язати неможливо.",
+    "attachments-too-large": "Долучення занадто великі, загальний ліміт — 10 млн."
+  }
+}

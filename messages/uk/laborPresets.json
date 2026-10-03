@@ -1,0 +1,76 @@
+{
+  "searchPlaceholder": "Пошук шаблонів робіт...",
+  "addPackage": "Додати шаблон",
+  "table": {
+    "name": "Назва",
+    "description": "Опис",
+    "itemCount": "Позиції",
+    "type": "Тип",
+    "hrs": "год.",
+    "units": "посл."
+  },
+  "empty": {
+    "noMatch": "Не знайдено шаблонів.",
+    "noPresets": "Шаблонів роботи ще не існує. Натисніть кнопку « Додати шаблон», щоб створити новий шаблон."
+  },
+  "actions": {
+    "edit": "Редагувати",
+    "delete": "Видалити",
+    "openMenu": "Відкрити меню"
+  },
+  "deletePreset": {
+    "title": "Вилучити шаблон",
+    "description": "Шаблон «{name}І всі його позиції будуть усунені назавжди.",
+    "confirm": "Видалити"
+  },
+  "form": {
+    "singleItem": "Одна позиція",
+    "package": "Пакунок",
+    "addPackage": "Додати шаблон",
+    "editPackage": "Редагувати шаблон",
+    "singleNameLabel": "Назва",
+    "singleNamePlaceholder": "напр. Заміна оливи",
+    "nameLabel": "Назва пакунка",
+    "namePlaceholder": "напр. Пакет заміни оливи",
+    "descriptionLabel": "Опис",
+    "descriptionPlaceholder": "Необов’язковий опис...",
+    "itemsTitle": "Позиції робіт",
+    "itemDescription": "Опис",
+    "itemHours": "Години",
+    "itemRate": "Ставка",
+    "itemDescriptionPlaceholder": "Опис *",
+    "addItem": "Додати позицію",
+    "cancel": "Скасувати",
+    "create": "Створити",
+    "saveChanges": "Зберегти",
+    "itemQty": "Кількість",
+    "itemQtyOrHours": "Кількість / Години",
+    "hourlyTag": "н/ч",
+    "serviceTag": "посл.",
+    "partsTitle": "Запчастини",
+    "addPart": "Додати запчастину",
+    "partName": "Назва запчастини",
+    "partNumber": "Запчастина '#'",
+    "partQty": "Кількість",
+    "partPrice": "Ціна за од.",
+    "importFromInventory": "Імпортування зі складу",
+    "searchInventory": "Пошук на складі...",
+    "noPartsFound": "Запчастини не знайдено"
+  },
+  "picker": {
+    "title": "Вибрати шаблон робіт",
+    "search": "Пошук шаблонів...",
+    "noPackages": "Не знайдено шаблонів робіт.",
+    "items": "{count} поз.",
+    "totalHours": "{hours}год загалом",
+    "totalUnits": "{units} посл.",
+    "totalParts": "{count} запчастин"
+  },
+  "errors": {
+    "error": "Помилка",
+    "saveFailed": "Не вдалося зберегти шаблон",
+    "deleteFailed": "Не вдалося видалити шаблон",
+    "loadFailed": "Не вдалося завантажити шаблон",
+    "noItems": "Потрібна принаймні одна позиція"
+  }
+}

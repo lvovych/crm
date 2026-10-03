@@ -11,6 +11,7 @@ export const locales = [
   'it',
   'tr',
   'ru',
+  'uk',
   'lt',
 ] as const
 
@@ -31,5 +32,6 @@ export const localeNames: Record<Locale, string> = {
   it: 'Italiano',
   tr: 'Türkçe',
   ru: 'Русский',
+  uk: 'Українська',
   lt: 'Lietuvių',
 }

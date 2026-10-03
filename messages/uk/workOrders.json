@@ -1,0 +1,106 @@
+{
+  "page": {
+    "error": "Не вдалося завантажити наряди-замовлення"
+  },
+  "list": {
+    "searchPlaceholder": "Пошук нарядів-замовлень...",
+    "newWorkOrder": "Новий наряд-замовлення",
+    "selectVehicle": "Виберіть транспортний засіб",
+    "empty": "Нарядів-замовлень не знайдено.",
+    "statusUpdated": "Стан оновлено",
+    "statusTabs": {
+      "all": "Усі",
+      "active": "Активні",
+      "pending": "Очікувані",
+      "inProgress": "У роботі",
+      "waitingParts": "Очікування запчастин",
+      "completed": "Завершені"
+    },
+    "statusActions": {
+      "startWork": "Почати роботу",
+      "waitingParts": "Очікування запчастин",
+      "complete": "Завершити",
+      "resumeWork": "Поновити роботу",
+      "reopen": "Відкрити заново"
+    },
+    "table": {
+      "invoice": "Рахунок №",
+      "vehicle": "Транспортний засіб",
+      "customer": "Клієнт",
+      "title": "Назва",
+      "status": "Статус",
+      "tech": "Механік",
+      "date": "Дата",
+      "total": "Разом",
+      "promised": "Обіцяно",
+      "promisedOverdue": "Обіцяно {date}, прострочено"
+    },
+    "emailSubject": "Оновлення статусу транспортного засобу: {status}",
+    "changeStatus": "Змінити статус",
+    "contextMenu": {
+      "open": "Відкрити наряд-замовлення",
+      "openVehicle": "Відкрити машину",
+      "openCustomer": "Відкрити клієнта"
+    },
+    "dueToday": "Строк сьогодні",
+    "columns": {
+      "label": "Стовпчики"
+    }
+  },
+  "vehiclePicker": {
+    "title": "Виберіть транспортний засіб для замовлення-наряду",
+    "titleMarine": "Виберіть корабель для замовлення-наряду",
+    "searchPlaceholder": "Пошук транспортних засобів...",
+    "searchPlaceholderMarine": "Пошук суден...",
+    "empty": "Транспортні засоби не знайдено.",
+    "emptyMarine": "Суден не знайдено.",
+    "emptySearch": "Немає транспортних засобів, які відповідають пошуку.",
+    "emptySearchMarine": "Немає кораблів, які відповідають пошуку.",
+    "addNewVehicle": "Додати новий транспортний засіб",
+    "addNewVehicleMarine": "Додати новий корабель",
+    "noPlate": "Без номерного знака",
+    "noPlateMarine": "Без реєстраційного номера",
+    "make": "Марка *",
+    "makeMarine": "Виробник *",
+    "model": "Модель *",
+    "year": "Рік *",
+    "licensePlate": "Номерний знак",
+    "licensePlateMarine": "Реєстраційний номер",
+    "customer": "Клієнт",
+    "selectCustomer": "Виберіть клієнта (не обов’язковий)/ івсе",
+    "createNewCustomer": "Створити нового клієнта",
+    "newCustomer": "Новий клієнт",
+    "customerName": "Ім’я *",
+    "customerNamePlaceholder": "Ім’я клієнта",
+    "phone": "Телефон",
+    "phonePlaceholder": "Номер телефону",
+    "creating": "Створення...",
+    "createAndContinue": "Створити і продовжити",
+    "invalidYear": "Введіть коректний рік",
+    "customerNameRequired": "Ім’я клієнта обов’язково",
+    "failedCreateCustomer": "Не вдалося створити клієнта",
+    "failedCreateVehicle": "Не вдалося створити транспортний засіб",
+    "failedCreateVehicleMarine": "Не вдалося створити корабель",
+    "somethingWentWrong": "Щось пішло не так",
+    "partsSale": "Продаж лише запчастин",
+    "partsSaleDescription": "Створіть рахунок без автомобіля для продажу запчастин зі стійки.",
+    "partsSaleDescriptionMarine": "Створіть рахунок без судна для продажу запчастин зі стійки.",
+    "createSale": "Створити продаж",
+    "none": "Ні"
+  },
+  "notify": {
+    "title": "Сповістити {name}",
+    "description": "Надіслати сповіщення клієнтові про це оновлення.",
+    "sms": "SMS",
+    "email": "Електронна пошта",
+    "noPhone": "(телефон не вказано)",
+    "noEmail": "(електронну пошту не вказано)",
+    "notAvailable": "(недоступно)",
+    "skip": "Пропустити",
+    "send": "Надіслати",
+    "smsSent": "SMS відіслано",
+    "emailSent": "Лист надіслано",
+    "failedSms": "Не вдалося надіслати SMS",
+    "failedEmail": "Не вдалося надіслати лист"
+  }
+}

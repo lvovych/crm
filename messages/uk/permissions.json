@@ -1,0 +1,28 @@
+{
+  "subjects": {
+    "dashboard": "Панель",
+    "vehicles": "Автомобілі",
+    "customers": "Клієнти",
+    "work_orders": "Наряди-замовлення",
+    "quotes": "Кошториси",
+    "services": "Історія робіт",
+    "billing": "Рахунки",
+    "inventory": "Склад",
+    "labor_presets": "Шаблони робіт",
+    "inspections": "Огляди",
+    "tire_hotel": "Зберігання шин",
+    "reports": "Звіти",
+    "time_tracking": "Облік часу",
+    "work_board": "Дошка робіт",
+    "ai_assistant": "ШІ-помічник",
+    "settings": "Налаштування"
+  },
+  "actions": {
+    "create": "Створення",
+    "read": "Перегляд",
+    "update": "Зміна",
+    "delete": "Вилучення",
+    "manage": "Керування",
+    "manage_storage": "Керування структурою складу"
+  }
+}

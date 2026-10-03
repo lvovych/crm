@@ -1,0 +1,79 @@
+{
+  "page": {
+    "featureName": "SMS-повідомлення",
+    "featureDescription": "Надсилайте й отримуйте SMS-повідомлення від клієнтів просто в Torqvoice.",
+    "tabs": {
+      "inbox": "Вхідні",
+      "scheduled": "Заплановані",
+      "sms": "SMS",
+      "whatsapp": "WhatsApp",
+      "telegram": "Telegram",
+      "campaigns": "Кампанії"
+    },
+    "smsNotConfiguredTitle": "SMS не налаштовано",
+    "smsNotConfiguredHint": "Підключіть SMS-провайдера, щоб надсилати і отримувати повідомлення тут. Запланована пошта працює і без цього.",
+    "goToSmsSettings": "Перейти до параметрів SMS"
+  },
+  "notConfigured": {
+    "title": "SMS не налаштовані",
+    "description": "Налаштуйте SMS-провайдера для надсилання і отримання повідомлень з клієнтами. Підтримуються Twilio, Vonage і Telnyx.",
+    "goToSettings": "Перейти до параметрів SMS"
+  },
+  "threads": {
+    "title": "Бесіди",
+    "empty": "Не вагайтеся, виправте SMS зі сторінки клієнта, щоб почати.",
+    "loadMore": "Звантажити ще",
+    "selectConversation": "Виберіть балачку",
+    "you": "Ви: ",
+    "deleteConversation": "Видалити бесіду",
+    "deleteTitle": "Вилучити балачку?",
+    "deleteDescription": "Всі повідомлення з {name} буде остаточно вилучено. це не є те число.",
+    "deleted": "Бесіду видалено",
+    "deleteError": "Не вдалося вилучити балачку",
+    "back": "Назад",
+    "conversationMenu": "Меню балачки",
+    "searchPlaceholder": "Пошук у листуванні",
+    "noSearchResults": "Листування за запитом не знайдено",
+    "now": "зараз"
+  },
+  "conversation": {
+    "noPhone": "У {name} не вказано номер телефону. Додайте номер, щоб розпочати запис.",
+    "loadOlder": "Звантажити ранні",
+    "empty": "Повідомлень поки немає. Надішліть перше повідомлення {name}.",
+    "placeholder": "Повідомлення для {name}...",
+    "deleteMessage": "Вилучити повідомлення",
+    "deleteTitle": "Вилучити повідомлення?",
+    "deleteDescription": "Це повідомлення буде остаточно вилучено з розмови. Ця дія не є номером.",
+    "messageDeleted": "Повідомлення вилучено",
+    "deleteError": "Не вдалося видалити повідомлення",
+    "sendError": "Не вдалося надіслати SMS",
+    "sendMessage": "Надіслати повідомлення"
+  },
+  "sendDialog": {
+    "send": "Надіслати {label}",
+    "message": "Повідомлення",
+    "placeholder": "Введіть повідомлення...",
+    "characters": "{count} / 1600 символів",
+    "sendSms": "Надіслати SMS",
+    "smsSent": "SMS відіслано",
+    "sentTo": "{label} надіслано {name} ({phone})",
+    "sendError": "Не вдалося надіслати SMS"
+  },
+  "compose": {
+    "newMessage": "Нове повідомлення",
+    "title": "Нове повідомлення",
+    "searchPlaceholder": "Пошук клієнтів за назвою або номером",
+    "noMatches": "Немає клієнтів за запитом",
+    "noRecipients": "Немає клієнтів з номером телефону",
+    "noRecipientsHint": "Додайте до клієнта номер телефону, щоб писати йому.",
+    "changeRecipient": "Вибрати інший",
+    "messageLabel": "Повідомлення",
+    "messagePlaceholder": "Повідомлення для {name}...",
+    "segments": "{chars} символів · {segments} SMS",
+    "send": "Надіслати",
+    "scheduleInstead": "Краще запланувати",
+    "sent": "Надіслано {name}",
+    "sendError": "Не вдалося надіслати повідомлення",
+    "templates": "Шаблони"
+  }
+}

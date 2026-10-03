@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { add, format } from 'date-fns'
-import { type Locale, enUS } from 'date-fns/locale'
+import { type Locale, enUS, uk } from 'date-fns/locale'
+import { useLocale } from 'next-intl'
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock } from 'lucide-react'
 import * as React from 'react'
 import { useImperativeHandle, useRef } from 'react'
@@ -647,7 +648,7 @@ const LocalDateTimePicker = React.forwardRef<
 >(
   (
     {
-      locale = enUS,
+      locale: suppliedLocale,
       defaultPopupValue = new Date(new Date().setHours(0, 0, 0, 0)),
       value,
       onChange,
@@ -657,12 +658,16 @@ const LocalDateTimePicker = React.forwardRef<
       disabled = false,
       displayFormat,
       granularity = 'second',
-      placeholder = 'Pick a date',
+      placeholder: suppliedPlaceholder,
       className,
       ...props
     },
     ref
   ) => {
+    const interfaceLocale = useLocale()
+    const locale = suppliedLocale ?? (interfaceLocale === 'uk' ? uk : enUS)
+    const placeholder =
+      suppliedPlaceholder ?? (interfaceLocale === 'uk' ? 'Виберіть дату' : 'Pick a date')
     const [month, setMonth] = React.useState<Date>(value ?? defaultPopupValue)
     const buttonRef = useRef<HTMLButtonElement>(null)
     const [displayDate, setDisplayDate] = React.useState<Date | undefined>(value ?? undefined)
