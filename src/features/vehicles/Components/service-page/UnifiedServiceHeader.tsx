@@ -63,6 +63,7 @@ interface UnifiedServiceHeaderProps {
   onPreviewPDF: () => void
   /** The work order as a sheet to print and sign, opened in the preview. */
   onPrintWorkOrder?: () => void
+  onPrintCompletionAct?: () => void
   onDelete: () => void
   onShowEmail: () => void
   onShowShare: () => void
@@ -96,6 +97,7 @@ export function UnifiedServiceHeader({
   onDownloadPDF,
   onPreviewPDF,
   onPrintWorkOrder,
+  onPrintCompletionAct,
   onDelete,
   onShowEmail,
   onShowShare,
@@ -152,6 +154,7 @@ export function UnifiedServiceHeader({
           onDownloadPDF={onDownloadPDF}
           onPreviewPDF={onPreviewPDF}
           onPrintWorkOrder={onPrintWorkOrder}
+          onPrintCompletionAct={onPrintCompletionAct}
           onDelete={onDelete}
           onShowEmail={onShowEmail}
           onShowShare={onShowShare}
@@ -196,6 +199,7 @@ type ServiceHeaderActionsProps = Pick<
   | 'onDownloadPDF'
   | 'onPreviewPDF'
   | 'onPrintWorkOrder'
+  | 'onPrintCompletionAct'
   | 'onDelete'
   | 'onShowEmail'
   | 'onShowShare'
@@ -225,6 +229,7 @@ export function ServiceHeaderActions({
   onDownloadPDF,
   onPreviewPDF,
   onPrintWorkOrder,
+  onPrintCompletionAct,
   onDelete,
   onShowEmail,
   onShowShare,
@@ -314,6 +319,15 @@ export function ServiceHeaderActions({
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
               </>
+            )}
+            {onPrintCompletionAct && (
+              <DropdownMenuItem
+                onClick={onPrintCompletionAct}
+                disabled={saving || hasUnsavedChanges}
+              >
+                <Printer className="mr-2 size-4" aria-hidden="true" />
+                {t('printCompletionAct')}
+              </DropdownMenuItem>
             )}
             {designMenu && (
               <>

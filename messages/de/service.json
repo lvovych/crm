@@ -62,7 +62,8 @@
     "designRefreshConfirm": "Rechnung aktualisieren",
     "designRefreshDone": "Diese Rechnung wird jetzt mit den aktuellen Angaben gedruckt",
     "designRefreshFailed": "Rechnung konnte nicht aktualisiert werden",
-    "printWorkOrder": "Arbeitsauftrag drucken"
+    "printWorkOrder": "Arbeitsauftrag drucken",
+    "printCompletionAct": "Service acceptance act (PDF)"
   },
   "basicInfo": {
     "title": "Grundlegende Informationen",

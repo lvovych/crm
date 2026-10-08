@@ -2705,5 +2705,14 @@
       "cross": "Kryžius",
       "hex": "Šešiakampis"
     }
+  },
+  "completionAct": {
+    "title": "Service acceptance act: provider details",
+    "hint": "Used when generating a service acceptance PDF. Changes apply to newly generated PDFs; downloaded files stay unchanged.",
+    "name": "Legal entity / sole proprietor name",
+    "code": "Tax / registration number",
+    "address": "Legal address",
+    "phone": "Provider phone",
+    "bank": "Bank details (IBAN and bank)"
   }
 }

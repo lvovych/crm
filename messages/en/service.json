@@ -62,7 +62,8 @@
     "designRefreshConfirm": "Update the invoice",
     "designRefreshDone": "This invoice now prints with today's details",
     "designRefreshFailed": "Could not update the invoice",
-    "printWorkOrder": "Print work order"
+    "printWorkOrder": "Print work order",
+    "printCompletionAct": "Service acceptance act (PDF)"
   },
   "basicInfo": {
     "title": "Basic Information",

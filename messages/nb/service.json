@@ -62,7 +62,8 @@
     "designRefreshConfirm": "Oppdater fakturaen",
     "designRefreshDone": "Denne fakturaen skrives nå ut med dagens opplysninger",
     "designRefreshFailed": "Kunne ikke oppdatere fakturaen",
-    "printWorkOrder": "Skriv ut arbeidsordre"
+    "printWorkOrder": "Skriv ut arbeidsordre",
+    "printCompletionAct": "Service acceptance act (PDF)"
   },
   "basicInfo": {
     "title": "Grunnleggende informasjon",

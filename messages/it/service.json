@@ -62,7 +62,8 @@
     "designRefreshConfirm": "Aggiorna la fattura",
     "designRefreshDone": "Questa fattura ora viene stampata con i dati attuali",
     "designRefreshFailed": "Impossibile aggiornare la fattura",
-    "printWorkOrder": "Stampa ordine di lavoro"
+    "printWorkOrder": "Stampa ordine di lavoro",
+    "printCompletionAct": "Service acceptance act (PDF)"
   },
   "basicInfo": {
     "title": "Informazioni di Base",

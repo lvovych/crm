@@ -62,7 +62,8 @@
     "designRefreshConfirm": "Оновити рахунок",
     "designRefreshDone": "Цей рахунок тепер друкується з поточними даними",
     "designRefreshFailed": "Не вдалося оновити рахунок",
-    "printWorkOrder": "Друк наряду-замовлення"
+    "printWorkOrder": "Друк наряду-замовлення",
+    "printCompletionAct": "Акт наданих послуг (PDF)"
   },
   "basicInfo": {
     "title": "Основна інформація",

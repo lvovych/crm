@@ -62,7 +62,8 @@
     "designRefreshConfirm": "Обновить счёт",
     "designRefreshDone": "Этот счёт теперь печатается с текущими данными",
     "designRefreshFailed": "Не удалось обновить счёт",
-    "printWorkOrder": "Печать заказ-наряда"
+    "printWorkOrder": "Печать заказ-наряда",
+    "printCompletionAct": "Акт оказанных услуг (PDF)"
   },
   "basicInfo": {
     "title": "Основная информация",

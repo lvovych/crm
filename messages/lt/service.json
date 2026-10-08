@@ -62,7 +62,8 @@
     "designRefreshConfirm": "Atnaujinti sąskaitą",
     "designRefreshDone": "Ši sąskaita dabar spausdinama su dabartiniais duomenimis",
     "designRefreshFailed": "Nepavyko atnaujinti sąskaitos",
-    "printWorkOrder": "Spausdinti darbo užsakymą"
+    "printWorkOrder": "Spausdinti darbo užsakymą",
+    "printCompletionAct": "Service acceptance act (PDF)"
   },
   "basicInfo": {
     "title": "Pagrindinė informacija",

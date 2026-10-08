@@ -62,7 +62,8 @@
     "designRefreshConfirm": "Mettre à jour la facture",
     "designRefreshDone": "Cette facture s'imprime désormais avec les informations actuelles",
     "designRefreshFailed": "Impossible de mettre à jour la facture",
-    "printWorkOrder": "Imprimer l'ordre de travail"
+    "printWorkOrder": "Imprimer l'ordre de travail",
+    "printCompletionAct": "Service acceptance act (PDF)"
   },
   "basicInfo": {
     "title": "Informations de Base",

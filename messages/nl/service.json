@@ -62,7 +62,8 @@
     "designRefreshConfirm": "Factuur bijwerken",
     "designRefreshDone": "Deze factuur wordt nu afgedrukt met de huidige gegevens",
     "designRefreshFailed": "Kon de factuur niet bijwerken",
-    "printWorkOrder": "Werkorder afdrukken"
+    "printWorkOrder": "Werkorder afdrukken",
+    "printCompletionAct": "Service acceptance act (PDF)"
   },
   "basicInfo": {
     "title": "Basisinformatie",

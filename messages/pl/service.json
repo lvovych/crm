@@ -62,7 +62,8 @@
     "designRefreshConfirm": "Zaktualizuj fakturę",
     "designRefreshDone": "Ta faktura jest teraz drukowana z bieżącymi danymi",
     "designRefreshFailed": "Nie udało się zaktualizować faktury",
-    "printWorkOrder": "Drukuj zlecenie"
+    "printWorkOrder": "Drukuj zlecenie",
+    "printCompletionAct": "Service acceptance act (PDF)"
   },
   "basicInfo": {
     "title": "Informacje Podstawowe",

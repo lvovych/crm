@@ -29,6 +29,16 @@ export function CompanySettings({
   const router = useRouter()
   const t = useTranslations('settings')
   const [saving, setSaving] = useState(false)
+  const actFields = [
+    [SETTING_KEYS.COMPLETION_ACT_NAME, 'name'],
+    [SETTING_KEYS.COMPLETION_ACT_CODE, 'code'],
+    [SETTING_KEYS.COMPLETION_ACT_ADDRESS, 'address'],
+    [SETTING_KEYS.COMPLETION_ACT_PHONE, 'phone'],
+    [SETTING_KEYS.COMPLETION_ACT_BANK, 'bank'],
+  ] as const
+  const [actDetails, setActDetails] = useState<Record<string, string>>(() =>
+    Object.fromEntries(actFields.map(([key]) => [key, settings[key] || '']))
+  )
   const [workshopName, setWorkshopName] = useState(organizationName)
   const [workshopAddress, setWorkshopAddress] = useState(
     settings[SETTING_KEYS.WORKSHOP_ADDRESS] || ''
@@ -51,6 +61,7 @@ export function CompanySettings({
     const [renameResult, settingsResult] = await Promise.all([
       renameOrganization({ name: workshopName }),
       setSettings({
+        ...actDetails,
         [SETTING_KEYS.WORKSHOP_ADDRESS]: workshopAddress,
         [SETTING_KEYS.WORKSHOP_SLOGAN]: workshopSlogan,
         [SETTING_KEYS.WORKSHOP_PHONE]: workshopPhone,
@@ -257,6 +268,23 @@ export function CompanySettings({
               onChange={(e) => setWorkshopAddress(e.target.value)}
             />
           </div>
+        </AppCard>
+        <AppCard title={t('completionAct.title')}>
+          <p className="text-sm text-muted-foreground">{t('completionAct.hint')}</p>
+          {actFields.map(([key, label]) => (
+            <div key={key} className="space-y-1">
+              <Label htmlFor={key}>{t(`completionAct.${label}`)}</Label>
+              <Textarea
+                id={key}
+                rows={label === 'bank' || label === 'address' ? 2 : 1}
+                maxLength={2000}
+                value={actDetails[key]}
+                onChange={(event) =>
+                  setActDetails((current) => ({ ...current, [key]: event.target.value }))
+                }
+              />
+            </div>
+          ))}
         </AppCard>
         <SaveButton>
           <div className="flex items-center justify-between">
