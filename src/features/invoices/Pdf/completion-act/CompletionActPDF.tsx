@@ -259,11 +259,9 @@ export function CompletionActPDF({
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
             <View style={s.signature}>
               <Text style={s.bold}>Виконавець:</Text>
-              <Text style={s.small}>{provider.name}</Text>
             </View>
             <View style={s.signature}>
               <Text style={s.bold}>Замовник:</Text>
-              <Text style={s.small}>{customer?.name || ''}</Text>
             </View>
           </View>
         </View>
