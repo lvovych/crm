@@ -95,6 +95,8 @@ export interface ServiceDetail {
 export interface PartItem {
   id: string
   brand?: string
+  discountType?: string
+  discountValue?: number
   partNumber: string | null
   name: string
   quantity: number

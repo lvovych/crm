@@ -273,6 +273,9 @@ export async function ServiceRecordPage({
       confirmedByName: c.confirmedBy?.name ?? null,
     })),
     partItems: record.partItems.map((p) => ({
+      id: p.id,
+      discountType: p.discountType as 'none' | 'percentage' | 'fixed',
+      discountValue: p.discountValue,
       partNumber: p.partNumber || '',
       brand: p.brand ?? '---',
       name: p.name,
@@ -288,6 +291,11 @@ export async function ServiceRecordPage({
       inventoryPartId: p.inventoryPartId ?? undefined,
     })),
     laborItems: shopFeeLinesLast(record.laborItems).map((l) => ({
+      id: l.id,
+      technicianId: l.technicianId,
+      executorName: l.executorName,
+      executorFrozen: l.executorFrozen,
+      executorLegacy: l.executorLegacy,
       description: l.description,
       hours: l.hours,
       rate: l.rate,

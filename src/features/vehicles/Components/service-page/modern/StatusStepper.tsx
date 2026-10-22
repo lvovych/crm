@@ -96,7 +96,7 @@ export function StatusStepper({
               }}
               // Allowed to shrink, so a long label (or a longer language) is
               // cut with an ellipsis instead of running into the next stage.
-              className="group/step flex min-w-0 cursor-pointer items-center gap-2 rounded-md py-1 pr-1 outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default"
+              className="group/step flex min-h-11 min-w-11 cursor-pointer items-center gap-2 rounded-md py-1 pr-1 outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default"
             >
               <span
                 className={cn(
@@ -199,7 +199,7 @@ function StageMenu({
           // is the one that carries its name.
           aria-label={moreLabel}
           title={moreLabel}
-          className="flex h-6 w-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default"
+          className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default"
         >
           <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
         </button>

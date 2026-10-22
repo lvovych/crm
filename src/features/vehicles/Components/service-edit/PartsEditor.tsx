@@ -1,49 +1,22 @@
 'use client'
-
-import { BrandCombobox } from '@/features/inventory/Components/BrandCombobox'
-
-import { useRef, useCallback, useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
+import { Package, Plus, ScanBarcode, Pencil, ArrowUp, ArrowDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { GripVertical, Package, Percent, Plus, ScanBarcode, Trash2 } from 'lucide-react'
-import { IconActionButton } from '@/components/icon-action-button'
-import { FieldRow } from '@/components/line-item-field'
-import { cn } from '@/lib/utils'
 import { AppCard } from '@/components/app-card'
-import { useModernWorkOrder } from '@/components/work-order-layout-context'
 import { useFormatCurrency } from '@/components/currency-settings-context'
-import { useTranslations } from 'next-intl'
-import type { ServicePartInput } from '@/features/vehicles/Schema/serviceSchema'
-import { partRowHasContent } from '@/features/vehicles/Lib/validateServiceForm'
-import { emptyPart } from './form-types'
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  KeyboardSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core'
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-  useSortable,
-  arrayMove,
-} from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
-
+import { BrandCombobox } from '@/features/inventory/Components/BrandCombobox'
 import {
   PartNameSuggestions,
   type PartSuggestion,
 } from '@/features/inventory/Components/PartNameSuggestions'
-import {
-  lineTotal,
-  priceFromCostAndMarkup,
-  resolvePartPrice,
-} from '@/features/inventory/Lib/partPricing'
+import { repricePartRow, resolvePartPrice } from '@/features/inventory/Lib/partPricing'
+import { discountedPartTotal, partPriceChanged } from '../../Lib/lineDiscount'
+import { servicePartSchema, type ServicePartInput } from '../../Schema/serviceSchema'
+import { emptyPart } from './form-types'
+import { LineEditorDialog, LineField } from './LineEditorDialog'
 
 interface PartsEditorProps {
   partItems: ServicePartInput[]
@@ -57,206 +30,18 @@ interface PartsEditorProps {
   partsSubtotal: number
   currencyCode: string
   hasInventory: boolean
-  /** Stocked parts, used for the inline name suggestions. */
   inventoryParts?: PartSuggestion[]
   onOpenInventory: () => void
   onScanBarcode?: () => void
-  /** Default markup % applied to new manually-added rows. Hidden from customers. */
   defaultMarkupPercent?: number
-  /** When true, the bulk "Apply markup" button affects inventory-sourced rows too. */
   markupAppliesToInventory?: boolean
+  pendingPart?: ServicePartInput | null
+  onPendingPartConsumed?: () => void
+  locked?: boolean
 }
-
-function SortablePartRow({
-  id,
-  part,
-  index,
-  updatePart,
-  onDelete,
-  currencyCode,
-  t,
-  dragEnabled,
-  inventoryParts,
-  onSelectSuggestion,
-  defaultMarkupPercent,
-  markupAppliesToInventory,
-}: {
-  id: string
-  part: ServicePartInput
-  index: number
-  updatePart: (
-    index: number,
-    field: keyof ServicePartInput,
-    value: string | number,
-    options?: { commit?: boolean }
-  ) => void
-  onDelete: () => void
-  currencyCode: string
-  inventoryParts: PartSuggestion[]
-  onSelectSuggestion: (index: number, part: PartSuggestion) => void
-  defaultMarkupPercent: number
-  markupAppliesToInventory: boolean
-  t: (key: string) => string
-  dragEnabled: boolean
-}) {
-  const formatCurrency = useFormatCurrency()
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id,
-  })
-
-  const style = dragEnabled
-    ? {
-        transform: CSS.Transform.toString(transform),
-        transition,
-      }
-    : undefined
-
-  // Same rule the save refuses on, so the red border and the refusal can
-  // never disagree about which rows are a problem.
-  const nameMissing = partRowHasContent(part) && !part.name.trim()
-
-  return (
-    <div
-      ref={dragEnabled ? setNodeRef : undefined}
-      style={style}
-      className={cn(
-        // Stacked card while the editor is narrow, one table row once its
-        // container is wide enough to hold every column at a usable size
-        'grid grid-cols-[auto_1fr] gap-2 rounded-lg border p-2',
-        '@2xl:grid-cols-[auto_1fr_2fr_0.6fr_0.9fr_0.7fr_0.9fr_0.9fr_auto] @2xl:rounded-none @2xl:border-0 @2xl:p-0',
-        isDragging && dragEnabled && 'z-10 opacity-75'
-      )}
-    >
-      <button
-        type="button"
-        className="flex h-9 w-6 cursor-grab items-center justify-center text-muted-foreground hover:text-foreground active:cursor-grabbing"
-        {...(dragEnabled ? { ...attributes, ...listeners } : {})}
-      >
-        <GripVertical className="h-4 w-4" />
-      </button>
-      <div className="flex min-w-0 flex-col gap-2 @2xl:contents">
-        <FieldRow label={t('partNumber')}>
-          <Input
-            placeholder={t('partNumber')}
-            value={part.partNumber ?? ''}
-            onChange={(e) => updatePart(index, 'partNumber', e.target.value)}
-          />
-        </FieldRow>
-        {/* The name identifies the row, so it leads the stacked card even
-            though the part number comes first in the desktop grid */}
-        <FieldRow label={t('name')} className="order-first @2xl:order-none">
-          <div className="relative w-full">
-            <Textarea
-              placeholder={t('namePlaceholder')}
-              value={part.name}
-              onChange={(e) => updatePart(index, 'name', e.target.value)}
-              rows={1}
-              aria-invalid={nameMissing}
-              className={cn(
-                'min-h-9 w-full resize-none',
-                nameMissing && 'border-destructive focus-visible:ring-destructive'
-              )}
-            />
-            <BrandCombobox
-              snapshot
-              value={part.brand ?? '---'}
-              onChange={(value) => updatePart(index, 'brand', value)}
-            />
-            <PartNameSuggestions
-              query={part.name}
-              parts={inventoryParts}
-              disabled={!!part.inventoryPartId}
-              currencyCode={currencyCode}
-              defaultMarkupPercent={defaultMarkupPercent}
-              markupAppliesToInventory={markupAppliesToInventory}
-              onSelect={(picked) => onSelectSuggestion(index, picked)}
-            />
-          </div>
-        </FieldRow>
-        <FieldRow label={t('qty')}>
-          {/* The unit is a property of the stocked part, snapshotted at pick
-              time, so it renders as a suffix rather than an editable field. */}
-          <div className="relative w-full">
-            <Input
-              type="number"
-              min="0"
-              step="any"
-              value={part.quantity}
-              onChange={(e) => updatePart(index, 'quantity', e.target.value)}
-              className={cn(part.unit && 'pr-9')}
-            />
-            {part.unit && (
-              <span className="pointer-events-none absolute right-2 top-1/2 max-w-8 -translate-y-1/2 truncate text-xs text-muted-foreground">
-                {part.unit}
-              </span>
-            )}
-          </div>
-        </FieldRow>
-        <FieldRow label={t('unitCost')} hint={t('unitCostHint')}>
-          <Input
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder={t('unitCost')}
-            title={t('unitCostHint')}
-            value={part.unitCost ?? 0}
-            onChange={(e) => updatePart(index, 'unitCost', e.target.value)}
-            // The margin is restated here rather than on each keystroke: a
-            // cost still being typed is not a cost anyone meant.
-            onBlur={(e) => updatePart(index, 'unitCost', e.target.value, { commit: true })}
-          />
-        </FieldRow>
-        <FieldRow label={t('markupPercent')} hint={t('markupPercentHint')}>
-          <div className="relative w-full">
-            <Input
-              type="number"
-              min="0"
-              step="0.1"
-              placeholder={t('markupPercent')}
-              title={t('markupPercentHint')}
-              value={part.markupPercent ?? 0}
-              onChange={(e) => updatePart(index, 'markupPercent', e.target.value)}
-              className="pr-6"
-            />
-            <Percent className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
-          </div>
-        </FieldRow>
-        <FieldRow label={t('unitPrice')}>
-          <Input
-            type="number"
-            min="0"
-            step="0.01"
-            value={part.unitPrice}
-            onChange={(e) => updatePart(index, 'unitPrice', e.target.value)}
-          />
-        </FieldRow>
-        <div className="flex items-center gap-2 @2xl:contents">
-          <span className="w-24 shrink-0 text-xs text-muted-foreground @2xl:hidden">
-            {t('total')}
-          </span>
-          <div className="flex h-9 flex-1 items-center rounded-md bg-muted/50 px-3 text-sm font-medium">
-            {formatCurrency(part.total, currencyCode)}
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 shrink-0 text-muted-foreground hover:text-destructive"
-            onClick={onDelete}
-            aria-label={t('deleteRow')}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 export function PartsEditor({
   partItems,
   setPartItems,
-  updatePart,
   partsSubtotal,
   currencyCode,
   hasInventory,
@@ -265,257 +50,436 @@ export function PartsEditor({
   onScanBarcode,
   defaultMarkupPercent = 0,
   markupAppliesToInventory = false,
+  pendingPart,
+  onPendingPartConsumed,
+  locked = false,
 }: PartsEditorProps) {
-  const formatCurrency = useFormatCurrency()
-  const t = useTranslations('service.parts')
-  const modern = useModernWorkOrder()
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
-  const keyCounterRef = useRef(0)
-
-  // Applying a suggestion sets name, number, cost, price and the stock link
-  // together. Doing it in one setPartItems pass keeps the row consistent and
-  // avoids five renders; the inventoryPartId is what makes the job deduct
-  // stock when it is saved.
-  const handleSelectSuggestion = useCallback(
-    (index: number, picked: PartSuggestion) => {
-      setPartItems((prev) =>
-        prev.map((row, i) => {
-          if (i !== index) return row
-          // Same pricing rule as the inventory picker, so a part costs the
-          // same however it was added to the line.
-          const { unitPrice, markupPercent } = resolvePartPrice(picked, {
-            defaultMarkupPercent,
-            markupAppliesToInventory,
-          })
-          return {
-            ...row,
-            name: picked.name,
-            partNumber: picked.partNumber ?? '',
-            brand: picked.brand?.name ?? '---',
-            unit: picked.unit ?? null,
-            unitCost: picked.unitCost,
-            unitPrice,
-            markupPercent,
-            // Derived from the row's own quantity, so the line still satisfies
-            // total === quantity * unitPrice. Defaulting an empty or zero
-            // quantity to 1 would bill a total its fields do not add up to.
-            total: lineTotal(row.quantity, unitPrice),
-            inventoryPartId: picked.id,
-          }
-        })
-      )
-    },
-    [setPartItems, defaultMarkupPercent, markupAppliesToInventory]
-  )
-  const keysRef = useRef<string[]>([])
-
-  // Keep keys array in sync with items length
-  while (keysRef.current.length < partItems.length) {
-    keysRef.current.push(`part-${keyCounterRef.current++}`)
+  const t = useTranslations('service.parts'),
+    e = useTranslations('service.lineEditor'),
+    format = useFormatCurrency()
+  const [editing, setEditing] = useState<{
+    index: number
+    original: ServicePartInput
+    draft: ServicePartInput
+  } | null>(null)
+  const [error, setError] = useState('')
+  function open(index: number, p: ServicePartInput) {
+    setError('')
+    setEditing({ index, original: { ...p }, draft: { ...p } })
   }
-  if (keysRef.current.length > partItems.length) {
-    keysRef.current = keysRef.current.slice(0, partItems.length)
-  }
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  )
-
-  const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
-      const { active, over } = event
-      if (!over || active.id === over.id) return
-      const oldIndex = keysRef.current.indexOf(active.id as string)
-      const newIndex = keysRef.current.indexOf(over.id as string)
-      if (oldIndex === -1 || newIndex === -1) return
-      keysRef.current = arrayMove(keysRef.current, oldIndex, newIndex)
-      setPartItems((prev) => arrayMove(prev, oldIndex, newIndex))
-    },
-    [setPartItems]
-  )
-
-  const addPartAtStart = useCallback(() => {
-    const key = `part-${keyCounterRef.current++}`
-    keysRef.current = [key, ...keysRef.current]
-    setPartItems((prev) => [emptyPart(defaultMarkupPercent), ...prev])
-  }, [setPartItems, defaultMarkupPercent])
-
-  const addPartAtEnd = useCallback(() => {
-    const key = `part-${keyCounterRef.current++}`
-    keysRef.current = [...keysRef.current, key]
-    setPartItems((prev) => [...prev, emptyPart(defaultMarkupPercent)])
-  }, [setPartItems, defaultMarkupPercent])
-
-  const deletePart = useCallback(
-    (index: number) => {
-      keysRef.current = keysRef.current.filter((_, j) => j !== index)
-      setPartItems((prev) => prev.filter((_, j) => j !== index))
-    },
-    [setPartItems]
-  )
-
-  /**
-   * Apply the default markup % to every eligible row. Eligible means:
-   *  - non-inventory rows always, OR
-   *  - all rows when `markupAppliesToInventory` is true.
-   * Recomputes unitPrice = unitCost * (1 + markup/100) and total = qty * unitPrice.
-   * Customer never sees cost or markup — only unitPrice/total.
-   */
-  const applyMarkupToAll = useCallback(() => {
-    setPartItems((prev) =>
-      prev.map((p) => {
-        const eligible = markupAppliesToInventory || !p.inventoryPartId
-        if (!eligible) return p
-        const unitPrice = priceFromCostAndMarkup(p.unitCost, defaultMarkupPercent)
-        return {
-          ...p,
-          markupPercent: defaultMarkupPercent,
-          unitPrice,
-          total: lineTotal(p.quantity, unitPrice),
+  useEffect(() => {
+    if (pendingPart) {
+      open(-1, pendingPart)
+      onPendingPartConsumed?.()
+    }
+  }, [pendingPart])
+  useEffect(() => {
+    if (locked) setEditing(null)
+  }, [locked])
+  const draft = editing?.draft
+  const dirty = !!editing && JSON.stringify(editing.draft) !== JSON.stringify(editing.original)
+  function change(field: keyof ServicePartInput, value: string | number) {
+    setError('')
+    setEditing((current) => {
+      if (!current) return current
+      let next = { ...current.draft, [field]: value }
+      if (['unitCost', 'markupPercent', 'unitPrice'].includes(field))
+        next = {
+          ...next,
+          ...repricePartRow(next, field as 'unitCost' | 'markupPercent' | 'unitPrice', {
+            commit: true,
+          }),
         }
-      })
-    )
-  }, [setPartItems, defaultMarkupPercent, markupAppliesToInventory])
-
+      if (
+        [
+          'quantity',
+          'unitCost',
+          'markupPercent',
+          'unitPrice',
+          'discountType',
+          'discountValue',
+        ].includes(field)
+      ) {
+        try {
+          next.total = discountedPartTotal(next)
+        } catch {
+          /* Invalid input stays visible until fixed. */
+        }
+      }
+      return { ...current, draft: next }
+    })
+  }
+  function save() {
+    if (!editing || locked) return
+    const parsed = servicePartSchema.safeParse(editing.draft)
+    if (!parsed.success) {
+      setError(e('invalid'))
+      return
+    }
+    try {
+      const total = discountedPartTotal(parsed.data)
+      const next = {
+        ...editing.draft,
+        ...parsed.data,
+        total:
+          editing.index >= 0 && !partPriceChanged(parsed.data, editing.original)
+            ? editing.original.total
+            : total,
+      }
+      setPartItems((prev) =>
+        editing.index < 0 ? [...prev, next] : prev.map((p, i) => (i === editing.index ? next : p))
+      )
+      setEditing(null)
+    } catch {
+      setError(e('invalidDiscount'))
+    }
+  }
+  function move(index: number, delta: number) {
+    setPartItems((prev) => {
+      const next = [...prev]
+      ;[next[index], next[index + delta]] = [next[index + delta], next[index]]
+      return next
+    })
+  }
+  const discount = (p: ServicePartInput) =>
+    p.discountType === 'percentage'
+      ? `${p.discountValue ?? 0}%`
+      : p.discountType === 'fixed'
+        ? format(p.discountValue ?? 0, currencyCode)
+        : '—'
   const actions = (
-    <div className="flex gap-1.5">
-      {defaultMarkupPercent > 0 && partItems.length > 0 && (
-        <IconActionButton
-          label={t('applyMarkup', { percent: defaultMarkupPercent })}
-          icon={Percent}
-          onClick={applyMarkupToAll}
-        />
-      )}
+    <div className="flex flex-wrap gap-1">
       {hasInventory && (
-        <IconActionButton label={t('fromInventory')} icon={Package} onClick={onOpenInventory} />
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="size-11"
+          aria-label={t('fromInventory')}
+          onClick={onOpenInventory}
+        >
+          <Package className="size-4" />
+        </Button>
       )}
       {onScanBarcode && (
-        <IconActionButton label={t('scanBarcode')} icon={ScanBarcode} onClick={onScanBarcode} />
-      )}
-      <IconActionButton label={t('addPart')} icon={Plus} onClick={addPartAtStart} />
-    </div>
-  )
-
-  const body = (
-    <>
-      {partItems.length > 0 && (
-        <>
-          <div className="hidden grid-cols-[auto_1fr_2fr_0.6fr_0.9fr_0.7fr_0.9fr_0.9fr_auto] gap-2 text-xs font-medium text-muted-foreground @2xl:grid">
-            <span className="w-6" />
-            <span>{t('partNumber')}</span>
-            <span>{t('name')}</span>
-            <span>{t('qty')}</span>
-            <span title={t('unitCostHint')}>{t('unitCost')}</span>
-            <span title={t('markupPercentHint')}>{t('markupPercent')}</span>
-            <span>{t('unitPrice')}</span>
-            <span>{t('total')}</span>
-            <span />
-          </div>
-          {mounted ? (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext items={keysRef.current} strategy={verticalListSortingStrategy}>
-                {partItems.map((part, i) => (
-                  <SortablePartRow
-                    key={keysRef.current[i]}
-                    id={keysRef.current[i]}
-                    part={part}
-                    index={i}
-                    updatePart={updatePart}
-                    onDelete={() => deletePart(i)}
-                    currencyCode={currencyCode}
-                    t={t}
-                    dragEnabled
-                    inventoryParts={inventoryParts}
-                    onSelectSuggestion={handleSelectSuggestion}
-                    defaultMarkupPercent={defaultMarkupPercent}
-                    markupAppliesToInventory={markupAppliesToInventory}
-                  />
-                ))}
-              </SortableContext>
-            </DndContext>
-          ) : (
-            partItems.map((part, i) => (
-              <SortablePartRow
-                key={keysRef.current[i]}
-                id={keysRef.current[i]}
-                part={part}
-                index={i}
-                updatePart={updatePart}
-                onDelete={() => deletePart(i)}
-                currencyCode={currencyCode}
-                t={t}
-                dragEnabled={false}
-                inventoryParts={inventoryParts}
-                onSelectSuggestion={handleSelectSuggestion}
-                defaultMarkupPercent={defaultMarkupPercent}
-                markupAppliesToInventory={markupAppliesToInventory}
-              />
-            ))
-          )}
-          <button
-            type="button"
-            className="flex w-full items-center justify-center rounded-md border border-dashed border-muted-foreground/25 py-1.5 text-muted-foreground transition-colors hover:border-muted-foreground/50 hover:text-foreground"
-            onClick={addPartAtEnd}
-          >
-            <Plus className="h-4 w-4" />
-          </button>
-          {partItems.some((p) => !p.name.trim() && partRowHasContent(p)) && (
-            <p className="text-xs text-destructive">{t('nameMissingHint')}</p>
-          )}
-          <div className="flex justify-end pt-1 text-sm">
-            <span className="font-medium">
-              {t('subtotal', { amount: formatCurrency(partsSubtotal, currencyCode) })}
-            </span>
-          </div>
-        </>
-      )}
-
-      {partItems.length === 0 && (
-        <button
+        <Button
           type="button"
-          className="flex w-full items-center justify-center rounded-md border border-dashed border-muted-foreground/25 py-1.5 text-muted-foreground transition-colors hover:border-muted-foreground/50 hover:text-foreground"
-          onClick={addPartAtEnd}
+          variant="outline"
+          size="icon"
+          className="size-11"
+          aria-label={t('scanBarcode')}
+          onClick={onScanBarcode}
         >
-          <Plus className="mr-1 h-4 w-4" />
-          <span className="text-sm">{t('addPart')}</span>
-        </button>
+          <ScanBarcode className="size-4" />
+        </Button>
       )}
-    </>
-  )
-
-  if (modern) {
-    return (
-      <AppCard
-        icon={Package}
-        title={t('title')}
-        badge={partItems.length || undefined}
-        action={actions}
-        // The name suggestions drop below their row, past the card's edge on
-        // the last one; the sheen keeps the corners the card no longer clips.
-        className="@container overflow-visible before:rounded-lg after:rounded-lg"
-        contentClassName="space-y-2 px-3"
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        className="size-11"
+        aria-label={t('addPart')}
+        onClick={() => open(-1, emptyPart(defaultMarkupPercent))}
       >
-        {body}
-      </AppCard>
-    )
-  }
-
-  return (
-    // The details view splits into two resizable columns, so this editor can
-    // be narrower on a wide screen than it is on a phone. It sizes itself off
-    // its own container rather than the viewport.
-    <div className="@container space-y-2 rounded-lg border p-3">
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold">{t('title')}</h3>
-        {actions}
-      </div>
-      {body}
+        <Plus className="size-4" />
+      </Button>
     </div>
+  )
+  const controls = (p: ServicePartInput, i: number) => (
+    <div className="flex items-center gap-1">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="size-11"
+        aria-label={`${e('edit')}: ${p.name}`}
+        onClick={() => open(i, p)}
+      >
+        <Pencil className="size-4" />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="size-11"
+        aria-label={e('up')}
+        disabled={i === 0}
+        onClick={() => move(i, -1)}
+      >
+        <ArrowUp className="size-4" />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="size-11"
+        aria-label={e('down')}
+        disabled={i === partItems.length - 1}
+        onClick={() => move(i, 1)}
+      >
+        <ArrowDown className="size-4" />
+      </Button>
+    </div>
+  )
+  return (
+    <AppCard
+      icon={Package}
+      title={t('title')}
+      badge={partItems.length || undefined}
+      action={actions}
+      className="@container min-w-0"
+      contentClassName="p-3"
+    >
+      <table className="hidden w-full table-fixed text-sm @[1000px]:table">
+        <thead>
+          <tr className="border-b text-left text-xs text-muted-foreground">
+            {[
+              t('partNumber'),
+              e('brand'),
+              t('name'),
+              t('qty'),
+              t('unitPrice'),
+              e('discount'),
+              e('netTotal'),
+              e('actions'),
+            ].map((label, i) => (
+              <th key={i} className={`p-2 ${i === 2 ? 'w-[24%]' : i === 7 ? 'w-[140px]' : ''}`}>
+                {label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {partItems.map((p, i) => (
+            <tr
+              key={p.id ?? i}
+              className="border-b align-top hover:bg-muted/40"
+              onDoubleClick={() => !locked && open(i, p)}
+            >
+              <td className="break-words p-2">{p.partNumber || '—'}</td>
+              <td className="break-words p-2">{p.brand || '---'}</td>
+              <td className="p-2">
+                <button
+                  type="button"
+                  disabled={locked}
+                  className="min-h-11 w-full break-words text-left font-medium"
+                  onClick={() => open(i, p)}
+                >
+                  {p.name || e('unnamed')}
+                </button>
+              </td>
+              <td className="p-2 tabular-nums">
+                {p.quantity} {p.unit}
+              </td>
+              <td className="p-2 tabular-nums">{format(p.unitPrice, currencyCode)}</td>
+              <td className="p-2">{discount(p)}</td>
+              <td className="p-2 font-semibold tabular-nums">{format(p.total, currencyCode)}</td>
+              <td>{controls(p, i)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="space-y-3 @[1000px]:hidden">
+        {partItems.map((p, i) => (
+          <article key={p.id ?? i} className="rounded-lg border p-3">
+            <button
+              type="button"
+              className="min-h-11 w-full break-words text-left"
+              onClick={() => open(i, p)}
+            >
+              <span className="block text-xs text-muted-foreground">
+                {p.partNumber || '—'} · {p.brand || '---'}
+              </span>
+              <span className="mt-1 block font-medium">{p.name || e('unnamed')}</span>
+            </button>
+            <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
+              {[
+                [t('qty'), `${p.quantity} ${p.unit ?? ''}`],
+                [t('unitPrice'), format(p.unitPrice, currencyCode)],
+                [e('discount'), discount(p)],
+                [e('netTotal'), format(p.total, currencyCode)],
+              ].map(([label, value]) => (
+                <div key={label}>
+                  <dt className="text-xs text-muted-foreground">{label}</dt>
+                  <dd className="mt-1 break-words font-medium tabular-nums">{value}</dd>
+                </div>
+              ))}
+            </dl>
+            <div className="mt-2 flex justify-end">{controls(p, i)}</div>
+          </article>
+        ))}
+      </div>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          className="min-h-11"
+          onClick={() => open(-1, emptyPart(defaultMarkupPercent))}
+        >
+          <Plus className="size-4" />
+          {t('addPart')}
+        </Button>
+        <strong className="text-sm">
+          {t('subtotal', { amount: format(partsSubtotal, currencyCode) })}
+        </strong>
+      </div>
+      {editing && draft && (
+        <LineEditorDialog
+          title={editing.index < 0 ? t('addPart') : e('editPart')}
+          dirty={dirty}
+          error={error}
+          onCancel={() => setEditing(null)}
+          onSave={save}
+          onDelete={
+            editing.index < 0
+              ? undefined
+              : () => {
+                  setPartItems((prev) => prev.filter((_, i) => i !== editing.index))
+                  setEditing(null)
+                }
+          }
+        >
+          <div className="relative">
+            <LineField label={t('name')}>
+              <Textarea value={draft.name} onChange={(v) => change('name', v.target.value)} />
+            </LineField>
+            <PartNameSuggestions
+              query={draft.name}
+              parts={inventoryParts}
+              disabled={!!draft.inventoryPartId}
+              currencyCode={currencyCode}
+              defaultMarkupPercent={defaultMarkupPercent}
+              markupAppliesToInventory={markupAppliesToInventory}
+              onSelect={(picked) => {
+                const price = resolvePartPrice(picked, {
+                  defaultMarkupPercent,
+                  markupAppliesToInventory,
+                })
+                const next = {
+                  ...draft,
+                  ...price,
+                  name: picked.name,
+                  partNumber: picked.partNumber ?? '',
+                  brand: picked.brand?.name ?? '---',
+                  unit: picked.unit,
+                  unitCost: picked.unitCost,
+                  inventoryPartId: picked.id,
+                }
+                setEditing({ ...editing, draft: { ...next, total: discountedPartTotal(next) } })
+              }}
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <LineField label={t('partNumber')}>
+              <Input
+                value={draft.partNumber ?? ''}
+                onChange={(v) => change('partNumber', v.target.value)}
+              />
+            </LineField>
+            <LineField label={e('brand')}>
+              <BrandCombobox
+                snapshot
+                value={draft.brand ?? '---'}
+                onChange={(v) => change('brand', v)}
+              />
+            </LineField>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <LineField label={t('qty')}>
+              <Input
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="any"
+                value={draft.quantity}
+                onChange={(v) => change('quantity', v.target.value)}
+              />
+            </LineField>
+            <LineField label={e('unit')}>
+              <Input value={draft.unit ?? ''} onChange={(v) => change('unit', v.target.value)} />
+            </LineField>
+          </div>
+          <LineField label={t('unitPrice')}>
+            <Input
+              type="number"
+              inputMode="decimal"
+              min="0"
+              step="0.01"
+              value={draft.unitPrice}
+              onChange={(v) => change('unitPrice', v.target.value)}
+            />
+          </LineField>
+          <div className="grid grid-cols-2 gap-4">
+            <LineField label={e('discount')}>
+              <select
+                className="min-h-11 rounded-md border bg-background px-2"
+                value={draft.discountType ?? 'none'}
+                onChange={(v) => {
+                  change('discountValue', 0)
+                  change('discountType', v.target.value)
+                }}
+              >
+                {['none', 'percentage', 'fixed'].map((v) => (
+                  <option key={v} value={v}>
+                    {e(v)}
+                  </option>
+                ))}
+              </select>
+            </LineField>
+            <LineField label={e('discountValue')}>
+              <Input
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.01"
+                disabled={!draft.discountType || draft.discountType === 'none'}
+                value={draft.discountValue ?? 0}
+                onChange={(v) => change('discountValue', v.target.value)}
+              />
+            </LineField>
+          </div>
+          <details className="rounded-lg border p-3">
+            <summary className="min-h-11 cursor-pointer text-sm font-medium">
+              {e('internal')}
+            </summary>
+            <div className="space-y-4">
+              <LineField label={t('unitCost')}>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={draft.unitCost}
+                  onChange={(v) => change('unitCost', v.target.value)}
+                />
+              </LineField>
+              <LineField label={t('markupPercent')}>
+                <Input
+                  type="number"
+                  min="-100"
+                  step="0.1"
+                  value={draft.markupPercent}
+                  onChange={(v) => change('markupPercent', v.target.value)}
+                />
+              </LineField>
+              <p className="break-all text-xs text-muted-foreground">
+                {e('inventory')}: {draft.inventoryPartId ?? '—'}
+              </p>
+            </div>
+          </details>
+          {editing.index >= 0 &&
+            Math.abs(
+              editing.original.total -
+                Number(editing.original.quantity) * Number(editing.original.unitPrice)
+            ) > 0.01 &&
+            (!editing.original.discountType || editing.original.discountType === 'none') && (
+              <p className="text-sm text-amber-600">{e('historical')}</p>
+            )}
+          <p className="flex justify-between gap-3 font-semibold">
+            <span>{e('netTotal')}</span>
+            <span>{format(draft.total, currencyCode)}</span>
+          </p>
+        </LineEditorDialog>
+      )}
+    </AppCard>
   )
 }

@@ -11,7 +11,7 @@ import { isShopFeeLine } from '@/features/settings/Lib/shopFee'
  */
 
 const key = (line: ServiceLaborInput) =>
-  JSON.stringify([line.description, line.hours, line.rate, line.total, line.pricingType])
+  line.id || JSON.stringify([line.description, line.hours, line.rate, line.total, line.pricingType])
 
 export function addedLaborLines(
   before: readonly ServiceLaborInput[],

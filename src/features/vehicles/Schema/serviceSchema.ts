@@ -2,6 +2,9 @@ import { z } from 'zod'
 import { uploadUrlSchema } from '@/lib/upload-url'
 
 export const servicePartSchema = z.object({
+  id: z.string().optional(),
+  discountType: z.enum(['none', 'percentage', 'fixed']).optional(),
+  discountValue: z.coerce.number().finite().min(0).optional(),
   brand: z.string().trim().min(1).max(200).optional(),
   partNumber: z.string().optional(),
   name: z.string().min(1, 'Part name is required'),
@@ -22,6 +25,11 @@ export const servicePartSchema = z.object({
 })
 
 export const serviceLaborSchema = z.object({
+  id: z.string().optional(),
+  technicianId: z.string().nullable().optional(),
+  executorName: z.string().nullable().optional(),
+  executorFrozen: z.boolean().optional(),
+  executorLegacy: z.boolean().optional(),
   description: z.string().min(1, 'Description is required'),
   hours: z.coerce.number().min(0).default(0),
   rate: z.coerce.number().min(0).default(0),

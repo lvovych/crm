@@ -272,7 +272,7 @@ export function ModernDetails(props: ModernDetailsProps) {
         {/* Below `md` the app's navigation is fixed over the bottom of the
             screen; the money bar used to hold the page clear of it, and with
             the bar gone below `lg` the padding does. */}
-        <div className="mx-auto flex w-full max-w-[1800px] flex-col gap-3 p-4 pb-[calc(2.5rem+58px+env(safe-area-inset-bottom))] md:pb-10">
+        <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-3 p-4 pb-[calc(2.5rem+58px+env(safe-area-inset-bottom))] md:pb-10">
           {/* noValidate, and the rules checked in handleSubmit instead; see the
             classic form in ServicePageClient. display:contents, so the form's
             children are laid out by this column as if it were not there. */}
@@ -300,7 +300,7 @@ export function ModernDetails(props: ModernDetailsProps) {
             start only where the job column still gets that, and the side
             column grows to the mock's 424px as room appears. The app sidebar
             can be open or closed, hence container widths, not the viewport's. */}
-            <div className="grid grid-cols-1 items-start gap-3 @[1080px]:grid-cols-[minmax(0,1fr)_320px] @[1240px]:grid-cols-[minmax(0,1fr)_380px] @[1400px]:grid-cols-[minmax(0,1fr)_424px]">
+            <div className="flex min-w-0 flex-col gap-3">
               <div data-testid="service-main" className="@container flex min-w-0 flex-col gap-3">
                 {/* Outside the lock: "More info" and copying the VIN work on a
                     locked invoice; the card disables its own fields. */}
@@ -314,6 +314,21 @@ export function ModernDetails(props: ModernDetailsProps) {
                   setSelectedVehicleId={formState.dirtySetSelectedVehicleId}
                   techName={formState.techName}
                   initialVehicle={props.initialVehicle}
+                />
+
+                <ScheduleTimesSection
+                  serviceRecordId={record.id}
+                  technicians={props.boardTechnicians}
+                  workBays={props.workBays}
+                  orgMembers={props.orgMembers}
+                  initialStartDateTime={formState.initialData.startDateTime}
+                  initialEndDateTime={formState.initialData.endDateTime}
+                  initialTechnicianId={record.technicianId}
+                  initialWorkBayId={record.workBayId}
+                  initialPromisedAt={
+                    record.promisedAt ? new Date(record.promisedAt).toISOString() : null
+                  }
+                  onSaved={formState.flashSaved}
                 />
 
                 <Lockable locked={locked}>
@@ -351,6 +366,9 @@ export function ModernDetails(props: ModernDetailsProps) {
                   )}
 
                   <LaborEditor
+                    technicians={props.boardTechnicians}
+                    primaryTechnicianId={record.technicianId}
+                    locked={locked}
                     laborItems={formState.laborItems}
                     setLaborItems={formState.dirtySetLaborItems}
                     updateLabor={formState.updateLabor}
@@ -365,6 +383,9 @@ export function ModernDetails(props: ModernDetailsProps) {
                   />
 
                   <PartsEditor
+                    pendingPart={props.pendingPart}
+                    onPendingPartConsumed={props.onPendingPartConsumed}
+                    locked={locked}
                     partItems={formState.partItems}
                     setPartItems={formState.dirtySetPartItems}
                     updatePart={formState.updatePart}
@@ -404,22 +425,7 @@ export function ModernDetails(props: ModernDetailsProps) {
                 number, dates, design and warranty. The booking, the clock, the
                 payments and the sharing save through their own actions and stay
                 usable, as src/lib/document-lock.ts intends. */}
-              <aside data-testid="service-sidebar" className="flex min-w-0 flex-col gap-3">
-                <ScheduleTimesSection
-                  serviceRecordId={record.id}
-                  technicians={props.boardTechnicians}
-                  workBays={props.workBays}
-                  orgMembers={props.orgMembers}
-                  initialStartDateTime={formState.initialData.startDateTime}
-                  initialEndDateTime={formState.initialData.endDateTime}
-                  initialTechnicianId={record.technicianId}
-                  initialWorkBayId={record.workBayId}
-                  initialPromisedAt={
-                    record.promisedAt ? new Date(record.promisedAt).toISOString() : null
-                  }
-                  onSaved={formState.flashSaved}
-                />
-
+              <section data-testid="service-secondary" className="flex min-w-0 flex-col gap-3">
                 {/* Beside who is on the job and when, not between the labour
                     and the parts: it says how the work is going, and the two
                     cards it sat between are the invoice being built. "Add as
@@ -571,7 +577,7 @@ export function ModernDetails(props: ModernDetailsProps) {
                   currencyCode={currencyCode}
                   notificationHistory={notificationHistory}
                 />
-              </aside>
+              </section>
             </div>
           </form>
 

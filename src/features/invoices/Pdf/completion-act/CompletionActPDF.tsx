@@ -65,6 +65,7 @@ const money = (value: number) =>
   value.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 type Line = {
   brand?: string
+  discount?: string
   name: string
   unit: string
   quantity: number
@@ -85,7 +86,7 @@ function Lines({
   showBrand?: boolean
 }) {
   const widths = showBrand
-    ? ['5%', '35%', '14%', '7%', '11%', '14%', '14%']
+    ? ['4%', '28%', '12%', '6%', '9%', '13%', '13%', '15%']
     : ['5%', '49%', '7%', '11%', '14%', '14%']
   return (
     <View>
@@ -99,7 +100,8 @@ function Lines({
             'Од.',
             'Кількість',
             taxed ? 'Ціна, грн' : 'Ціна без ПДВ',
-            taxed ? 'Сума, грн' : 'Сума без ПДВ',
+            ...(showBrand ? ['Знижка'] : []),
+            showBrand ? 'Сума зі знижкою' : taxed ? 'Сума, грн' : 'Сума без ПДВ',
           ].map((v, i) => (
             <Text
               key={i}
@@ -122,6 +124,7 @@ function Lines({
             line.unit,
             money(line.quantity),
             money(line.price),
+            ...(showBrand ? [line.discount || '—'] : []),
             money(line.total),
           ].map((v, j) => (
             <Text
@@ -166,6 +169,12 @@ export function CompletionActPDF({
   }))
   const parts = data.partItems.map((p) => ({
     brand: p.brand || '---',
+    discount:
+      p.discountType === 'percentage'
+        ? `${p.discountValue ?? 0}%`
+        : p.discountType === 'fixed'
+          ? money(p.discountValue ?? 0)
+          : '—',
     name: p.name + (p.partNumber ? ` (арт. ${p.partNumber})` : ''),
     unit: p.unit || 'шт',
     quantity: p.quantity,

@@ -63,6 +63,8 @@ export interface InvoiceData {
   discountAmount?: number
   partItems: {
     brand?: string
+    discountType?: string
+    discountValue?: number
     partNumber: string | null
     name: string
     quantity: number

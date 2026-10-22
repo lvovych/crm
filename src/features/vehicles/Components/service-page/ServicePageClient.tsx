@@ -247,8 +247,12 @@ export function ServicePageClient({
     initialData.invoiceDueDate,
   ])
 
+  const [pendingPart, setPendingPart] = useState<
+    import('../../Schema/serviceSchema').ServicePartInput | null
+  >(null)
   const handleBarcodeScan = useCallback(
     async (barcode: string) => {
+      if (lockState.locked || document.querySelector('[data-line-editor]')) return
       const result = await lookupPartByBarcode(barcode)
       if (result.success && result.data) {
         const part = result.data
@@ -259,21 +263,18 @@ export function ServicePageClient({
           defaultMarkupPercent,
           markupAppliesToInventory,
         })
-        formState.dirtySetPartItems((prev) => [
-          {
-            partNumber: part.partNumber || '',
-            brand: part.brand?.name ?? '---',
-            name: part.name,
-            quantity: 1,
-            unit: part.unit ?? null,
-            unitPrice,
-            total: lineTotal(1, unitPrice),
-            unitCost: part.unitCost,
-            markupPercent,
-            inventoryPartId: part.id,
-          },
-          ...prev,
-        ])
+        setPendingPart({
+          partNumber: part.partNumber || '',
+          brand: part.brand?.name ?? '---',
+          name: part.name,
+          quantity: 1,
+          unit: part.unit ?? null,
+          unitPrice,
+          total: lineTotal(1, unitPrice),
+          unitCost: part.unitCost,
+          markupPercent,
+          inventoryPartId: part.id,
+        })
         toast.success(t('parts.partFound', { name: part.name }))
       } else {
         toast.error(t('parts.partNotFound', { barcode }))
@@ -282,7 +283,10 @@ export function ServicePageClient({
     [formState, t, defaultMarkupPercent, markupAppliesToInventory]
   )
 
-  useHardwareScanner({ onScan: handleBarcodeScan, enabled: activeTab === 'details' })
+  useHardwareScanner({
+    onScan: handleBarcodeScan,
+    enabled: activeTab === 'details' && !lockState.locked,
+  })
 
   // Notify customer
   const statusTemplateKeys: Record<string, string> = {
@@ -560,6 +564,9 @@ export function ServicePageClient({
   ) : null
 
   const leftColumnProps: ComponentProps<typeof DetailsLeftColumn> = {
+    pendingPart,
+    onPendingPartConsumed: () => setPendingPart(null),
+    boardTechnicians,
     formState,
     actions,
     record,
@@ -812,7 +819,7 @@ export function ServicePageClient({
           onOpenChange={formState.setShowInventoryPicker}
           inventoryParts={inventoryParts}
           currencyCode={currencyCode}
-          onSelectPart={(part) => formState.dirtySetPartItems((prev) => [part, ...prev])}
+          onSelectPart={setPendingPart}
           defaultMarkupPercent={defaultMarkupPercent}
           markupAppliesToInventory={markupAppliesToInventory}
         />

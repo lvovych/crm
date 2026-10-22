@@ -191,11 +191,15 @@ async function importServiceRecordTree(
   const partItems = sr.partItems as Record<string, unknown>[] | undefined
   if (partItems?.length) {
     await tx.servicePart.createMany({
-      data: partItems.map((p) => ({
+      data: partItems.map((p, index) => ({
+        brand: (p.brand as string) || '---',
+        discountType: (p.discountType as string) || 'none',
+        discountValue: (p.discountValue as number) ?? 0,
+        sortOrder: (p.sortOrder as number) ?? index,
         id: p.id as string,
         partNumber: (p.partNumber as string) || null,
         name: p.name as string,
-        quantity: (p.quantity as number) || 1,
+        quantity: (p.quantity as number) ?? 1,
         unit: (p.unit as string) || null,
         unitPrice: (p.unitPrice as number) || 0,
         total: (p.total as number) || 0,
@@ -234,7 +238,13 @@ async function importServiceRecordTree(
   const laborItems = sr.laborItems as Record<string, unknown>[] | undefined
   if (laborItems?.length) {
     await tx.serviceLabor.createMany({
-      data: laborItems.map((l) => ({
+      data: laborItems.map((l, index) => ({
+        pricingType: (l.pricingType as string) || 'hourly',
+        sortOrder: (l.sortOrder as number) ?? index,
+        technicianId: keptReference(l.technicianId, opts.technicianIds),
+        executorName: (l.executorName as string) || null,
+        executorFrozen: (l.executorFrozen as boolean) ?? sr.status === 'completed',
+        executorLegacy: (l.executorLegacy as boolean) ?? sr.status === 'completed',
         id: l.id as string,
         description: l.description as string,
         hours: (l.hours as number) || 0,
@@ -1122,6 +1132,7 @@ export async function POST(request: NextRequest) {
           if (partItems?.length) {
             await tx.quotePart.createMany({
               data: partItems.map((p) => ({
+                brand: (p.brand as string) || '---',
                 id: p.id as string,
                 partNumber: (p.partNumber as string) || null,
                 name: p.name as string,

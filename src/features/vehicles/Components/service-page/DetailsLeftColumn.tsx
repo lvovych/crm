@@ -20,6 +20,9 @@ import { JobClockSection } from '@/features/time-tracking/Components/JobClockSec
 import type { JobClock } from '@/features/time-tracking/Actions/timeClockActions'
 
 interface DetailsLeftColumnProps {
+  pendingPart?: import('../../Schema/serviceSchema').ServicePartInput | null
+  onPendingPartConsumed?: () => void
+  boardTechnicians?: { id: string; name: string }[]
   formState: ReturnType<typeof useServiceFormState>
   actions: ReturnType<typeof useServiceActions>
   record: ServiceDetail
@@ -64,6 +67,9 @@ interface DetailsLeftColumnProps {
 }
 
 export function DetailsLeftColumn({
+  pendingPart,
+  onPendingPartConsumed,
+  boardTechnicians,
   formState,
   actions,
   record,
@@ -145,6 +151,9 @@ export function DetailsLeftColumn({
       )}
 
       <PartsEditor
+        pendingPart={pendingPart}
+        onPendingPartConsumed={onPendingPartConsumed}
+        locked={locked}
         partItems={formState.partItems}
         setPartItems={formState.dirtySetPartItems}
         updatePart={formState.updatePart}
@@ -158,6 +167,9 @@ export function DetailsLeftColumn({
         markupAppliesToInventory={markupAppliesToInventory}
       />
       <LaborEditor
+        technicians={boardTechnicians}
+        primaryTechnicianId={record.technicianId}
+        locked={locked}
         laborItems={formState.laborItems}
         setLaborItems={formState.dirtySetLaborItems}
         updateLabor={formState.updateLabor}

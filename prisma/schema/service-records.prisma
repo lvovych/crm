@@ -289,6 +289,9 @@ model ServiceAttachment {
 }
 
 model ServicePart {
+  discountType String @default("none")
+  discountValue Float @default(0)
+  sortOrder Int @default(0)
   brand           String  @default("---")
   id              String  @id @default(cuid())
   partNumber      String?
@@ -311,6 +314,13 @@ model ServicePart {
 }
 
 model ServiceLabor {
+  @@index([technicianId], map: "service_labor_technician_idx")
+  technicianId String?
+  technician Technician? @relation(fields: [technicianId], references: [id], onDelete: Restrict)
+  executorName String?
+  executorFrozen Boolean @default(false)
+  executorLegacy Boolean @default(false)
+  sortOrder Int @default(0)
   id          String @id @default(cuid())
   description String
   hours       Float  @default(0)

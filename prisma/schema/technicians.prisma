@@ -16,6 +16,7 @@ model Technician {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   loginCodes     TechnicianLoginCode[]
+  laborItems ServiceLabor[]
   serviceRecords ServiceRecord[]
   inspections    Inspection[]
   statusReports  StatusReport[]

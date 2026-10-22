@@ -75,8 +75,8 @@ const PARTY_SELECT = {
 } as const
 
 const RECORD_INCLUDE = {
-  partItems: true,
-  laborItems: true,
+  partItems: { orderBy: { sortOrder: 'asc' as const } },
+  laborItems: { orderBy: { sortOrder: 'asc' as const } },
   attachments: true,
   payments: { orderBy: { date: 'desc' as const } },
   // The linked technician's current name is the source of truth; the stored

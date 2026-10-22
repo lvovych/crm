@@ -1,7 +1,7 @@
 'use client'
 
 import { SectionFrame } from '@/components/section-frame'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useModernWorkOrder } from '@/components/work-order-layout-context'
 import { useRouter } from 'next/navigation'
 import { AddPersonDialog } from '@/features/team/Components/AddPersonDialog'
@@ -122,7 +122,13 @@ export function ScheduleTimesSection({
 }: ScheduleTimesSectionProps) {
   const t = useTranslations('service.schedule')
   const router = useRouter()
+  const sectionRef = useRef<HTMLDetailsElement>(null)
+  function showError(message: string) {
+    if (sectionRef.current) sectionRef.current.open = true
+    toast.error(message)
+  }
   const modern = useModernWorkOrder()
+  const summaryT = useTranslations('service.lineEditor')
   // Booked times belong to the workshop's clock, not to the clock of whoever
   // happens to be looking at them.
   const { timezone } = useDateSettings()
@@ -183,7 +189,7 @@ export function ScheduleTimesSection({
       // The header says when the vehicle was promised, from the record.
       router.refresh()
     } else {
-      toast.error(res.error || t('failedUpdate'))
+      showError(res.error || t('failedUpdate'))
       setPromisedAt(previous)
     }
   }
@@ -257,7 +263,7 @@ export function ScheduleTimesSection({
     })
     setFinding(false)
     if (!res.success || !res.data?.start || !res.data?.end) {
-      toast.error(t('noSlotFound'))
+      showError(t('noSlotFound'))
       return
     }
     const start = new Date(res.data.start)
@@ -271,7 +277,7 @@ export function ScheduleTimesSection({
 
   const saveTimes = async (start: Date, end: Date, opts?: { skipCheck?: boolean }) => {
     if (end <= start) {
-      toast.error(t('endBeforeStart'))
+      showError(t('endBeforeStart'))
       return
     }
     const res = await updateServiceTimes({
@@ -286,7 +292,7 @@ export function ScheduleTimesSection({
       // always did, and the clash is reported against what is now booked.
       if (!opts?.skipCheck) void checkSlot(start, end, selectedTechId, bayId)
     } else {
-      toast.error(res.error || t('failedUpdate'))
+      showError(res.error || t('failedUpdate'))
     }
   }
 
@@ -312,7 +318,7 @@ export function ScheduleTimesSection({
     } else {
       // A role that may not change the work board is told so, and who can
       // change that, rather than that "it failed" with nothing to act on.
-      toast.error(res.forbidden ? t('assignNotAllowed') : t('failedAssign'))
+      showError(res.forbidden ? t('assignNotAllowed') : t('failedAssign'))
       setSelectedTechId(initialTechnicianId || '')
     }
   }
@@ -335,7 +341,7 @@ export function ScheduleTimesSection({
       void refreshDayLoad()
       if (startDateTime && endDateTime) void checkSlot(startDateTime, endDateTime, '', bayId)
     } else {
-      toast.error(res.error || t('failedUpdate'))
+      showError(res.error || t('failedUpdate'))
       setSelectedTechId(previous)
     }
   }
@@ -355,7 +361,7 @@ export function ScheduleTimesSection({
       setTechnicians((prev) => [...prev, newTech])
       handleTechSelect(newTech.id)
     } else {
-      toast.error(t('failedCreate'))
+      showError(t('failedCreate'))
     }
   }
 
@@ -372,7 +378,7 @@ export function ScheduleTimesSection({
       setShowNewInput(false)
       handleTechSelect(newTech.id)
     } else {
-      toast.error(t('failedCreate'))
+      showError(t('failedCreate'))
     }
   }
 
@@ -390,7 +396,7 @@ export function ScheduleTimesSection({
       if (startDateTime && endDateTime)
         void checkSlot(startDateTime, endDateTime, selectedTechId, nextBay)
     } else {
-      toast.error(res.error || t('failedUpdate'))
+      showError(res.error || t('failedUpdate'))
       setSelectedBayId(previous)
     }
   }
@@ -517,351 +523,374 @@ export function ScheduleTimesSection({
   )
 
   return (
-    <SectionFrame
-      className="rounded-lg border p-3 space-y-3"
-      icon={Clock}
-      title={t('assignedTitle')}
-      action={
-        <Link
-          href="/work-board"
-          className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-        >
-          {t('boardLink')}
-        </Link>
-      }
-      contentClassName="space-y-3"
-      header={
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-muted-foreground" />
-            <h3 className="text-sm font-semibold">{t('title')}</h3>
-          </div>
-          <a
-            href="https://torqvoice.com/docs/configuration/work-orders/technician-assignment"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+    <details ref={sectionRef} className="rounded-lg border bg-card">
+      <summary className="cursor-pointer px-4 py-3 text-sm">
+        <strong>{summaryT('schedule')}</strong>
+        <span className="mt-1 block text-muted-foreground">
+          {selectedTechName || summaryT('unassigned')} ·{' '}
+          {startDateTime
+            ? startDateTime.toLocaleString(undefined, {
+                timeZone: timezone || undefined,
+                dateStyle: 'short',
+                timeStyle: 'short',
+              })
+            : '—'}
+          {endDateTime
+            ? ` – ${endDateTime.toLocaleString(undefined, { timeZone: timezone || undefined, dateStyle: 'short', timeStyle: 'short' })}`
+            : ''}
+          {promisedAt
+            ? ` · ${t('promisedAt')}: ${promisedAt.toLocaleString(undefined, { timeZone: timezone || undefined, dateStyle: 'short', timeStyle: 'short' })}`
+            : ''}
+        </span>
+      </summary>
+      <SectionFrame
+        className="rounded-lg border p-3 space-y-3"
+        icon={Clock}
+        title={t('assignedTitle')}
+        action={
+          <Link
+            href="/work-board"
+            className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
-            {t('readMore')} →
-          </a>
-        </div>
-      }
-    >
-      {modern ? (
-        <div className="space-y-2">
-          <div role="radiogroup" aria-label={t('technician')} className="space-y-1.5">
-            {technicians.map((tech) => {
-              const selected = tech.id === selectedTechId
-              const capacity = tech.dailyCapacity || DEFAULT_DAILY_CAPACITY
-              const booked = dayLoad[tech.id] ?? 0
-              const full = booked >= capacity
-              return (
-                <button
-                  key={tech.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  onClick={() => {
-                    if (!selected) void handleTechSelect(tech.id)
-                  }}
-                  className={cn(
-                    'grid w-full cursor-pointer grid-cols-[2.25rem_minmax(0,1fr)_5.5rem] items-center gap-3 rounded-lg border px-2.5 py-2 text-left transition-colors disabled:cursor-default',
-                    selected
-                      ? 'border-primary bg-primary/10'
-                      : 'border-card-edge hover:border-primary/40 hover:bg-muted/50'
-                  )}
-                >
-                  <span
+            {t('boardLink')}
+          </Link>
+        }
+        contentClassName="space-y-3"
+        header={
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <h3 className="text-sm font-semibold">{t('title')}</h3>
+            </div>
+            <a
+              href="https://torqvoice.com/docs/configuration/work-orders/technician-assignment"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {t('readMore')} →
+            </a>
+          </div>
+        }
+      >
+        {modern ? (
+          <div className="space-y-2">
+            <div role="radiogroup" aria-label={t('technician')} className="space-y-1.5">
+              {technicians.map((tech) => {
+                const selected = tech.id === selectedTechId
+                const capacity = tech.dailyCapacity || DEFAULT_DAILY_CAPACITY
+                const booked = dayLoad[tech.id] ?? 0
+                const full = booked >= capacity
+                return (
+                  <button
+                    key={tech.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    onClick={() => {
+                      if (!selected) void handleTechSelect(tech.id)
+                    }}
                     className={cn(
-                      'flex h-9 w-9 items-center justify-center rounded-full text-xs font-semibold',
-                      selected ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                      'grid w-full cursor-pointer grid-cols-[2.25rem_minmax(0,1fr)_5.5rem] items-center gap-3 rounded-lg border px-2.5 py-2 text-left transition-colors disabled:cursor-default',
+                      selected
+                        ? 'border-primary bg-primary/10'
+                        : 'border-card-edge hover:border-primary/40 hover:bg-muted/50'
                     )}
                   >
-                    {initialsOf(tech.name)}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-semibold">{tech.name}</span>
-                    <span className="block truncate text-xs text-muted-foreground">
-                      {tech.skills ||
-                        (full
-                          ? t('loadFull')
-                          : t('loadFree', { hours: hoursOf(capacity - booked) }))}
+                    <span
+                      className={cn(
+                        'flex h-9 w-9 items-center justify-center rounded-full text-xs font-semibold',
+                        selected ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                      )}
+                    >
+                      {initialsOf(tech.name)}
                     </span>
-                  </span>
-                  <span className="flex flex-col gap-1">
-                    <span className="text-right text-xs tabular-nums text-muted-foreground">
-                      {t('loadOf', { booked: hoursOf(booked), capacity: hoursOf(capacity) })}
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-semibold">{tech.name}</span>
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {tech.skills ||
+                          (full
+                            ? t('loadFull')
+                            : t('loadFree', { hours: hoursOf(capacity - booked) }))}
+                      </span>
                     </span>
-                    <span className="block h-1.5 overflow-hidden rounded-full bg-muted">
-                      <span
-                        className={cn(
-                          'block h-full rounded-full',
-                          full ? 'bg-destructive' : 'bg-foreground/50'
-                        )}
-                        style={{
-                          width: `${Math.min(100, Math.round((booked / capacity) * 100))}%`,
-                        }}
-                      />
+                    <span className="flex flex-col gap-1">
+                      <span className="text-right text-xs tabular-nums text-muted-foreground">
+                        {t('loadOf', { booked: hoursOf(booked), capacity: hoursOf(capacity) })}
+                      </span>
+                      <span className="block h-1.5 overflow-hidden rounded-full bg-muted">
+                        <span
+                          className={cn(
+                            'block h-full rounded-full',
+                            full ? 'bg-destructive' : 'bg-foreground/50'
+                          )}
+                          style={{
+                            width: `${Math.min(100, Math.round((booked / capacity) * 100))}%`,
+                          }}
+                        />
+                      </span>
                     </span>
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-          {/* Everything the list cannot say: nobody at all, a colleague who is
+                  </button>
+                )
+              })}
+            </div>
+            {/* Everything the list cannot say: nobody at all, a colleague who is
               not a technician yet, somebody new. The same picker the classic
               page opens, behind a quieter door. */}
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-1">
-              <Popover open={techOpen} onOpenChange={setTechOpen} modal={true}>
-                <PopoverTrigger asChild>
-                  <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs">
-                    <UserPlus className="mr-1 h-3.5 w-3.5" />
-                    {technicians.length === 0 ? t('selectTechnician') : t('someoneElse')}
-                  </Button>
-                </PopoverTrigger>
-                {techPickerContent}
-              </Popover>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-1">
+                <Popover open={techOpen} onOpenChange={setTechOpen} modal={true}>
+                  <PopoverTrigger asChild>
+                    <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs">
+                      <UserPlus className="mr-1 h-3.5 w-3.5" />
+                      {technicians.length === 0 ? t('selectTechnician') : t('someoneElse')}
+                    </Button>
+                  </PopoverTrigger>
+                  {techPickerContent}
+                </Popover>
+                <Link
+                  href="/settings/workshop"
+                  target="_blank"
+                  className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  <Settings className="h-3.5 w-3.5" />
+                  {t('setDefaults')}
+                </Link>
+              </div>
+              {startDateTime && technicians.length > 0 && (
+                <span className="text-[11px] text-muted-foreground" suppressHydrationWarning>
+                  {t('loadOn', {
+                    date: startDateTime.toLocaleDateString(undefined, {
+                      day: 'numeric',
+                      month: 'short',
+                      timeZone: timezone || undefined,
+                    }),
+                  })}
+                </span>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">{t('technician')}</Label>
               <Link
                 href="/settings/workshop"
                 target="_blank"
-                className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
               >
-                <Settings className="h-3.5 w-3.5" />
+                <Settings className="h-3 w-3" />
                 {t('setDefaults')}
               </Link>
             </div>
-            {startDateTime && technicians.length > 0 && (
-              <span className="text-[11px] text-muted-foreground" suppressHydrationWarning>
-                {t('loadOn', {
-                  date: startDateTime.toLocaleDateString(undefined, {
-                    day: 'numeric',
-                    month: 'short',
-                    timeZone: timezone || undefined,
-                  }),
-                })}
-              </span>
-            )}
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-1">
-          <div className="flex items-center justify-between">
-            <Label className="text-xs">{t('technician')}</Label>
-            <Link
-              href="/settings/workshop"
-              target="_blank"
-              className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <Settings className="h-3 w-3" />
-              {t('setDefaults')}
-            </Link>
-          </div>
-          <Popover open={techOpen} onOpenChange={setTechOpen} modal={true}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                role="combobox"
-                aria-expanded={techOpen}
-                className="w-full justify-between font-normal"
-              >
-                <span className="truncate">{selectedTechName || t('selectTechnician')}</span>
-                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-            {techPickerContent}
-          </Popover>
-        </div>
-      )}
-
-      <AddPersonDialog
-        open={addingPerson}
-        onOpenChange={setAddingPerson}
-        onChanged={() => router.refresh()}
-      />
-
-      {workBays.length > 0 && (
-        <div className="space-y-1">
-          <Label className="text-xs">{t('workBay')}</Label>
-          <Select value={selectedBayId} onValueChange={handleBaySelect}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder={t('selectWorkBay')} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NO_BAY}>{t('noWorkBay')}</SelectItem>
-              {workBays.map((bay) => (
-                <SelectItem key={bay.id} value={bay.id}>
-                  {bay.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
-      {/* When the vehicle is in: the two times, the quick ways of setting
-          them, and what that slot clashes with. The slot finder writes these
-          two fields, so it belongs with them rather than under the promise,
-          where it read as a way of promising a time. */}
-      <div className="space-y-3">
-        <div className="space-y-1.5">
-          <Label className="text-xs">{t('startTime')}</Label>
-          {mounted ? (
-            <DateTimePicker
-              value={startDateTime}
-              onChange={(d) => {
-                setStartDateTime(d)
-                if (d) {
-                  const newEnd = new Date(d.getTime() + 3600000)
-                  setEndDateTime(newEnd)
-                  saveTimes(d, newEnd)
-                }
-              }}
-              timeZone={timezone}
-              granularity="minute"
-              hourCycle={24}
-              placeholder={t('startTime')}
-              displayFormat={{ hour24: 'PPP HH:mm' }}
-            />
-          ) : (
-            <div className="h-9 rounded-md border" />
-          )}
-        </div>
-
-        <div className="space-y-1.5">
-          <Label className="text-xs">{t('endTime')}</Label>
-          {mounted ? (
-            <DateTimePicker
-              value={endDateTime}
-              onChange={(d) => {
-                setEndDateTime(d)
-                if (d && startDateTime) saveTimes(startDateTime, d)
-              }}
-              timeZone={timezone}
-              granularity="minute"
-              hourCycle={24}
-              placeholder={t('endTime')}
-              displayFormat={{ hour24: 'PPP HH:mm' }}
-            />
-          ) : (
-            <div className="h-9 rounded-md border" />
-          )}
-        </div>
-
-        <div className="space-y-1">
-          <span className="text-xs font-medium text-muted-foreground">{t('durationPresets')}</span>
-          <div className="flex flex-wrap gap-1">
-            {HOUR_PRESETS.map((h) => (
-              <button
-                key={h}
-                type="button"
-                onClick={() => handlePreset(h)}
-                className={cn(
-                  'rounded-md border px-2.5 py-1 text-xs font-medium transition-colors',
-                  currentHours === h
-                    ? 'border-primary bg-primary text-primary-foreground'
-                    : 'border-border bg-background text-foreground hover:bg-muted'
-                )}
-              >
-                {h}h
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {conflicts.length > 0 && (
-          <div className="rounded-md border border-amber-300 bg-amber-50 p-2.5 dark:border-amber-900/60 dark:bg-amber-950/40">
-            <div className="flex items-start gap-2">
-              <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-500" />
-              <div className="min-w-0 flex-1 space-y-1">
-                <p className="text-xs font-semibold text-amber-900 dark:text-amber-200">
-                  {t('slotTaken', { count: conflicts.length })}
-                </p>
-                <ul className="space-y-0.5">
-                  {conflicts.slice(0, 3).map((c) => (
-                    <li
-                      key={c.id}
-                      className="text-[11px] leading-snug text-amber-800 dark:text-amber-300"
-                    >
-                      {c.label || t('anotherJob')} ·{' '}
-                      {new Date(c.start).toLocaleString(undefined, {
-                        day: 'numeric',
-                        month: 'short',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        timeZone: timezone || undefined,
-                      })}
-                      {' – '}
-                      {new Date(c.end).toLocaleTimeString(undefined, {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        timeZone: timezone || undefined,
-                      })}
-                      {' · '}
-                      {c.onTechnician && c.onBay
-                        ? t('clashBoth')
-                        : c.onTechnician
-                          ? t('clashTechnician')
-                          : t('clashBay')}
-                    </li>
-                  ))}
-                </ul>
-                {/* Advisory, not a block: a shop that means to double-book still
-                    can, and the board keeps telling the truth about the day. */}
-                <p className="text-[11px] text-amber-700 dark:text-amber-400">
-                  {t('bookedAnyway')}
-                </p>
-              </div>
-            </div>
+            <Popover open={techOpen} onOpenChange={setTechOpen} modal={true}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={techOpen}
+                  className="w-full justify-between font-normal"
+                >
+                  <span className="truncate">{selectedTechName || t('selectTechnician')}</span>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              {techPickerContent}
+            </Popover>
           </div>
         )}
 
-        <Button
-          type="button"
-          variant={conflicts.length > 0 ? 'default' : 'outline'}
-          size="sm"
-          className="w-full"
-          disabled={finding || checking}
-          onClick={pickNextAvailable}
-        >
-          <Wand2 className="mr-1.5 h-3.5 w-3.5" />
-          {finding ? t('findingSlot') : t('pickNextAvailable')}
-        </Button>
-      </div>
+        <AddPersonDialog
+          open={addingPerson}
+          onOpenChange={setAddingPerson}
+          onChanged={() => router.refresh()}
+        />
 
-      {/* Not when the work is booked, but what the customer was told, so
-          it stands on its own below the booking. */}
-      <div className="border-t border-card-edge pt-3">
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <Label className="text-xs">{t('promisedAt')}</Label>
-            {promisedAt && (
-              <button
-                type="button"
-                onClick={() => void savePromisedAt(undefined)}
-                className="cursor-pointer text-[11px] text-muted-foreground transition-colors hover:text-foreground disabled:cursor-default"
-              >
-                {t('promisedClear')}
-              </button>
+        {workBays.length > 0 && (
+          <div className="space-y-1">
+            <Label className="text-xs">{t('workBay')}</Label>
+            <Select value={selectedBayId} onValueChange={handleBaySelect}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={t('selectWorkBay')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_BAY}>{t('noWorkBay')}</SelectItem>
+                {workBays.map((bay) => (
+                  <SelectItem key={bay.id} value={bay.id}>
+                    {bay.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {/* When the vehicle is in: the two times, the quick ways of setting
+          them, and what that slot clashes with. The slot finder writes these
+          two fields, so it belongs with them rather than under the promise,
+          where it read as a way of promising a time. */}
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">{t('startTime')}</Label>
+            {mounted ? (
+              <DateTimePicker
+                value={startDateTime}
+                onChange={(d) => {
+                  setStartDateTime(d)
+                  if (d) {
+                    const newEnd = new Date(d.getTime() + 3600000)
+                    setEndDateTime(newEnd)
+                    saveTimes(d, newEnd)
+                  }
+                }}
+                timeZone={timezone}
+                granularity="minute"
+                hourCycle={24}
+                placeholder={t('startTime')}
+                displayFormat={{ hour24: 'PPP HH:mm' }}
+              />
+            ) : (
+              <div className="h-9 rounded-md border" />
             )}
           </div>
-          {mounted ? (
-            <DateTimePicker
-              value={promisedAt}
-              onChange={(d) => {
-                if (d) void savePromisedAt(d)
-              }}
-              timeZone={timezone}
-              granularity="minute"
-              hourCycle={24}
-              placeholder={t('promisedPlaceholder')}
-              displayFormat={{ hour24: 'PPP HH:mm' }}
-            />
-          ) : (
-            <div className="h-9 rounded-md border" />
+
+          <div className="space-y-1.5">
+            <Label className="text-xs">{t('endTime')}</Label>
+            {mounted ? (
+              <DateTimePicker
+                value={endDateTime}
+                onChange={(d) => {
+                  setEndDateTime(d)
+                  if (d && startDateTime) saveTimes(startDateTime, d)
+                }}
+                timeZone={timezone}
+                granularity="minute"
+                hourCycle={24}
+                placeholder={t('endTime')}
+                displayFormat={{ hour24: 'PPP HH:mm' }}
+              />
+            ) : (
+              <div className="h-9 rounded-md border" />
+            )}
+          </div>
+
+          <div className="space-y-1">
+            <span className="text-xs font-medium text-muted-foreground">
+              {t('durationPresets')}
+            </span>
+            <div className="flex flex-wrap gap-1">
+              {HOUR_PRESETS.map((h) => (
+                <button
+                  key={h}
+                  type="button"
+                  onClick={() => handlePreset(h)}
+                  className={cn(
+                    'rounded-md border px-2.5 py-1 text-xs font-medium transition-colors',
+                    currentHours === h
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-border bg-background text-foreground hover:bg-muted'
+                  )}
+                >
+                  {h}h
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {conflicts.length > 0 && (
+            <div className="rounded-md border border-amber-300 bg-amber-50 p-2.5 dark:border-amber-900/60 dark:bg-amber-950/40">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-500" />
+                <div className="min-w-0 flex-1 space-y-1">
+                  <p className="text-xs font-semibold text-amber-900 dark:text-amber-200">
+                    {t('slotTaken', { count: conflicts.length })}
+                  </p>
+                  <ul className="space-y-0.5">
+                    {conflicts.slice(0, 3).map((c) => (
+                      <li
+                        key={c.id}
+                        className="text-[11px] leading-snug text-amber-800 dark:text-amber-300"
+                      >
+                        {c.label || t('anotherJob')} ·{' '}
+                        {new Date(c.start).toLocaleString(undefined, {
+                          day: 'numeric',
+                          month: 'short',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          timeZone: timezone || undefined,
+                        })}
+                        {' – '}
+                        {new Date(c.end).toLocaleTimeString(undefined, {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          timeZone: timezone || undefined,
+                        })}
+                        {' · '}
+                        {c.onTechnician && c.onBay
+                          ? t('clashBoth')
+                          : c.onTechnician
+                            ? t('clashTechnician')
+                            : t('clashBay')}
+                      </li>
+                    ))}
+                  </ul>
+                  {/* Advisory, not a block: a shop that means to double-book still
+                    can, and the board keeps telling the truth about the day. */}
+                  <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                    {t('bookedAnyway')}
+                  </p>
+                </div>
+              </div>
+            </div>
           )}
+
+          <Button
+            type="button"
+            variant={conflicts.length > 0 ? 'default' : 'outline'}
+            size="sm"
+            className="w-full"
+            disabled={finding || checking}
+            onClick={pickNextAvailable}
+          >
+            <Wand2 className="mr-1.5 h-3.5 w-3.5" />
+            {finding ? t('findingSlot') : t('pickNextAvailable')}
+          </Button>
         </div>
-      </div>
-    </SectionFrame>
+
+        {/* Not when the work is booked, but what the customer was told, so
+          it stands on its own below the booking. */}
+        <div className="border-t border-card-edge pt-3">
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">{t('promisedAt')}</Label>
+              {promisedAt && (
+                <button
+                  type="button"
+                  onClick={() => void savePromisedAt(undefined)}
+                  className="cursor-pointer text-[11px] text-muted-foreground transition-colors hover:text-foreground disabled:cursor-default"
+                >
+                  {t('promisedClear')}
+                </button>
+              )}
+            </div>
+            {mounted ? (
+              <DateTimePicker
+                value={promisedAt}
+                onChange={(d) => {
+                  if (d) void savePromisedAt(d)
+                }}
+                timeZone={timezone}
+                granularity="minute"
+                hourCycle={24}
+                placeholder={t('promisedPlaceholder')}
+                displayFormat={{ hour24: 'PPP HH:mm' }}
+              />
+            ) : (
+              <div className="h-9 rounded-md border" />
+            )}
+          </div>
+        </div>
+      </SectionFrame>
+    </details>
   )
 }

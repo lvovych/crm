@@ -266,20 +266,36 @@ export function ServiceHeaderActions({
             icon={Save}
             loading={saving}
             variant={hasUnsavedChanges ? 'default' : 'outline'}
-            className={hasUnsavedChanges ? 'animate-pulse' : ''}
+            className={hasUnsavedChanges ? 'min-h-11 min-w-11 animate-pulse' : 'min-h-11 min-w-11'}
           />
         </>
       )}
       <ButtonGroup>
-        <IconActionButton label={tPreview('preview')} icon={Eye} onClick={onPreviewPDF} />
         <IconActionButton
+          className="min-h-11 min-w-11"
+          label={tPreview('preview')}
+          icon={Eye}
+          onClick={onPreviewPDF}
+        />
+        <IconActionButton
+          className="hidden sm:inline-flex"
           label={t('pdf')}
           icon={Download}
           loading={downloading}
           onClick={onDownloadPDF}
         />
-        <IconActionButton label={t('email')} icon={Mail} onClick={onShowEmail} />
-        <IconActionButton label={t('share')} icon={Globe} onClick={onShowShare} />
+        <IconActionButton
+          className="hidden sm:inline-flex"
+          label={t('email')}
+          icon={Mail}
+          onClick={onShowEmail}
+        />
+        <IconActionButton
+          className="hidden sm:inline-flex"
+          label={t('share')}
+          icon={Globe}
+          onClick={onShowShare}
+        />
         {meetingUrl && (
           <IconActionButton
             label={t('joinCall')}
@@ -288,7 +304,12 @@ export function ServiceHeaderActions({
           />
         )}
         {hasCustomer && onNotifyCustomer && (
-          <IconActionButton label={t('notify')} icon={MessageSquare} onClick={onNotifyCustomer} />
+          <IconActionButton
+            className="hidden sm:inline-flex"
+            label={t('notify')}
+            icon={MessageSquare}
+            onClick={onNotifyCustomer}
+          />
         )}
         {/* The row already carries six actions in twelve languages. New
             ones go in here rather than widening it, and Delete moved in
@@ -303,6 +324,7 @@ export function ServiceHeaderActions({
                   variant="outline"
                   size="icon-sm"
                   aria-label={t('moreActions')}
+                  className="min-h-11 min-w-11"
                 >
                   <MoreVertical className="size-4" aria-hidden="true" />
                 </Button>
@@ -311,6 +333,20 @@ export function ServiceHeaderActions({
             <TooltipContent>{t('moreActions')}</TooltipContent>
           </Tooltip>
           <DropdownMenuContent align="end" className="min-w-56">
+            <DropdownMenuItem className="sm:hidden" onClick={onDownloadPDF}>
+              {t('pdf')}
+            </DropdownMenuItem>
+            <DropdownMenuItem className="sm:hidden" onClick={onShowEmail}>
+              {t('email')}
+            </DropdownMenuItem>
+            <DropdownMenuItem className="sm:hidden" onClick={onShowShare}>
+              {t('share')}
+            </DropdownMenuItem>
+            {hasCustomer && onNotifyCustomer && (
+              <DropdownMenuItem className="sm:hidden" onClick={onNotifyCustomer}>
+                {t('notify')}
+              </DropdownMenuItem>
+            )}
             {onPrintWorkOrder && (
               <>
                 <DropdownMenuItem onClick={onPrintWorkOrder}>

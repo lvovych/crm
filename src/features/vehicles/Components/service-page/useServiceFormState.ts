@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { calculateTotals, discountAmountFor } from '@/lib/tax'
 import { normalizeWarranty, type WarrantyFields } from '@/lib/warranty'
 import { useDeferredCommit } from '@/hooks/use-deferred-commit'
+import { discountedPartTotal } from '../../Lib/lineDiscount'
 import { lineTotal, repricePartRow } from '@/features/inventory/Lib/partPricing'
 import { reconcileConcernRows } from '@/features/vehicles/Lib/concernStory'
 import { addedLaborLines } from '@/features/vehicles/Lib/laborLines'
@@ -250,6 +251,38 @@ export function useServiceFormState({
     [markDirty]
   )
 
+  // Imported totals are historical facts until money inputs are explicitly edited.
+  const moneySignature = (
+    parts: ServicePartInput[],
+    labor: ServiceLaborInput[],
+    kind: string,
+    value: number,
+    tax: number
+  ) =>
+    JSON.stringify([
+      parts
+        .map((p) => [
+          p.quantity,
+          p.unitPrice,
+          p.total,
+          p.discountType ?? 'none',
+          p.discountValue ?? 0,
+        ])
+        .sort(),
+      labor.map((l) => [l.hours, l.rate, l.total]).sort(),
+      kind || 'none',
+      value,
+      tax,
+    ])
+  const originalMoney = moneySignature(
+    initialData.partItems ?? [],
+    initialData.laborItems ?? [],
+    initialData.discountType || 'none',
+    initialData.discountValue ?? 0,
+    initialData.taxRate ?? defaultTaxRate
+  )
+  const moneyChanged =
+    moneySignature(partItems, laborItems, discountType, discountValue, taxRate) !== originalMoney
   // Computed totals
   const partsSubtotal = partItems.reduce((sum, p) => sum + p.total, 0)
 
@@ -259,12 +292,12 @@ export function useServiceFormState({
   // have changed since the job was last saved, and the PDF prints the saved
   // figure, so the screen must not show one fee and the invoice another.
   useEffect(() => {
-    if (locked) return
+    if (locked || !moneyChanged) return
     const next = recalculateShopFeeLines(laborItems, partsSubtotal, shopFee)
     if (next === laborItems) return
     setLaborItems(next)
     markDirty()
-  }, [laborItems, partsSubtotal, shopFee, locked, markDirty])
+  }, [laborItems, partsSubtotal, shopFee, locked, markDirty, moneyChanged])
 
   // Internal-only: what the parts cost the workshop before markup. Shown in
   // the totals card for the mechanic, never on the PDF or share views.
@@ -273,11 +306,15 @@ export function useServiceFormState({
     0
   )
   const laborSubtotal = laborItems.reduce((sum, l) => sum + l.total, 0)
-  const subtotal = partsSubtotal + laborSubtotal
-  const discountAmount = discountAmountFor(subtotal, discountType, discountValue)
+  const subtotal = moneyChanged
+    ? partsSubtotal + laborSubtotal
+    : (initialData.subtotal ?? partsSubtotal + laborSubtotal)
+  const discountAmount = moneyChanged
+    ? discountAmountFor(subtotal, discountType, discountValue)
+    : (initialData.discountAmount ?? discountAmountFor(subtotal, discountType, discountValue))
   const {
-    taxAmount,
-    totalAmount,
+    taxAmount: calculatedTax,
+    totalAmount: calculatedTotal,
     components: taxComponents,
   } = calculateTotals({
     subtotal,
@@ -287,8 +324,12 @@ export function useServiceFormState({
     components: taxComponentDefinitions,
   })
 
+  const taxAmount = moneyChanged ? calculatedTax : (initialData.taxAmount ?? calculatedTax)
+  const totalAmount = moneyChanged ? calculatedTotal : (initialData.totalAmount ?? calculatedTotal)
+
   const [localManuallyPaid, setLocalManuallyPaid] = useState(record.manuallyPaid)
-  const displayTotal = totalAmount > 0 ? totalAmount : record.cost
+  const displayTotal =
+    moneyChanged || partItems.length > 0 || laborItems.length > 0 ? totalAmount : record.cost
   const paidFromPayments = record.payments?.reduce((sum, p) => sum + p.amount, 0) || 0
   const totalPaid = localManuallyPaid ? displayTotal : paidFromPayments
   const balanceDue = displayTotal - totalPaid
@@ -336,7 +377,7 @@ export function useServiceFormState({
           field === 'unitCost' ||
           field === 'markupPercent'
         ) {
-          part.total = lineTotal(part.quantity, part.unitPrice)
+          part.total = discountedPartTotal(part)
         }
         updated[index] = part
         return updated

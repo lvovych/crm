@@ -1,46 +1,18 @@
 'use client'
-
-import { isShopFeeLine } from '@/features/settings/Lib/shopFee'
-import { ShopFeeTag, useShopFeeLocked } from '@/features/settings/Components/ShopFeeTag'
-import { useRef, useCallback, useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
+import { Wrench, Plus, Layers, Pencil, ArrowUp, ArrowDown, AlertTriangle, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { AlertTriangle, Eye, GripVertical, Layers, Plus, Trash2, Wrench } from 'lucide-react'
-import { IconActionButton } from '@/components/icon-action-button'
-import { FieldRow } from '@/components/line-item-field'
-import { cn } from '@/lib/utils'
 import { AppCard } from '@/components/app-card'
-import { useModernWorkOrder } from '@/components/work-order-layout-context'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { getCurrencySymbol } from '@/lib/format'
-import { laborRowHasContent } from '@/features/vehicles/Lib/validateServiceForm'
-import { useFormatCurrency, useCurrencySettings } from '@/components/currency-settings-context'
-import { useTranslations } from 'next-intl'
-import type { ServiceLaborInput } from '@/features/vehicles/Schema/serviceSchema'
+import { useFormatCurrency } from '@/components/currency-settings-context'
+import { useShopFeeLocked, ShopFeeTag } from '@/features/settings/Components/ShopFeeTag'
+import { isShopFeeLine } from '@/features/settings/Lib/shopFee'
+import { lineTotal } from '@/features/inventory/Lib/partPricing'
+import { serviceLaborSchema, type ServiceLaborInput } from '../../Schema/serviceSchema'
 import { makeEmptyLabor, makeEmptyService } from './form-types'
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  KeyboardSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core'
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-  useSortable,
-  arrayMove,
-} from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+import { LineEditorDialog, LineField } from './LineEditorDialog'
 
 interface LaborEditorProps {
   laborItems: ServiceLaborInput[]
@@ -54,396 +26,393 @@ interface LaborEditorProps {
   onAddFinding?: () => void
   openObservationsCount?: number
   onShowExistingObservations?: () => void
+  technicians?: { id: string; name: string }[]
+  primaryTechnicianId?: string | null
+  locked?: boolean
 }
-
-function SortableLaborRow({
-  id,
-  labor,
-  index,
-  updateLabor,
-  onDelete,
-  currencyCode,
-  rateLabel,
-  t,
-  dragEnabled,
-}: {
-  id: string
-  labor: ServiceLaborInput
-  index: number
-  updateLabor: (index: number, field: keyof ServiceLaborInput, value: string | number) => void
-  onDelete: () => void
-  currencyCode: string
-  /** Pre-formatted "Rate (kr/hr)" header, which needs the currency symbol. */
-  rateLabel: string
-  t: (key: string) => string
-  dragEnabled: boolean
-}) {
-  const formatCurrency = useFormatCurrency()
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id,
-  })
-
-  // Hours or a rate with nothing said about them: the row is meant, and until
-  // it is described the job cannot be saved.
-  const descriptionMissing = laborRowHasContent(labor) && !labor.description.trim()
-
-  const style = dragEnabled
-    ? {
-        transform: CSS.Transform.toString(transform),
-        transition,
-      }
-    : undefined
-
-  const isService = labor.pricingType === 'service'
-  const isFee = isShopFeeLine(labor)
-  const feeLocked = useShopFeeLocked()
-
-  return (
-    <div
-      ref={dragEnabled ? setNodeRef : undefined}
-      style={style}
-      className={cn(
-        // Stacked card while the editor is narrow, one table row once its
-        // container is wide enough to hold every column at a usable size
-        'grid grid-cols-[auto_1fr] gap-2 rounded-lg border p-2',
-        '@2xl:grid-cols-[auto_2fr_1fr_1fr_1fr_auto] @2xl:rounded-none @2xl:border-0 @2xl:p-0',
-        isDragging && dragEnabled && 'z-10 opacity-75'
-      )}
-    >
-      <button
-        type="button"
-        className="flex h-9 w-6 cursor-grab items-center justify-center text-muted-foreground hover:text-foreground active:cursor-grabbing"
-        {...(dragEnabled ? { ...attributes, ...listeners } : {})}
-      >
-        <GripVertical className="h-4 w-4" />
-      </button>
-      <div className="flex min-w-0 flex-col gap-2 @2xl:contents">
-        <div className="flex gap-2">
-          <Textarea
-            placeholder={t('descriptionPlaceholder')}
-            value={labor.description}
-            onChange={(e) => updateLabor(index, 'description', e.target.value)}
-            rows={1}
-            aria-invalid={descriptionMissing}
-            className={cn(
-              'min-h-9 flex-1 resize-none',
-              descriptionMissing && 'border-destructive focus-visible:ring-destructive'
-            )}
-          />
-          {isFee ? (
-            <ShopFeeTag />
-          ) : (
-            <button
-              type="button"
-              className={`shrink-0 rounded-md border px-2 text-[10px] font-medium transition-all ${
-                isService
-                  ? 'border-blue-500/30 bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 hover:border-blue-500/50'
-                  : 'border-muted text-muted-foreground hover:bg-muted hover:text-foreground hover:border-foreground/20'
-              }`}
-              onClick={() => updateLabor(index, 'pricingType', isService ? 'hourly' : 'service')}
-              // Says what the line is now, then that a click changes it. It used to
-              // describe the other mode, so hovering SVC read "Hourly".
-              title={isService ? t('serviceHint') : t('hourlyHint')}
-            >
-              {isService ? t('serviceTag') : t('hourlyTag')}
-            </button>
-          )}
-        </div>
-        <FieldRow label={isService || isFee ? t('qty') : t('hours')}>
-          <Input
-            type="number"
-            min="0"
-            step={isService || isFee ? '1' : 'any'}
-            placeholder={isService || isFee ? t('qty') : t('hours')}
-            value={labor.hours}
-            disabled={isFee}
-            onChange={(e) => updateLabor(index, 'hours', e.target.value)}
-          />
-        </FieldRow>
-        <FieldRow label={rateLabel}>
-          <Input
-            type="number"
-            min="0"
-            step="0.01"
-            value={labor.rate}
-            disabled={isFee && feeLocked}
-            onChange={(e) => updateLabor(index, 'rate', e.target.value)}
-          />
-        </FieldRow>
-        <div className="flex items-center gap-2 @2xl:contents">
-          <span className="w-24 shrink-0 text-xs text-muted-foreground @2xl:hidden">
-            {t('total')}
-          </span>
-          <div className="flex h-9 flex-1 items-center rounded-md bg-muted/50 px-3 text-sm font-medium">
-            {formatCurrency(labor.total, currencyCode)}
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 shrink-0 text-muted-foreground hover:text-destructive"
-            onClick={onDelete}
-            aria-label={t('deleteRow')}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 export function LaborEditor({
   laborItems,
   setLaborItems,
-  updateLabor,
   laborSubtotal,
   currencyCode,
   defaultLaborRate,
   hasPresets,
   onOpenPresets,
   onAddFinding,
-  openObservationsCount = 0,
+  openObservationsCount,
   onShowExistingObservations,
+  technicians = [],
+  primaryTechnicianId,
+  locked = false,
 }: LaborEditorProps) {
-  const t = useTranslations('service.labor')
-  const modern = useModernWorkOrder()
-  const formatCurrency = useFormatCurrency()
-  const { currencyFormat } = useCurrencySettings()
-  const cs = getCurrencySymbol(currencyCode, currencyFormat)
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
-  const keyCounterRef = useRef(0)
-  const keysRef = useRef<string[]>([])
-
-  // Keep keys array in sync with items length
-  while (keysRef.current.length < laborItems.length) {
-    keysRef.current.push(`labor-${keyCounterRef.current++}`)
+  const t = useTranslations('service.labor'),
+    e = useTranslations('service.lineEditor'),
+    format = useFormatCurrency(),
+    feeLocked = useShopFeeLocked()
+  const [editing, setEditing] = useState<{
+      index: number
+      original: ServiceLaborInput
+      draft: ServiceLaborInput
+    } | null>(null),
+    [error, setError] = useState('')
+  useEffect(() => {
+    if (locked) setEditing(null)
+  }, [locked])
+  const draft = editing?.draft,
+    isFee = draft ? isShopFeeLine(draft) : false
+  const executor = (l: ServiceLaborInput) =>
+    isShopFeeLine(l)
+      ? '—'
+      : l.executorFrozen
+        ? l.executorName || e('unassigned')
+        : technicians.find((t) => t.id === (l.technicianId || primaryTechnicianId))?.name ||
+          l.executorName ||
+          e('unassigned')
+  const mode = (l: ServiceLaborInput) =>
+    isShopFeeLine(l)
+      ? ''
+      : l.executorLegacy
+        ? e('legacyExecutor')
+        : l.executorFrozen
+          ? e('frozenExecutor')
+          : l.technicianId
+            ? ''
+            : e('inherited')
+  function open(index: number, line: ServiceLaborInput) {
+    setError('')
+    setEditing({ index, original: { ...line }, draft: { ...line } })
   }
-  if (keysRef.current.length > laborItems.length) {
-    keysRef.current = keysRef.current.slice(0, laborItems.length)
+  function change(field: keyof ServiceLaborInput, value: string | number | null) {
+    setError('')
+    setEditing((current) => {
+      if (!current) return current
+      const next = { ...current.draft, [field]: value }
+      if (field === 'hours' || field === 'rate') next.total = lineTotal(next.hours, next.rate)
+      if (field === 'technicianId') {
+        next.executorFrozen = false
+        next.executorLegacy = false
+        next.executorName = null
+      }
+      return { ...current, draft: next }
+    })
   }
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  )
-
-  const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
-      const { active, over } = event
-      if (!over || active.id === over.id) return
-      const oldIndex = keysRef.current.indexOf(active.id as string)
-      const newIndex = keysRef.current.indexOf(over.id as string)
-      if (oldIndex === -1 || newIndex === -1) return
-      keysRef.current = arrayMove(keysRef.current, oldIndex, newIndex)
-      setLaborItems((prev) => arrayMove(prev, oldIndex, newIndex))
-    },
-    [setLaborItems]
-  )
-
-  const addLaborAtStart = useCallback(() => {
-    const key = `labor-${keyCounterRef.current++}`
-    keysRef.current = [key, ...keysRef.current]
-    setLaborItems((prev) => [makeEmptyLabor(defaultLaborRate), ...prev])
-  }, [setLaborItems, defaultLaborRate])
-
-  const addServiceAtStart = useCallback(() => {
-    const key = `labor-${keyCounterRef.current++}`
-    keysRef.current = [key, ...keysRef.current]
-    setLaborItems((prev) => [makeEmptyService(), ...prev])
-  }, [setLaborItems])
-
-  const addLaborAtEnd = useCallback(() => {
-    const key = `labor-${keyCounterRef.current++}`
-    keysRef.current = [...keysRef.current, key]
-    setLaborItems((prev) => [...prev, makeEmptyLabor(defaultLaborRate)])
-  }, [setLaborItems, defaultLaborRate])
-
-  const addServiceAtEnd = useCallback(() => {
-    const key = `labor-${keyCounterRef.current++}`
-    keysRef.current = [...keysRef.current, key]
-    setLaborItems((prev) => [...prev, makeEmptyService()])
-  }, [setLaborItems])
-
-  const deleteLabor = useCallback(
-    (index: number) => {
-      keysRef.current = keysRef.current.filter((_, j) => j !== index)
-      setLaborItems((prev) => prev.filter((_, j) => j !== index))
-    },
-    [setLaborItems]
-  )
-
-  const actions = (
-    <div className="flex flex-wrap gap-1.5">
-      {hasPresets && onOpenPresets && (
-        <IconActionButton label={t('fromPresets')} icon={Layers} onClick={onOpenPresets} />
-      )}
-      <IconActionButton label={t('addLabor')} icon={Plus} onClick={addLaborAtStart} />
-      <IconActionButton label={t('addService')} icon={Wrench} onClick={addServiceAtStart} />
-      {onAddFinding && openObservationsCount > 0 && onShowExistingObservations ? (
-        <DropdownMenu>
-          {/* Plain button with a native tooltip: a Radix dropdown trigger
-              cannot wrap a Tooltip root, only the button inside it */}
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon-sm"
-              className="relative"
-              aria-label={t('addFinding')}
-              title={t('addFinding')}
-            >
-              <AlertTriangle className="size-4" />
-              <span className="absolute -right-1.5 -top-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-medium text-white">
-                {openObservationsCount}
-              </span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.preventDefault()
-                onAddFinding()
-              }}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              {t('newObservation')}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.preventDefault()
-                onShowExistingObservations()
-              }}
-            >
-              <Eye className="mr-2 h-4 w-4" />
-              {t('addExisting', { count: openObservationsCount })}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ) : onAddFinding ? (
-        <IconActionButton label={t('addFinding')} icon={AlertTriangle} onClick={onAddFinding} />
-      ) : null}
-    </div>
-  )
-
-  const body = (
-    <>
-      {laborItems.length > 0 && (
-        <>
-          <div className="hidden grid-cols-[auto_2fr_1fr_1fr_1fr_auto] gap-2 text-xs font-medium text-muted-foreground @2xl:grid">
-            <span className="w-6" />
-            <span>{t('description')}</span>
-            <span>{t('qtyOrHours')}</span>
-            <span>{t('rate', { currency: cs })}</span>
-            <span>{t('total')}</span>
-            <span />
-          </div>
-          {mounted ? (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext items={keysRef.current} strategy={verticalListSortingStrategy}>
-                {laborItems.map((labor, i) => (
-                  <SortableLaborRow
-                    key={keysRef.current[i]}
-                    id={keysRef.current[i]}
-                    labor={labor}
-                    index={i}
-                    updateLabor={updateLabor}
-                    onDelete={() => deleteLabor(i)}
-                    currencyCode={currencyCode}
-                    rateLabel={t('rate', { currency: cs })}
-                    t={t}
-                    dragEnabled
-                  />
-                ))}
-              </SortableContext>
-            </DndContext>
-          ) : (
-            laborItems.map((labor, i) => (
-              <SortableLaborRow
-                key={keysRef.current[i]}
-                id={keysRef.current[i]}
-                labor={labor}
-                index={i}
-                updateLabor={updateLabor}
-                onDelete={() => deleteLabor(i)}
-                currencyCode={currencyCode}
-                rateLabel={t('rate', { currency: cs })}
-                t={t}
-                dragEnabled={false}
-              />
-            ))
-          )}
-          <button
-            type="button"
-            className="flex w-full items-center justify-center rounded-md border border-dashed border-muted-foreground/25 py-1.5 text-muted-foreground transition-colors hover:border-muted-foreground/50 hover:text-foreground"
-            onClick={addLaborAtEnd}
-          >
-            <Plus className="h-4 w-4" />
-          </button>
-          {laborItems.some((l) => !l.description.trim() && laborRowHasContent(l)) && (
-            <p className="text-xs text-destructive">{t('descriptionMissingHint')}</p>
-          )}
-          <div className="flex justify-end pt-1 text-sm">
-            <span className="font-medium">
-              {t('subtotal', { amount: formatCurrency(laborSubtotal, currencyCode) })}
-            </span>
-          </div>
-        </>
-      )}
-
-      {laborItems.length === 0 && (
-        <div className="flex gap-2">
-          <button
-            type="button"
-            className="flex flex-1 items-center justify-center rounded-md border border-dashed border-muted-foreground/25 py-1.5 text-muted-foreground transition-colors hover:border-muted-foreground/50 hover:text-foreground"
-            onClick={addLaborAtEnd}
-          >
-            <Plus className="mr-1 h-4 w-4" />
-            <span className="text-sm">{t('addLabor')}</span>
-          </button>
-          <button
-            type="button"
-            className="flex flex-1 items-center justify-center rounded-md border border-dashed border-muted-foreground/25 py-1.5 text-muted-foreground transition-colors hover:border-muted-foreground/50 hover:text-foreground"
-            onClick={addServiceAtEnd}
-          >
-            <Wrench className="mr-1 h-4 w-4" />
-            <span className="text-sm">{t('addService')}</span>
-          </button>
-        </div>
-      )}
-    </>
-  )
-
-  if (modern) {
-    return (
-      <AppCard
-        icon={Wrench}
-        title={t('title')}
-        badge={laborItems.length || undefined}
-        action={actions}
-        className="@container"
-        contentClassName="space-y-2 px-3"
-      >
-        {body}
-      </AppCard>
+  function save() {
+    if (!editing || locked) return
+    const parsed = serviceLaborSchema.safeParse(editing.draft)
+    if (!parsed.success) {
+      setError(e('invalid'))
+      return
+    }
+    setLaborItems((prev) =>
+      editing.index < 0
+        ? [...prev, parsed.data]
+        : prev.map((l, i) => (i === editing.index ? parsed.data : l))
     )
+    setEditing(null)
   }
-
-  return (
-    // Sizes itself off its own container: the details view splits into two
-    // resizable columns, so this editor can be narrower on a wide screen than
-    // it is on a phone.
-    <div className="@container space-y-2 rounded-lg border p-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold">{t('title')}</h3>
-        {actions}
-      </div>
-      {body}
+  function move(index: number, delta: number) {
+    setLaborItems((prev) => {
+      const next = [...prev]
+      ;[next[index], next[index + delta]] = [next[index + delta], next[index]]
+      return next
+    })
+  }
+  const controls = (l: ServiceLaborInput, i: number) => (
+    <div className="flex gap-1">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="size-11"
+        aria-label={`${e('edit')}: ${l.description}`}
+        onClick={() => open(i, l)}
+      >
+        <Pencil className="size-4" />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="size-11"
+        aria-label={e('up')}
+        disabled={i === 0 || isShopFeeLine(l)}
+        onClick={() => move(i, -1)}
+      >
+        <ArrowUp className="size-4" />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="size-11"
+        aria-label={e('down')}
+        disabled={
+          i === laborItems.length - 1 || isShopFeeLine(l) || isShopFeeLine(laborItems[i + 1])
+        }
+        onClick={() => move(i, 1)}
+      >
+        <ArrowDown className="size-4" />
+      </Button>
     </div>
+  )
+  const actions = (
+    <div className="flex max-w-[132px] flex-wrap justify-end gap-1 sm:max-w-none">
+      {hasPresets && (
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="size-11"
+          aria-label={t('fromPresets')}
+          onClick={onOpenPresets}
+        >
+          <Layers className="size-4" />
+        </Button>
+      )}
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        className="size-11"
+        aria-label={t('addLabor')}
+        onClick={() => open(-1, makeEmptyLabor(defaultLaborRate))}
+      >
+        <Plus className="size-4" />
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        className="size-11"
+        aria-label={t('addService')}
+        onClick={() => open(-1, makeEmptyService())}
+      >
+        <Wrench className="size-4" />
+      </Button>
+      {onAddFinding && (
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="size-11"
+          aria-label={t('addFinding')}
+          onClick={onAddFinding}
+        >
+          <AlertTriangle className="size-4" />
+        </Button>
+      )}
+      {!!openObservationsCount && (
+        <Button
+          type="button"
+          variant="outline"
+          className="min-h-11"
+          aria-label={t('addExisting', { count: openObservationsCount })}
+          onClick={onShowExistingObservations}
+        >
+          <Eye className="size-4" />
+          {openObservationsCount}
+        </Button>
+      )}
+    </div>
+  )
+  return (
+    <AppCard
+      icon={Wrench}
+      title={t('title')}
+      badge={laborItems.length || undefined}
+      action={actions}
+      className="@container min-w-0"
+      contentClassName="p-3"
+    >
+      <table className="hidden w-full table-fixed text-sm @[850px]:table">
+        <thead>
+          <tr className="border-b text-left text-xs text-muted-foreground">
+            {[
+              t('description'),
+              e('executor'),
+              t('qtyOrHours'),
+              e('price'),
+              t('total'),
+              e('actions'),
+            ].map((label, i) => (
+              <th key={i} className={`p-2 ${i === 0 ? 'w-[30%]' : i === 5 ? 'w-[140px]' : ''}`}>
+                {label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {laborItems.map((l, i) => (
+            <tr
+              key={l.id ?? i}
+              className="border-b align-top hover:bg-muted/40"
+              onDoubleClick={() => !locked && open(i, l)}
+            >
+              <td className="p-2">
+                <button
+                  type="button"
+                  className="min-h-11 w-full break-words text-left font-medium"
+                  onClick={() => open(i, l)}
+                >
+                  {l.description || e('unnamed')}
+                </button>
+                {isShopFeeLine(l) && <ShopFeeTag />}
+              </td>
+              <td className="break-words p-2">
+                {executor(l)}
+                <span className="block text-xs text-muted-foreground">{mode(l)}</span>
+              </td>
+              <td className="p-2">
+                {l.hours} {l.pricingType === 'hourly' ? e('hours') : e('pieces')}
+              </td>
+              <td className="p-2 tabular-nums">{format(l.rate, currencyCode)}</td>
+              <td className="p-2 font-semibold tabular-nums">{format(l.total, currencyCode)}</td>
+              <td>{controls(l, i)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="space-y-3 @[850px]:hidden">
+        {laborItems.map((l, i) => (
+          <article key={l.id ?? i} className="rounded-lg border p-3">
+            <button
+              type="button"
+              className="min-h-11 w-full break-words text-left font-medium"
+              onClick={() => open(i, l)}
+            >
+              {l.description || e('unnamed')}
+            </button>
+            {isShopFeeLine(l) && <ShopFeeTag />}
+            <p className="mt-2 break-words text-sm">
+              {e('executor')}: {executor(l)}{' '}
+              <span className="text-xs text-muted-foreground">{mode(l)}</span>
+            </p>
+            <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
+              {[
+                [
+                  t('qtyOrHours'),
+                  `${l.hours} ${l.pricingType === 'hourly' ? e('hours') : e('pieces')}`,
+                ],
+                [e('price'), format(l.rate, currencyCode)],
+                [t('total'), format(l.total, currencyCode)],
+              ].map(([label, value]) => (
+                <div key={label}>
+                  <dt className="text-xs text-muted-foreground">{label}</dt>
+                  <dd className="mt-1 font-medium tabular-nums">{value}</dd>
+                </div>
+              ))}
+            </dl>
+            <div className="mt-2 flex justify-end">{controls(l, i)}</div>
+          </article>
+        ))}
+      </div>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          className="min-h-11"
+          onClick={() => open(-1, makeEmptyService())}
+        >
+          <Plus className="size-4" />
+          {t('addService')}
+        </Button>
+        <strong className="text-sm">
+          {t('subtotal', { amount: format(laborSubtotal, currencyCode) })}
+        </strong>
+      </div>
+      {editing && draft && (
+        <LineEditorDialog
+          title={editing.index < 0 ? t('addService') : e('editLabor')}
+          dirty={JSON.stringify(editing.original) !== JSON.stringify(draft)}
+          error={error}
+          onCancel={() => setEditing(null)}
+          onSave={save}
+          onDelete={
+            editing.index < 0
+              ? undefined
+              : () => {
+                  setLaborItems((prev) => prev.filter((_, i) => i !== editing.index))
+                  setEditing(null)
+                }
+          }
+        >
+          <LineField label={t('description')}>
+            <Textarea
+              value={draft.description}
+              onChange={(v) => change('description', v.target.value)}
+            />
+          </LineField>
+          {!isFee && (
+            <>
+              <LineField label={e('executor')}>
+                <select
+                  className="min-h-11 rounded-md border bg-background px-2"
+                  value={draft.technicianId ?? ''}
+                  onChange={(v) => change('technicianId', v.target.value || null)}
+                >
+                  <option value="">
+                    {e('inherited')} —{' '}
+                    {technicians.find((t) => t.id === primaryTechnicianId)?.name || e('unassigned')}
+                  </option>
+                  {draft.technicianId && !technicians.some((t) => t.id === draft.technicianId) && (
+                    <option value={draft.technicianId} disabled>
+                      {draft.executorName || e('inactive')}
+                    </option>
+                  )}
+                  {technicians.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </LineField>
+              {draft.executorFrozen && (
+                <p className="text-sm text-muted-foreground">
+                  {mode(draft)}: {executor(draft)}
+                </p>
+              )}
+              <LineField label={e('pricingType')}>
+                <select
+                  className="min-h-11 rounded-md border bg-background px-2"
+                  value={draft.pricingType}
+                  onChange={(v) => change('pricingType', v.target.value)}
+                >
+                  <option value="hourly">{t('hourlyTag')}</option>
+                  <option value="service">{t('serviceTag')}</option>
+                </select>
+              </LineField>
+            </>
+          )}
+          <div className="grid grid-cols-2 gap-4">
+            <LineField label={draft.pricingType === 'hourly' ? t('hours') : t('qty')}>
+              <Input
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="any"
+                disabled={isFee}
+                value={draft.hours}
+                onChange={(v) => change('hours', v.target.value)}
+              />
+            </LineField>
+            <LineField label={e('price')}>
+              <Input
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.01"
+                disabled={isFee && feeLocked}
+                value={draft.rate}
+                onChange={(v) => change('rate', v.target.value)}
+              />
+            </LineField>
+          </div>
+          <p className="flex justify-between gap-3 font-semibold">
+            <span>{t('total')}</span>
+            <span>{format(draft.total, currencyCode)}</span>
+          </p>
+        </LineEditorDialog>
+      )}
+    </AppCard>
   )
 }

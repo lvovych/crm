@@ -199,7 +199,10 @@ export function useServiceActions({
       warrantyNotes: warranty.warrantyNotes ?? '',
     }
 
-    const result = await updateServiceRecord(payload)
+    const result = await updateServiceRecord(payload).catch(() => ({
+      success: false as const,
+      error: t('page.failedUpdate'),
+    }))
 
     if (result.success) {
       clearLaborAddedElsewhere()

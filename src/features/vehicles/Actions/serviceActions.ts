@@ -1,5 +1,8 @@
 'use server'
 
+import { prepareParts, prepareLabor } from '../Lib/saveServiceLines'
+import { calculateTotals, discountAmountFor } from '@/lib/tax'
+import { roundMoney } from '@/lib/money'
 import { resolveBrandSnapshot } from '@/features/inventory/Lib/brandSnapshot'
 
 import { db } from '@/lib/db'
@@ -232,8 +235,8 @@ export async function getServiceRecord(recordId: string) {
             orderBy: { sortOrder: 'asc' },
             include: { confirmedBy: { select: { name: true } } },
           },
-          partItems: true,
-          laborItems: true,
+          partItems: { orderBy: { sortOrder: 'asc' } },
+          laborItems: { orderBy: { sortOrder: 'asc' } },
           attachments: true,
           payments: { orderBy: { date: 'desc' } },
           // Who opened the job, for the line under its number.
@@ -416,7 +419,7 @@ export async function createServiceRecord(input: unknown) {
       // split-tax workshop's invoice prints GST and QST apart from the start.
       // A rate the caller set by hand is one figure and stays one.
       const workshopTax = readWorkshopTax(settingsMap)
-      const splitTax =
+      let splitTax =
         !customerExempt && data.taxRate > 0 && data.taxRate === workshopTax.rate
           ? documentTotals({
               subtotal: data.subtotal,
@@ -483,6 +486,38 @@ export async function createServiceRecord(input: unknown) {
       const warrantyStartsOn = toSafeWorkshopDate(serviceDate, timeZone) ?? new Date()
 
       const record = await db.$transaction(async (tx) => {
+        const normalizedParts = await prepareParts(tx, null, partItems ?? [])
+        const normalizedLabor = await prepareLabor(tx, organizationId, null, laborItems ?? [])
+        if (partItems?.length || laborItems?.length) {
+          recordData.subtotal = roundMoney(
+            normalizedParts.reduce((s, p) => s + p.total, 0) +
+              normalizedLabor.reduce((s, l) => s + l.total, 0)
+          )
+          recordData.discountAmount = discountAmountFor(
+            recordData.subtotal,
+            recordData.discountType ?? 'none',
+            recordData.discountValue ?? 0
+          )
+          const totals = calculateTotals({
+            subtotal: recordData.subtotal,
+            discountAmount: recordData.discountAmount,
+            taxRate: recordData.taxRate ?? 0,
+            taxInclusive,
+          })
+          recordData.taxAmount = totals.taxAmount
+          recordData.totalAmount = totals.totalAmount
+          recordData.cost = totals.totalAmount
+          if (splitTax) {
+            splitTax = documentTotals({
+              subtotal: recordData.subtotal,
+              discountAmount: recordData.discountAmount,
+              taxRate: recordData.taxRate ?? 0,
+              taxInclusive,
+              taxComponents: taxFieldsForNewDocument(workshopTax).taxComponents,
+            })
+            recordData.cost = splitTax.totalAmount
+          }
+        }
         const created = await tx.serviceRecord.create({
           data: {
             ...recordData,
@@ -516,7 +551,7 @@ export async function createServiceRecord(input: unknown) {
           // Enrich parts with unitCost from inventory (stock movement is handled
           // by reconcileInventoryForParts below).
           const enrichedParts = []
-          for (const p of partItems) {
+          for (const p of normalizedParts) {
             let resolvedUnitCost = p.unitCost ?? 0
             let resolvedBrand = p.brand
             if (p.inventoryPartId) {
@@ -526,10 +561,13 @@ export async function createServiceRecord(input: unknown) {
               })
               if (invPart) {
                 resolvedUnitCost = invPart.unitCost ?? resolvedUnitCost
-                resolvedBrand ??= invPart.brand.name
+                resolvedBrand ??= invPart.brand?.name
               }
             }
             enrichedParts.push({
+              discountType: p.discountType,
+              discountValue: p.discountValue,
+              sortOrder: p.sortOrder,
               brand: resolvedBrand ?? '---',
               partNumber: p.partNumber,
               name: p.name,
@@ -569,7 +607,7 @@ export async function createServiceRecord(input: unknown) {
 
         if (laborItems && laborItems.length > 0) {
           await tx.serviceLabor.createMany({
-            data: laborItems.map((l) => ({
+            data: normalizedLabor.map((l) => ({
               ...l,
               serviceRecordId: created.id,
             })),
@@ -753,6 +791,53 @@ export async function updateServiceRecord(input: unknown) {
       }
 
       const record = await db.$transaction(async (tx) => {
+        const previousPartsForTotals = await tx.servicePart.findMany({
+          where: { serviceRecordId: id },
+        })
+        const previousLaborForTotals = await tx.serviceLabor.findMany({
+          where: { serviceRecordId: id },
+        })
+        const normalizedParts =
+          partItems === undefined ? previousPartsForTotals : await prepareParts(tx, id, partItems)
+        const financialLinesChanged =
+          normalizedParts.reduce((s, p) => s + p.total, 0) !==
+            previousPartsForTotals.reduce((s, p) => s + p.total, 0) ||
+          (laborItems ?? previousLaborForTotals).reduce((s, l) => s + l.total, 0) !==
+            previousLaborForTotals.reduce((s, l) => s + l.total, 0)
+        const financialChanged =
+          financialLinesChanged ||
+          (recordData.discountType !== undefined &&
+            (recordData.discountType || 'none') !== (existing.discountType || 'none')) ||
+          (recordData.discountValue !== undefined &&
+            recordData.discountValue !== existing.discountValue) ||
+          (recordData.taxRate !== undefined && recordData.taxRate !== existing.taxRate)
+        if (financialChanged) {
+          recordData.subtotal = roundMoney(
+            normalizedParts.reduce((s, p) => s + p.total, 0) +
+              (laborItems ?? previousLaborForTotals).reduce((s, l) => s + l.total, 0)
+          )
+          recordData.discountAmount = discountAmountFor(
+            recordData.subtotal,
+            recordData.discountType ?? existing.discountType ?? 'none',
+            recordData.discountValue ?? existing.discountValue
+          )
+          const totals = documentTotals({
+            subtotal: recordData.subtotal,
+            discountAmount: recordData.discountAmount,
+            taxRate: recordData.taxRate ?? existing.taxRate,
+            taxInclusive: existing.taxInclusive,
+            taxComponents: existing.taxComponents,
+          })
+          recordData.taxAmount = totals.taxAmount
+          recordData.totalAmount = totals.totalAmount
+          recordData.cost = totals.totalAmount
+        } else {
+          delete recordData.subtotal
+          delete recordData.discountAmount
+          delete recordData.taxAmount
+          delete recordData.totalAmount
+          delete recordData.cost
+        }
         const updated = await tx.serviceRecord.update({
           where: { id },
           data: {
@@ -764,7 +849,15 @@ export async function updateServiceRecord(input: unknown) {
             ...(recordData.status !== undefined && recordData.status !== existing.status
               ? { customStatusId: null, customStatusSince: null }
               : {}),
-            taxComponents: splitTax?.taxComponents,
+            taxComponents: financialChanged
+              ? documentTotals({
+                  subtotal: recordData.subtotal!,
+                  discountAmount: recordData.discountAmount!,
+                  taxRate: recordData.taxRate ?? existing.taxRate,
+                  taxInclusive: existing.taxInclusive,
+                  taxComponents: existing.taxComponents,
+                }).taxComponents
+              : undefined,
             // Attaching a vehicle to a counter sale: the direct customer link is
             // cleared so the invoice follows the vehicle's customer again.
             customerId:
@@ -822,7 +915,11 @@ export async function updateServiceRecord(input: unknown) {
           await tx.servicePart.deleteMany({ where: { serviceRecordId: id } })
           if (partItems.length > 0) {
             await tx.servicePart.createMany({
-              data: partItems.map((p) => ({
+              data: normalizedParts.map((p) => ({
+                id: p.id,
+                discountType: p.discountType,
+                discountValue: p.discountValue,
+                sortOrder: p.sortOrder,
                 brand: resolveBrandSnapshot(
                   p,
                   previousParts,
@@ -906,10 +1003,11 @@ export async function updateServiceRecord(input: unknown) {
 
         // Replace labor if provided
         if (laborItems !== undefined) {
+          const normalizedLabor = await prepareLabor(tx, organizationId, id, laborItems)
           await tx.serviceLabor.deleteMany({ where: { serviceRecordId: id } })
           if (laborItems.length > 0) {
             await tx.serviceLabor.createMany({
-              data: laborItems.map((l) => ({
+              data: normalizedLabor.map((l) => ({
                 ...l,
                 serviceRecordId: id,
               })),
