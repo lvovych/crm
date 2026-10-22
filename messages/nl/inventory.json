@@ -129,7 +129,11 @@
     "descriptionPlaceholder": "Beschrijving van het onderdeel...",
     "cancel": "Annuleren",
     "saveChanges": "Wijzigingen opslaan",
-    "addPart": "Onderdeel toevoegen"
+    "addPart": "Onderdeel toevoegen",
+    "brand": "Brand",
+    "brandSearch": "Search brands…",
+    "brandNotFound": "Brand not found",
+    "brandLoadError": "Could not load brands"
   },
   "openMenu": "Menu openen",
   "history": {

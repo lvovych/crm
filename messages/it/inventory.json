@@ -129,7 +129,11 @@
     "descriptionPlaceholder": "Descrizione del ricambio...",
     "cancel": "Annulla",
     "saveChanges": "Salva modifiche",
-    "addPart": "Aggiungi ricambio"
+    "addPart": "Aggiungi ricambio",
+    "brand": "Brand",
+    "brandSearch": "Search brands…",
+    "brandNotFound": "Brand not found",
+    "brandLoadError": "Could not load brands"
   },
   "openMenu": "Apri menu",
   "history": {

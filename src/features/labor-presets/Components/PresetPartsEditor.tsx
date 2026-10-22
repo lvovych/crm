@@ -1,5 +1,7 @@
 'use client'
 
+import { BrandCombobox } from '@/features/inventory/Components/BrandCombobox'
+
 import { DEFAULT_CURRENCY_CODE } from '@/lib/currencies'
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
@@ -16,6 +18,7 @@ import { resolvePartPrice } from '@/features/inventory/Lib/partPricing'
 
 export interface PresetPartItem {
   name: string
+  brand?: string
   partNumber: string
   quantity: number
   /** Unit of measure snapshotted from the picked inventory part. */
@@ -69,6 +72,7 @@ export function PresetPartsEditor({
               ...row,
               name: picked.name,
               partNumber: picked.partNumber ?? '',
+              brand: picked.brand?.name ?? '---',
               unit: picked.unit ?? null,
               unitPrice,
               inventoryPartId: picked.id,
@@ -85,6 +89,7 @@ export function PresetPartsEditor({
       {
         name: ip.name,
         partNumber: ip.partNumber || '',
+        brand: ip.brand?.name ?? '---',
         quantity: 1,
         unit: ip.unit ?? null,
         unitPrice: price,
@@ -131,6 +136,11 @@ export function PresetPartsEditor({
                   placeholder={t('form.partName')}
                   value={part.name}
                   onChange={(e) => updatePart(i, 'name', e.target.value)}
+                />
+                <BrandCombobox
+                  snapshot
+                  value={part.brand ?? '---'}
+                  onChange={(value) => updatePart(i, 'brand', value)}
                 />
                 <PartNameSuggestions
                   query={part.name}

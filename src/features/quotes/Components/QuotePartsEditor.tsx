@@ -1,5 +1,7 @@
 'use client'
 
+import { BrandCombobox } from '@/features/inventory/Components/BrandCombobox'
+
 import { memo, useCallback, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -84,6 +86,11 @@ const QuotePartRow = memo(function QuotePartRow({
             'min-h-9 w-full resize-none',
             nameMissing && 'border-destructive focus-visible:ring-destructive'
           )}
+        />
+        <BrandCombobox
+          snapshot
+          value={part.brand ?? '---'}
+          onChange={(value) => onUpdate(index, 'brand', value)}
         />
         <PartNameSuggestions
           query={part.name}
@@ -206,6 +213,7 @@ export const QuotePartsEditor = memo(function QuotePartsEditor({
       const { unitPrice } = resolvePartPrice(picked)
       const unitCost = Number(picked.unitCost) || 0
       onUpdate(index, 'name', picked.name)
+      onUpdate(index, 'brand', picked.brand?.name ?? '---')
       onUpdate(index, 'partNumber', picked.partNumber ?? '')
       onUpdate(index, 'unit', picked.unit ?? null)
       onUpdate(index, 'unitCost', unitCost)
@@ -292,6 +300,7 @@ export const QuotePartsEditor = memo(function QuotePartsEditor({
             onAddBulk?.([
               {
                 partNumber: picked.partNumber ?? '',
+                brand: picked.brand ?? '---',
                 name: picked.name,
                 quantity: picked.quantity,
                 unit: picked.unit ?? null,

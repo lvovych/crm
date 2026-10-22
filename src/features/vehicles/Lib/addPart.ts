@@ -18,6 +18,7 @@ import { assertInvoiceEditable } from '@/lib/document-lock.server'
 
 export interface AddPartInput {
   serviceRecordId: string
+  brand?: string
   partNumber?: string | null
   name: string
   quantity: number
@@ -68,8 +69,15 @@ export async function addPart(args: {
   if (!record) throw new AddPartError('job_not_found', 'Service record not found')
 
   const part = await db.$transaction(async (tx) => {
+    const stock = input.inventoryPartId
+      ? await tx.inventoryPart.findFirst({
+          where: { id: input.inventoryPartId, organizationId },
+          select: { brand: { select: { name: true } } },
+        })
+      : null
     const created = await tx.servicePart.create({
       data: {
+        brand: input.brand ?? stock?.brand.name ?? '---',
         partNumber: input.partNumber || null,
         name: input.name,
         quantity: input.quantity,

@@ -165,6 +165,7 @@ export function QuotePageClient({
         const newParts = preset.parts.map((part) => ({
           name: part.name,
           partNumber: part.partNumber || '',
+          brand: part.brand ?? '---',
           quantity: part.quantity,
           unit: part.unit ?? null,
           unitCost: 0,

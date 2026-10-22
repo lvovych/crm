@@ -94,6 +94,7 @@ export interface ServiceDetail {
 
 export interface PartItem {
   id: string
+  brand?: string
   partNumber: string | null
   name: string
   quantity: number

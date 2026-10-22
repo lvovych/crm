@@ -272,7 +272,7 @@ export function buildInvoicePrintSpec(input: InvoicePrintInput): DocumentSpec {
       n: String(data.laborItems.length + i + 1),
       qty: formatQuantity(p.quantity, p.unit),
       unit: p.unit || '',
-      desc: p.name,
+      desc: p.brand && p.brand !== '---' ? `${p.name} — ${p.brand}` : p.name,
       sub: p.partNumber || undefined,
       price: money(shown(p.unitPrice)),
       total: money(shown(p.total)),
@@ -281,7 +281,7 @@ export function buildInvoicePrintSpec(input: InvoicePrintInput): DocumentSpec {
 
   const parts: DocumentData['parts'] = data.partItems.map((p) => ({
     ref: p.partNumber || '-',
-    desc: p.name,
+    desc: p.brand && p.brand !== '---' ? `${p.name} — ${p.brand}` : p.name,
     qty: formatQuantity(p.quantity, p.unit),
     price: money(shown(p.unitPrice)),
     total: money(shown(p.total)),

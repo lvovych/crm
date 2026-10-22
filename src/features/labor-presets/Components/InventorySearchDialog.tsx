@@ -9,6 +9,7 @@ import { Search } from 'lucide-react'
 export interface InventoryPartOption {
   id: string
   name: string
+  brand?: { name: string }
   partNumber: string | null
   unit?: string | null
   sellPrice: number
@@ -74,7 +75,9 @@ export function InventorySearchDialog({
               }}
             >
               <div className="min-w-0">
-                <span className="font-medium text-sm truncate">{ip.name}</span>
+                <span className="font-medium text-sm truncate">
+                  {ip.name} <span className="text-muted-foreground">{ip.brand?.name ?? '---'}</span>
+                </span>
                 {ip.partNumber && (
                   <span className="ml-2 text-xs font-mono text-muted-foreground">
                     {ip.partNumber}

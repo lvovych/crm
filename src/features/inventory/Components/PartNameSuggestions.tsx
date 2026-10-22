@@ -11,6 +11,7 @@ import { resolvePartPrice } from '@/features/inventory/Lib/partPricing'
 export interface PartSuggestion {
   id: string
   name: string
+  brand?: { name: string }
   partNumber: string | null
   barcode?: string | null
   category?: string | null
@@ -173,7 +174,7 @@ export function PartNameSuggestions({
           <span className="flex min-w-0 items-center gap-2">
             <Package className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <span className="truncate" title={part.name}>
-              {part.name}
+              {part.name} <span className="text-muted-foreground">{part.brand?.name ?? '---'}</span>
             </span>
             {part.partNumber && (
               <span className="shrink-0 font-mono text-xs text-muted-foreground">

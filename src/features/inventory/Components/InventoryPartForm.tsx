@@ -50,6 +50,7 @@ import {
 import { cn } from '@/lib/utils'
 import { compressImage } from '@/lib/compress-image'
 import { priceFromCostAndMultiplier } from '@/features/inventory/Lib/partPricing'
+import { BrandCombobox } from './BrandCombobox'
 import { UnitCombobox } from '@/features/inventory/Components/UnitCombobox'
 import { clearableInput } from '@/lib/clearable'
 
@@ -66,6 +67,7 @@ interface InventoryPartFormProps {
   onViewImages?: (urls: string[], startIndex: number) => void
   part?: {
     id: string
+    brandId?: string
     partNumber: string | null
     barcode: string | null
     name: string
@@ -111,6 +113,7 @@ export function InventoryPartForm({
   const [uploading, setUploading] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
   const [supplierUrl, setSupplierUrl] = useState(part?.supplierUrl ?? '')
+  const [brandId, setBrandId] = useState(part?.brandId ?? 'brand_unknown')
   const [category, setCategory] = useState(part?.category ?? '')
   const [unit, setUnit] = useState(part ? (part.unit ?? '') : (defaultUnit ?? ''))
   const [categoryOpen, setCategoryOpen] = useState(false)
@@ -140,6 +143,7 @@ export function InventoryPartForm({
       uploadedUrlsRef.current = []
       setSupplierUrl(part?.supplierUrl ?? '')
       setCategory(part?.category ?? '')
+      setBrandId(part?.brandId ?? 'brand_unknown')
       setUnit(part ? (part.unit ?? '') : (defaultUnit ?? ''))
       setCategorySearch('')
       sellPriceManualRef.current = !!(part?.sellPrice && part.sellPrice > 0)
@@ -355,6 +359,7 @@ export function InventoryPartForm({
       clearableInput(value, Boolean(part))
     const data = {
       name: formData.get('name') as string,
+      brandId,
       partNumber: optional(formData.get('partNumber')),
       barcode: optional(formData.get('barcode')),
       description: optional(formData.get('description')),
@@ -429,6 +434,10 @@ export function InventoryPartForm({
         </DialogHeader>
 
         <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="brandId">{t('form.brand')}</Label>
+            <BrandCombobox id="brandId" value={brandId} onChange={setBrandId} />
+          </div>
           {/* Supplier Link */}
           <div className="space-y-2">
             <Label htmlFor="supplierUrl">{t('form.supplierLink')}</Label>

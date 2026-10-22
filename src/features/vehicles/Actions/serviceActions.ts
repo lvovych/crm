@@ -1,5 +1,7 @@
 'use server'
 
+import { resolveBrandSnapshot } from '@/features/inventory/Lib/brandSnapshot'
+
 import { db } from '@/lib/db'
 import { concernStoryData } from '@/features/vehicles/Lib/concernStory'
 import {
@@ -516,15 +518,19 @@ export async function createServiceRecord(input: unknown) {
           const enrichedParts = []
           for (const p of partItems) {
             let resolvedUnitCost = p.unitCost ?? 0
+            let resolvedBrand = p.brand
             if (p.inventoryPartId) {
               const invPart = await tx.inventoryPart.findFirst({
                 where: { id: p.inventoryPartId, organizationId },
+                include: { brand: true },
               })
               if (invPart) {
                 resolvedUnitCost = invPart.unitCost ?? resolvedUnitCost
+                resolvedBrand ??= invPart.brand.name
               }
             }
             enrichedParts.push({
+              brand: resolvedBrand ?? '---',
               partNumber: p.partNumber,
               name: p.name,
               quantity: p.quantity,
@@ -803,13 +809,25 @@ export async function updateServiceRecord(input: unknown) {
           // reduced or removed on an existing work order).
           const previousParts = await tx.servicePart.findMany({
             where: { serviceRecordId: id },
-            select: { inventoryPartId: true, quantity: true },
           })
 
+          const stockIds = partItems.flatMap((p) => (p.inventoryPartId ? [p.inventoryPartId] : []))
+          const stockBrands = stockIds.length
+            ? await tx.inventoryPart.findMany({
+                where: { id: { in: stockIds }, organizationId },
+                select: { id: true, brand: { select: { name: true } } },
+              })
+            : []
+          const brandByStock = new Map(stockBrands.map((p) => [p.id, p.brand.name]))
           await tx.servicePart.deleteMany({ where: { serviceRecordId: id } })
           if (partItems.length > 0) {
             await tx.servicePart.createMany({
               data: partItems.map((p) => ({
+                brand: resolveBrandSnapshot(
+                  p,
+                  previousParts,
+                  brandByStock.get(p.inventoryPartId || '')
+                ),
                 partNumber: p.partNumber,
                 name: p.name,
                 quantity: p.quantity,

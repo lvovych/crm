@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { uploadUrlSchema } from '@/lib/upload-url'
 
 export const servicePartSchema = z.object({
+  brand: z.string().trim().min(1).max(200).optional(),
   partNumber: z.string().optional(),
   name: z.string().min(1, 'Part name is required'),
   quantity: z.coerce.number().min(0).default(1),

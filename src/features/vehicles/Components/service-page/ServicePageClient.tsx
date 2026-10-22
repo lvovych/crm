@@ -262,6 +262,7 @@ export function ServicePageClient({
         formState.dirtySetPartItems((prev) => [
           {
             partNumber: part.partNumber || '',
+            brand: part.brand?.name ?? '---',
             name: part.name,
             quantity: 1,
             unit: part.unit ?? null,
@@ -385,6 +386,7 @@ export function ServicePageClient({
       const newParts = preset.parts.map((part) => ({
         name: part.name,
         partNumber: part.partNumber || '',
+        brand: part.brand ?? '---',
         quantity: part.quantity,
         unit: part.unit ?? null,
         unitPrice: part.unitPrice,

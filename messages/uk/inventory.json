@@ -129,7 +129,11 @@
     "descriptionPlaceholder": "Опис запчастини...",
     "cancel": "Скасувати",
     "saveChanges": "Зберегти зміни",
-    "addPart": "Додати запчастину"
+    "addPart": "Додати запчастину",
+    "brand": "Бренд",
+    "brandSearch": "Знайти бренд…",
+    "brandNotFound": "Бренд не знайдено",
+    "brandLoadError": "Не вдалося завантажити бренди"
   },
   "openMenu": "Відкрити меню",
   "history": {

@@ -129,7 +129,11 @@
     "descriptionPlaceholder": "Part description...",
     "cancel": "Cancel",
     "saveChanges": "Save Changes",
-    "addPart": "Add Part"
+    "addPart": "Add Part",
+    "brand": "Brand",
+    "brandSearch": "Search brands…",
+    "brandNotFound": "Brand not found",
+    "brandLoadError": "Could not load brands"
   },
   "openMenu": "Open menu",
   "history": {

@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { imageUrlSchema } from '@/lib/upload-url'
 
 export const createInventoryPartSchema = z.object({
+  brandId: z.string().min(1).optional(),
   name: z.string().min(1, 'Part name is required'),
   partNumber: z.string().optional(),
   barcode: z.string().optional(),

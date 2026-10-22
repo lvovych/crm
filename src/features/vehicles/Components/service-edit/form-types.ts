@@ -8,6 +8,7 @@ import type {
 
 export interface InventoryPartOption {
   id: string
+  brand?: { name: string }
   partNumber: string | null
   barcode: string | null
   name: string

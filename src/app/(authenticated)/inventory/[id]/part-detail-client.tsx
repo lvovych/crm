@@ -131,6 +131,9 @@ export function PartDetailClient({
             </Link>
           </Button>
           <h1 className="text-2xl font-bold tracking-tight">{part.name}</h1>
+          <p className="text-muted-foreground">
+            {t('form.brand')}: {part.brand?.name ?? '---'}
+          </p>
           <p className="text-sm text-muted-foreground">
             {[part.partNumber, part.category, part.location].filter(Boolean).join(' · ') || '—'}
           </p>

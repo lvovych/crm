@@ -1,5 +1,7 @@
 'use server'
 
+import { resolveBrandSnapshot } from '@/features/inventory/Lib/brandSnapshot'
+
 import { ATTENTION_STATUSES } from '@/features/quotes/Lib/quoteStatus'
 import { assertQuoteEditable, getDocumentLockSettings } from '@/lib/document-lock.server'
 import { DocumentLockedError, quoteLockState } from '@/lib/document-lock'
@@ -311,10 +313,15 @@ export async function updateQuote(input: unknown) {
         })
 
         if (partItems !== undefined) {
+          const previousParts = await tx.quotePart.findMany({ where: { quoteId: id } })
+          const brandedParts = partItems.map((p) => ({
+            ...p,
+            brand: resolveBrandSnapshot(p, previousParts),
+          }))
           await tx.quotePart.deleteMany({ where: { quoteId: id } })
           if (partItems.length > 0) {
             await tx.quotePart.createMany({
-              data: partItems.map((p) => ({ ...p, quoteId: id })),
+              data: brandedParts.map((p) => ({ ...p, quoteId: id })),
             })
           }
         }
@@ -522,6 +529,7 @@ export async function convertQuoteToServiceRecord(quoteId: string, vehicleId: st
           await tx.servicePart.createMany({
             data: includedParts.map((p) => ({
               partNumber: p.partNumber,
+              brand: p.brand ?? '---',
               name: p.name,
               quantity: p.quantity,
               unit: p.unit,

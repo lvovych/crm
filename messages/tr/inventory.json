@@ -129,7 +129,11 @@
     "descriptionPlaceholder": "Parça açıklaması...",
     "cancel": "İptal",
     "saveChanges": "Değişiklikleri kaydet",
-    "addPart": "Parça ekle"
+    "addPart": "Parça ekle",
+    "brand": "Brand",
+    "brandSearch": "Search brands…",
+    "brandNotFound": "Brand not found",
+    "brandLoadError": "Could not load brands"
   },
   "openMenu": "Menüyü aç",
   "history": {

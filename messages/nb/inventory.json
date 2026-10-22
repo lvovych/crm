@@ -129,7 +129,11 @@
     "descriptionPlaceholder": "Delbeskrivelse...",
     "cancel": "Avbryt",
     "saveChanges": "Lagre endringer",
-    "addPart": "Legg til del"
+    "addPart": "Legg til del",
+    "brand": "Brand",
+    "brandSearch": "Search brands…",
+    "brandNotFound": "Brand not found",
+    "brandLoadError": "Could not load brands"
   },
   "openMenu": "Åpne meny",
   "history": {

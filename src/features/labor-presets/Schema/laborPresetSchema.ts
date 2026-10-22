@@ -9,6 +9,7 @@ export const laborPresetItemSchema = z.object({
 })
 
 export const laborPresetPartSchema = z.object({
+  brand: z.string().trim().min(1).max(200).optional(),
   name: z.string().min(1, 'Part name is required'),
   partNumber: z.string().optional(),
   quantity: z.coerce.number().min(0, 'Quantity must be 0 or more').default(1),

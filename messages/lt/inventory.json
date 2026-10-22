@@ -129,7 +129,11 @@
     "descriptionPlaceholder": "Dalies aprašymas...",
     "cancel": "Atšaukti",
     "saveChanges": "Išsaugoti pakeitimus",
-    "addPart": "Pridėti dalį"
+    "addPart": "Pridėti dalį",
+    "brand": "Brand",
+    "brandSearch": "Search brands…",
+    "brandNotFound": "Brand not found",
+    "brandLoadError": "Could not load brands"
   },
   "openMenu": "Atidaryti meniu",
   "history": {

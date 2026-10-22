@@ -93,6 +93,8 @@ import { toast } from 'sonner'
 import { ListEmpty } from '@/components/list-empty'
 
 interface InventoryPart {
+  brandId: string
+  brand?: { name: string }
   id: string
   partNumber: string | null
   barcode: string | null
@@ -536,7 +538,10 @@ export function InventoryClient({
                   )}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-3">
-                      <span className="min-w-0 flex-1 truncate font-medium">{part.name}</span>
+                      <span className="min-w-0 flex-1 truncate font-medium">
+                        {part.name}{' '}
+                        <span className="text-muted-foreground">{part.brand?.name ?? '---'}</span>
+                      </span>
                       <span className="shrink-0 font-semibold">
                         {formatCurrency(effective, currencyCode)}
                       </span>
@@ -779,6 +784,9 @@ export function InventoryClient({
                               />
                             )}
                             {part.name}
+                            <span className="ml-2 text-xs text-muted-foreground">
+                              {part.brand?.name ?? '---'}
+                            </span>
                           </div>
                         </TableCell>
                         <TableCell className="hidden sm:table-cell text-muted-foreground">

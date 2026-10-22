@@ -97,6 +97,7 @@ model QuoteAttachment {
 }
 
 model QuotePart {
+  brand         String  @default("---")
   id            String  @id @default(cuid())
   partNumber    String?
   name          String

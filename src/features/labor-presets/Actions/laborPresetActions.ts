@@ -1,5 +1,7 @@
 'use server'
 
+import { resolveBrandSnapshot } from '@/features/inventory/Lib/brandSnapshot'
+
 import { db } from '@/lib/db'
 import { withAuth } from '@/lib/with-auth'
 import { createLaborPresetSchema, updateLaborPresetSchema } from '../Schema/laborPresetSchema'
@@ -120,6 +122,7 @@ export async function createLaborPreset(input: unknown) {
                 create: data.parts.map((part, index) => ({
                   name: part.name,
                   partNumber: part.partNumber || null,
+                  brand: part.brand ?? '---',
                   quantity: part.quantity,
                   unit: part.unit ?? null,
                   unitPrice: part.unitPrice,
@@ -165,6 +168,7 @@ export async function updateLaborPreset(input: unknown) {
       if (!existing) throw new Error('Preset not found')
 
       await db.$transaction(async (tx) => {
+        const previousParts = await tx.laborPresetPart.findMany({ where: { presetId: id } })
         // Delete old items and parts
         await tx.laborPresetItem.deleteMany({ where: { presetId: id } })
         await tx.laborPresetPart.deleteMany({ where: { presetId: id } })
@@ -192,6 +196,7 @@ export async function updateLaborPreset(input: unknown) {
                   create: parts.map((part, index) => ({
                     name: part.name,
                     partNumber: part.partNumber || null,
+                    brand: resolveBrandSnapshot(part, previousParts),
                     quantity: part.quantity,
                     unit: part.unit ?? null,
                     unitPrice: part.unitPrice,
@@ -271,6 +276,7 @@ export async function getLaborPresetsList() {
             select: {
               name: true,
               partNumber: true,
+              brand: true,
               quantity: true,
               unit: true,
               unitPrice: true,

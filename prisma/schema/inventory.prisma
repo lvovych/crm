@@ -30,6 +30,7 @@ model LaborPresetItem {
 }
 
 model LaborPresetPart {
+  brand           String  @default("---")
   id              String  @id @default(cuid())
   name            String
   partNumber      String?
@@ -47,7 +48,20 @@ model LaborPresetPart {
   @@map("labor_preset_parts")
 }
 
+model Brand {
+  id        String          @id @default(cuid())
+  name      String
+  isActive  Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  parts     InventoryPart[]
+
+  @@map("brands")
+}
+
 model InventoryPart {
+  brandId       String  @default("brand_unknown")
+  brand         Brand   @relation(fields: [brandId], references: [id], onDelete: Restrict)
   id            String  @id @default(cuid())
   partNumber    String?
   barcode       String?
@@ -89,6 +103,7 @@ model InventoryPart {
   movements StockMovement[]
 
   @@unique([organizationId, barcode])
+  @@index([brandId])
   @@index([organizationId])
   @@map("inventory_parts")
 }

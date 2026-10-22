@@ -19,6 +19,7 @@ export interface LaborPresetOption {
   }[]
   parts?: {
     name: string
+    brand?: string
     partNumber: string | null
     quantity: number
     unit: string | null

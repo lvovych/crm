@@ -1,5 +1,6 @@
 'use server'
 
+import { assertSelectableBrand } from '../Lib/brands.server'
 import { db } from '@/lib/db'
 import { assertOwnUploads } from '@/lib/upload-url'
 import { withAuth } from '@/lib/with-auth'
@@ -41,6 +42,7 @@ export async function getInventoryPartsPaginated(params: {
         const q = params.search.trim()
         where.OR = [
           { name: { contains: q, mode } },
+          { brand: { name: { contains: q, mode } } },
           { partNumber: { contains: q, mode } },
           { barcode: { contains: q, mode } },
           { description: { contains: q, mode } },
@@ -100,7 +102,7 @@ export async function getInventoryPartsPaginated(params: {
           orderBy: { [sortColumn]: dir },
           skip,
           take: pageSize,
-          include: { gallery: { orderBy: { sortOrder: 'asc' } } },
+          include: { brand: true, gallery: { orderBy: { sortOrder: 'asc' } } },
         }),
         db.inventoryPart.count({ where }),
       ])
@@ -126,7 +128,7 @@ export async function getInventoryPart(partId: string) {
     async ({ userId, organizationId }) => {
       const part = await db.inventoryPart.findFirst({
         where: { id: partId, organizationId },
-        include: { gallery: { orderBy: { sortOrder: 'asc' } } },
+        include: { brand: true, gallery: { orderBy: { sortOrder: 'asc' } } },
       })
       if (!part) throw new Error('Part not found')
       return part
@@ -143,6 +145,7 @@ export async function createInventoryPart(input: unknown) {
   return withAuth(
     async ({ userId, organizationId }) => {
       const data = createInventoryPartSchema.parse(input)
+      await assertSelectableBrand(data.brandId)
       assertOwnUploads(data, organizationId)
       const { gallery, ...rest } = data
       const barcode = normalizeBarcode(rest.barcode)
@@ -208,9 +211,11 @@ export async function updateInventoryPart(input: unknown) {
       // gallery rows are keyed by the part alone.
       const owned = await db.inventoryPart.findFirst({
         where: { id, organizationId },
-        select: { id: true },
+        select: { id: true, brandId: true },
       })
       if (!owned) throw new Error('Part not found')
+      if (data.brandId !== undefined && data.brandId !== owned.brandId)
+        await assertSelectableBrand(data.brandId)
 
       // The images the part had before a change to them, let go at the end
       // once nothing uses them (the new gallery keeps the ones it still has).
@@ -407,6 +412,7 @@ export async function getInventoryPartsList() {
         where: { organizationId, isArchived: false },
         select: {
           id: true,
+          brand: { select: { name: true } },
           partNumber: true,
           barcode: true,
           name: true,

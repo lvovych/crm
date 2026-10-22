@@ -1,5 +1,7 @@
 'use client'
 
+import { BrandCombobox } from '@/features/inventory/Components/BrandCombobox'
+
 import { useRef, useCallback, useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -155,6 +157,11 @@ function SortablePartRow({
                 nameMissing && 'border-destructive focus-visible:ring-destructive'
               )}
             />
+            <BrandCombobox
+              snapshot
+              value={part.brand ?? '---'}
+              onChange={(value) => updatePart(index, 'brand', value)}
+            />
             <PartNameSuggestions
               query={part.name}
               parts={inventoryParts}
@@ -285,6 +292,7 @@ export function PartsEditor({
             ...row,
             name: picked.name,
             partNumber: picked.partNumber ?? '',
+            brand: picked.brand?.name ?? '---',
             unit: picked.unit ?? null,
             unitCost: picked.unitCost,
             unitPrice,

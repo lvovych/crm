@@ -87,6 +87,7 @@ export function useQuoteFormState({
   const [partItems, setPartItems] = useState<QuotePartInput[]>(
     quote.partItems.map((p) => ({
       partNumber: p.partNumber || '',
+      brand: p.brand ?? '---',
       name: p.name,
       quantity: p.quantity,
       unit: p.unit ?? null,

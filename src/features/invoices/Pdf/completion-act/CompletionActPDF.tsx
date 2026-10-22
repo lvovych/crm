@@ -63,19 +63,30 @@ const s = StyleSheet.create({
 })
 const money = (value: number) =>
   value.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-type Line = { name: string; unit: string; quantity: number; price: number; total: number }
+type Line = {
+  brand?: string
+  name: string
+  unit: string
+  quantity: number
+  price: number
+  total: number
+}
 function Lines({
   title,
   lines,
   currency,
   taxed,
+  showBrand = false,
 }: {
   title: string
   lines: Line[]
   currency: string
   taxed: boolean
+  showBrand?: boolean
 }) {
-  const widths = ['5%', '49%', '7%', '11%', '14%', '14%']
+  const widths = showBrand
+    ? ['5%', '35%', '14%', '7%', '11%', '14%', '14%']
+    : ['5%', '49%', '7%', '11%', '14%', '14%']
   return (
     <View>
       <View minPresenceAhead={50}>
@@ -84,6 +95,7 @@ function Lines({
           {[
             '№',
             'Назва',
+            ...(showBrand ? ['Бренд'] : []),
             'Од.',
             'Кількість',
             taxed ? 'Ціна, грн' : 'Ціна без ПДВ',
@@ -91,7 +103,10 @@ function Lines({
           ].map((v, i) => (
             <Text
               key={i}
-              style={[s.cell, { width: widths[i], textAlign: i > 2 ? 'right' : 'left' }]}
+              style={[
+                s.cell,
+                { width: widths[i], textAlign: i > (showBrand ? 3 : 2) ? 'right' : 'left' },
+              ]}
             >
               {v.replace('грн', currency)}
             </Text>
@@ -103,6 +118,7 @@ function Lines({
           {[
             String(i + 1),
             line.name,
+            ...(showBrand ? [line.brand || '---'] : []),
             line.unit,
             money(line.quantity),
             money(line.price),
@@ -110,7 +126,10 @@ function Lines({
           ].map((v, j) => (
             <Text
               key={j}
-              style={[s.cell, { width: widths[j], textAlign: j > 2 ? 'right' : 'left' }]}
+              style={[
+                s.cell,
+                { width: widths[j], textAlign: j > (showBrand ? 3 : 2) ? 'right' : 'left' },
+              ]}
             >
               {v}
             </Text>
@@ -146,6 +165,7 @@ export function CompletionActPDF({
     total: l.total,
   }))
   const parts = data.partItems.map((p) => ({
+    brand: p.brand || '---',
     name: p.name + (p.partNumber ? ` (арт. ${p.partNumber})` : ''),
     unit: p.unit || 'шт',
     quantity: p.quantity,
@@ -210,6 +230,7 @@ export function CompletionActPDF({
         />
         <Lines
           title="Запасні частини, матеріали й товари, використані для ремонту"
+          showBrand
           lines={parts}
           currency={unit}
           taxed={taxed}

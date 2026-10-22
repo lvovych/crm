@@ -106,6 +106,7 @@ export function InventoryPickerDialog({
                 })
                 onSelectPart({
                   partNumber: ip.partNumber || '',
+                  brand: ip.brand?.name ?? '---',
                   name: ip.name,
                   quantity: 1,
                   unit: ip.unit ?? null,
@@ -120,7 +121,10 @@ export function InventoryPickerDialog({
             >
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-sm truncate">{ip.name}</span>
+                  <span className="font-medium text-sm truncate">
+                    {ip.name}{' '}
+                    <span className="text-muted-foreground">{ip.brand?.name ?? '---'}</span>
+                  </span>
                   {ip.partNumber && (
                     <span className="text-xs font-mono text-muted-foreground shrink-0">
                       {ip.partNumber}

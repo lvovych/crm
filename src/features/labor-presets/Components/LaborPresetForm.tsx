@@ -46,6 +46,7 @@ interface LaborPresetData {
   }[]
   parts?: {
     name: string
+    brand?: string
     partNumber: string | null
     quantity: number
     unit: string | null
@@ -65,6 +66,7 @@ interface LaborPresetFormProps {
   inventoryParts?: {
     id: string
     name: string
+    brand?: { name: string }
     partNumber: string | null
     unit: string | null
     sellPrice: number
@@ -152,6 +154,7 @@ export function LaborPresetForm({
     preset?.parts?.map((p) => ({
       name: p.name,
       partNumber: p.partNumber || '',
+      brand: p.brand ?? '---',
       quantity: p.quantity,
       unit: p.unit ?? null,
       unitPrice: p.unitPrice,
@@ -192,6 +195,7 @@ export function LaborPresetForm({
         preset?.parts?.map((p) => ({
           name: p.name,
           partNumber: p.partNumber || '',
+          brand: p.brand ?? '---',
           quantity: p.quantity,
           unit: p.unit ?? null,
           unitPrice: p.unitPrice,
@@ -252,6 +256,7 @@ export function LaborPresetForm({
       .map((part, index) => ({
         name: part.name,
         partNumber: part.partNumber || undefined,
+        brand: part.brand ?? '---',
         quantity: Number(part.quantity) || 1,
         unit: part.unit ?? undefined,
         unitPrice: Number(part.unitPrice) || 0,

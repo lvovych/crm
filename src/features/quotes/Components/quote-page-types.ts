@@ -50,6 +50,7 @@ export interface QuoteRecord {
   updatedAt: Date
   partItems: {
     id: string
+    brand?: string
     partNumber: string | null
     name: string
     quantity: number

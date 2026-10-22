@@ -274,6 +274,7 @@ export async function ServiceRecordPage({
     })),
     partItems: record.partItems.map((p) => ({
       partNumber: p.partNumber || '',
+      brand: p.brand ?? '---',
       name: p.name,
       quantity: p.quantity,
       unit: p.unit ?? null,

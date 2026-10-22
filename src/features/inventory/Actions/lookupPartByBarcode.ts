@@ -23,6 +23,7 @@ export async function lookupPartByBarcode(barcode: string) {
         },
         select: {
           id: true,
+          brand: { select: { name: true } },
           partNumber: true,
           barcode: true,
           name: true,
