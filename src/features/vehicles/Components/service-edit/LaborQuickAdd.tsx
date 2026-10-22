@@ -298,7 +298,10 @@ export function LaborQuickAdd({
                         ·{' '}
                         {p.items.some((i) => i.rate <= 0)
                           ? t('priceRequired')
-                          : format(laborPresetTotal(p), currencyCode)}
+                          : format(
+                              isLaborPackage(p) ? laborPresetTotal(p) : p.items[0].rate,
+                              currencyCode
+                            )}
                       </span>
                     </button>
                     <button

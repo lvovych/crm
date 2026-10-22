@@ -268,7 +268,9 @@ export function LaborEditor({
             <tr
               key={l.id ?? i}
               className="border-b align-top hover:bg-muted/40"
-              onDoubleClick={() => !locked && open(i, l)}
+              onDoubleClick={(event) => {
+                if (!locked && !(event.target as HTMLElement).closest('input,button')) open(i, l)
+              }}
             >
               <td className="p-2">
                 <button
