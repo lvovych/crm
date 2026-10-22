@@ -13,6 +13,8 @@ import { lineTotal } from '@/features/inventory/Lib/partPricing'
 import { serviceLaborSchema, type ServiceLaborInput } from '../../Schema/serviceSchema'
 import { makeEmptyLabor, makeEmptyService } from './form-types'
 import { LineEditorDialog, LineField } from './LineEditorDialog'
+import { LaborNumberInput } from './LaborNumberInput'
+import { LaborQuickAdd, type LaborQuickAddProps } from './LaborQuickAdd'
 
 interface LaborEditorProps {
   laborItems: ServiceLaborInput[]
@@ -21,6 +23,7 @@ interface LaborEditorProps {
   laborSubtotal: number
   currencyCode: string
   defaultLaborRate: number
+  quickAdd?: Omit<LaborQuickAddProps, 'onAdd' | 'currencyCode' | 'locked'>
   hasPresets?: boolean
   onOpenPresets?: () => void
   onAddFinding?: () => void
@@ -36,6 +39,7 @@ export function LaborEditor({
   laborSubtotal,
   currencyCode,
   defaultLaborRate,
+  quickAdd,
   hasPresets,
   onOpenPresets,
   onAddFinding,
@@ -109,6 +113,16 @@ export function LaborEditor({
         : prev.map((l, i) => (i === editing.index ? parsed.data : l))
     )
     setEditing(null)
+  }
+  function setNumber(index: number, field: 'hours' | 'rate', value: number) {
+    if (locked) return
+    setLaborItems((prev) =>
+      prev.map((line, i) => {
+        if (i !== index) return line
+        const next = { ...line, [field]: value }
+        return { ...next, total: lineTotal(next.hours, next.rate) }
+      })
+    )
   }
   function move(index: number, delta: number) {
     setLaborItems((prev) => {
@@ -224,6 +238,14 @@ export function LaborEditor({
       className="@container min-w-0"
       contentClassName="p-3"
     >
+      {quickAdd && (
+        <LaborQuickAdd
+          {...quickAdd}
+          currencyCode={currencyCode}
+          locked={locked}
+          onAdd={(line) => setLaborItems((prev) => [...prev, line])}
+        />
+      )}
       <table className="hidden w-full table-fixed text-sm @[850px]:table">
         <thead>
           <tr className="border-b text-left text-xs text-muted-foreground">
@@ -263,9 +285,24 @@ export function LaborEditor({
                 <span className="block text-xs text-muted-foreground">{mode(l)}</span>
               </td>
               <td className="p-2">
-                {l.hours} {l.pricingType === 'hourly' ? e('hours') : e('pieces')}
+                <LaborNumberInput
+                  label={`${t('qtyOrHours')}: ${l.description}`}
+                  value={l.hours}
+                  disabled={locked || isShopFeeLine(l)}
+                  onCommit={(value) => setNumber(i, 'hours', value)}
+                />
+                <span className="text-xs text-muted-foreground">
+                  {l.pricingType === 'hourly' ? e('hours') : e('pieces')}
+                </span>
               </td>
-              <td className="p-2 tabular-nums">{format(l.rate, currencyCode)}</td>
+              <td className="p-2 tabular-nums">
+                <LaborNumberInput
+                  label={`${e('price')}: ${l.description}`}
+                  value={l.rate}
+                  disabled={locked || (isShopFeeLine(l) && feeLocked)}
+                  onCommit={(value) => setNumber(i, 'rate', value)}
+                />
+              </td>
               <td className="p-2 font-semibold tabular-nums">{format(l.total, currencyCode)}</td>
               <td>{controls(l, i)}</td>
             </tr>

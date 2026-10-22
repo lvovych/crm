@@ -1,4 +1,5 @@
 'use client'
+import { createLaborPreset } from '@/features/labor-presets/Actions/laborPresetActions'
 
 import { ShopFeeProvider } from '@/features/settings/Components/ShopFeeContext'
 import { DocumentLockBanner } from '@/components/document-lock-banner'
@@ -378,10 +379,8 @@ export function ServicePageClient({
     const newItems = preset.items.map((item) => ({
       description: item.description,
       hours: item.hours,
-      rate: item.rate > 0 ? item.rate : item.pricingType === 'service' ? 0 : defaultLaborRate,
-      total:
-        item.hours *
-        (item.rate > 0 ? item.rate : item.pricingType === 'service' ? 0 : defaultLaborRate),
+      rate: item.rate,
+      total: lineTotal(item.hours, item.rate),
       pricingType: (item.pricingType as 'hourly' | 'service') || 'hourly',
     }))
     formState.dirtySetLaborItems((prev) => [...newItems, ...prev])
@@ -579,6 +578,26 @@ export function ServicePageClient({
     inventoryParts,
     defaultMarkupPercent,
     markupAppliesToInventory,
+    quickLabor: {
+      presets: laborPresets,
+      onPackage: handleSelectPreset,
+      onSavePreset: async (line) => {
+        const result = await createLaborPreset({
+          name: line.description,
+          items: [
+            {
+              description: line.description,
+              hours: line.hours,
+              rate: line.rate,
+              pricingType: line.pricingType,
+              sortOrder: 0,
+            },
+          ],
+        })
+        if (!result.success || !result.data) throw new Error('Could not save service')
+        return result.data
+      },
+    },
     hasPresets: laborPresets.length > 0,
     onOpenPresets: () => formState.setShowPresetPicker(true),
     onScanBarcode: () => formState.setShowBarcodeScanner(true),

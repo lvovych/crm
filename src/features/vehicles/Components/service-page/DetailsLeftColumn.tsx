@@ -36,6 +36,7 @@ interface DetailsLeftColumnProps {
   inventoryParts: InventoryPartOption[]
   defaultMarkupPercent?: number
   markupAppliesToInventory?: boolean
+  quickLabor?: React.ComponentProps<typeof LaborEditor>['quickAdd']
   hasPresets?: boolean
   onOpenPresets?: () => void
   onScanBarcode?: () => void
@@ -82,6 +83,7 @@ export function DetailsLeftColumn({
   inventoryParts,
   defaultMarkupPercent = 0,
   markupAppliesToInventory = false,
+  quickLabor,
   hasPresets,
   onOpenPresets,
   onScanBarcode,
@@ -167,6 +169,7 @@ export function DetailsLeftColumn({
         markupAppliesToInventory={markupAppliesToInventory}
       />
       <LaborEditor
+        quickAdd={quickLabor}
         technicians={boardTechnicians}
         primaryTechnicianId={record.technicianId}
         locked={locked}

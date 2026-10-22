@@ -366,6 +366,7 @@ export function ModernDetails(props: ModernDetailsProps) {
                   )}
 
                   <LaborEditor
+                    quickAdd={props.quickLabor}
                     technicians={props.boardTechnicians}
                     primaryTechnicianId={record.technicianId}
                     locked={locked}

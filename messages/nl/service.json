@@ -793,5 +793,33 @@
     "schedule": "Mechanic and scheduling",
     "scheduleEdit": "Edit scheduling",
     "continue": "Continue editing"
+  },
+  "quickLabor": {
+    "title": "Quick add work",
+    "catalog": "Services and packages ↗",
+    "search": "Service or package",
+    "placeholder": "Search or enter a new job…",
+    "package": "Package: {jobs} jobs, {parts} parts",
+    "hourly": "Per hour",
+    "service": "Per unit",
+    "priceRequired": "Enter price",
+    "favorite": "Favorite: {name}",
+    "empty": "No services found. Enter a name for a one-off job.",
+    "narrow": "Showing 20 results. Refine your search.",
+    "oneOff": "Add “{name}” as a one-off job",
+    "hours": "Hours",
+    "quantity": "Quantity",
+    "rate": "Hourly rate",
+    "price": "Unit price",
+    "saving": "Saving…",
+    "add": "Add and continue",
+    "preview": "Package contents — jobs and parts will be added",
+    "part": "Part",
+    "type": "Pricing",
+    "saveTypical": "Also save as a typical service",
+    "keys": "↑ ↓ choose · Enter select / add · Tab next field · Ctrl/⌘ + Enter quick add · Esc close suggestions",
+    "invalid": "Enter a job name, quantity greater than zero and a valid price (zero is allowed).",
+    "saveFailed": "Could not save the service to the catalog. Check your permissions or connection, or uncheck “Also save” to add a one-off job.",
+    "added": "Added to the order. Ready for the next job."
   }
 }
