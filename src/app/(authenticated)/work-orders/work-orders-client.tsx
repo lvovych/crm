@@ -73,7 +73,7 @@ function CustomStatusChip({ status }: { status: { name: string; color: string } 
   return (
     <span
       className={cn(
-        'max-w-40 truncate rounded-full border px-2 py-0.5 text-xs font-medium',
+        'max-w-full truncate rounded-full border px-2 py-0.5 text-xs font-medium',
         statusColorClasses(status.color).chip
       )}
     >
@@ -517,11 +517,11 @@ export function WorkOrdersClient({
         {/* Low-priority columns drop out at sm/md/lg; the min-width stops what
             is left from being squeezed to a few characters, scrolling the
             table sideways instead (the Table wrapper handles the overflow) */}
-        <Table containerClassName="min-h-0 flex-1" className="min-w-[36rem] table-fixed">
+        <Table containerClassName="min-h-0 flex-1" className="min-w-[68rem] table-fixed">
           <TableHeader sticky>
             <TableRow>
               {shows('invoice') && (
-                <TableHead className="hidden sm:table-cell w-[100px]">
+                <TableHead className="hidden sm:table-cell w-[180px]">
                   <button
                     type="button"
                     className="flex items-center hover:text-foreground"
@@ -532,7 +532,7 @@ export function WorkOrdersClient({
                   </button>
                 </TableHead>
               )}
-              <TableHead className="w-[18%]">
+              <TableHead className="w-[210px]">
                 <button
                   type="button"
                   className="flex items-center hover:text-foreground"
@@ -543,7 +543,7 @@ export function WorkOrdersClient({
                 </button>
               </TableHead>
               {shows('customer') && (
-                <TableHead className="hidden w-[14%] md:table-cell">
+                <TableHead className="hidden w-[170px] md:table-cell">
                   <button
                     type="button"
                     className="flex items-center hover:text-foreground"
@@ -554,7 +554,7 @@ export function WorkOrdersClient({
                   </button>
                 </TableHead>
               )}
-              <TableHead>
+              <TableHead className="w-[240px]">
                 <button
                   type="button"
                   className="flex items-center hover:text-foreground"
@@ -564,7 +564,7 @@ export function WorkOrdersClient({
                   <SortIcon column="title" />
                 </button>
               </TableHead>
-              <TableHead className="w-[110px]">
+              <TableHead className="w-[150px]">
                 <button
                   type="button"
                   className="flex items-center hover:text-foreground"
@@ -575,7 +575,7 @@ export function WorkOrdersClient({
                 </button>
               </TableHead>
               {shows('tech') && (
-                <TableHead className="hidden w-[12%] lg:table-cell">
+                <TableHead className="hidden w-[180px] lg:table-cell">
                   <button
                     type="button"
                     className="flex items-center hover:text-foreground"
@@ -586,7 +586,7 @@ export function WorkOrdersClient({
                   </button>
                 </TableHead>
               )}
-              <TableHead className="w-[90px]">
+              <TableHead className="w-[110px]">
                 <button
                   type="button"
                   className="flex items-center hover:text-foreground"
@@ -600,7 +600,7 @@ export function WorkOrdersClient({
                   sortable, so "what is promised soonest" is one click; jobs
                   with no promise sort last either way. */}
               {showsPromised && (
-                <TableHead className="w-[84px]">
+                <TableHead className="w-[130px]">
                   <button
                     type="button"
                     className="flex items-center hover:text-foreground"
@@ -611,7 +611,7 @@ export function WorkOrdersClient({
                   </button>
                 </TableHead>
               )}
-              <TableHead className="w-[90px] text-right">
+              <TableHead className="w-[150px] text-right">
                 <button
                   type="button"
                   className="flex items-center justify-end hover:text-foreground ml-auto"
@@ -649,7 +649,7 @@ export function WorkOrdersClient({
                         })}
                       >
                         {shows('invoice') && (
-                          <TableCell className="hidden sm:table-cell font-mono text-xs text-muted-foreground">
+                          <TableCell className="hidden sm:table-cell whitespace-normal break-all font-mono text-xs text-muted-foreground">
                             {r.invoiceNumber || '-'}
                           </TableCell>
                         )}
@@ -657,7 +657,7 @@ export function WorkOrdersClient({
                           {r.vehicle ? (
                             <TableCellLink href={`/vehicles/${r.vehicle.id}`} block>
                               {r.vehicle.licensePlate && (
-                                <span className="font-mono text-sm font-medium">
+                                <span className="block truncate font-mono text-sm font-medium">
                                   {r.vehicle.licensePlate}
                                 </span>
                               )}
@@ -697,7 +697,7 @@ export function WorkOrdersClient({
                           </div>
                         </TableCell>
                         {shows('tech') && (
-                          <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
+                          <TableCell className="hidden lg:table-cell whitespace-normal break-words text-sm text-muted-foreground">
                             {r.techName || '-'}
                           </TableCell>
                         )}
