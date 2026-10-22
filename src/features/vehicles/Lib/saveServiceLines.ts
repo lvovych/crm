@@ -26,6 +26,8 @@ export async function prepareParts(
     if (line.id && !old) throw new Error('Позицію вже змінено. Оновіть наряд перед збереженням.')
     const next = {
       ...line,
+      stockOwnership: line.stockOwnership ?? (old?.stockOwnership as 'OWN' | 'CUSTOMER' | undefined) ?? 'OWN',
+      customerPartInstalled: line.customerPartInstalled ?? old?.customerPartInstalled ?? false,
       id: old?.id,
       sortOrder,
       discountType: line.discountType ?? old?.discountType ?? 'none',

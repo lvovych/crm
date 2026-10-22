@@ -298,6 +298,8 @@ model ServiceAttachment {
 }
 
 model ServicePart {
+  stockOwnership String @default("OWN")
+  customerPartInstalled Boolean @default(false)
   stockDemand_servicePart StockDemand[] @relation("StockDemand_servicePart")
   organizationId String?
   @@unique([organizationId, id])

@@ -433,8 +433,8 @@ model StockDemand {
   ownership                    String                  @default("OWN")
   state                        String                  @default("ACTIVE")
   version                      Int                     @default(1)
-  servicePartId                String
-  servicePart                  ServicePart             @relation("StockDemand_servicePart", fields: [organizationId, servicePartId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  servicePartId                String?
+  servicePart                  ServicePart?            @relation("StockDemand_servicePart", fields: [organizationId, servicePartId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
   serviceRecordId              String
   serviceRecord                ServiceRecord           @relation("StockDemand_serviceRecord", fields: [organizationId, serviceRecordId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
   inventoryPartId              String

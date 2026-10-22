@@ -2,6 +2,8 @@ import { z } from 'zod'
 import { uploadUrlSchema } from '@/lib/upload-url'
 
 export const servicePartSchema = z.object({
+  stockOwnership: z.enum(['OWN', 'CUSTOMER']).optional(),
+  customerPartInstalled: z.boolean().optional(),
   id: z.string().optional(),
   discountType: z.enum(['none', 'percentage', 'fixed']).optional(),
   discountValue: z.coerce.number().finite().min(0).optional(),

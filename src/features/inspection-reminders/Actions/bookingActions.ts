@@ -1,4 +1,5 @@
 'use server'
+import { newRecordStockMode } from '@/features/stock-ledger/Lib/cutover'
 
 import { getTranslations } from 'next-intl/server'
 import { z } from 'zod'
@@ -203,6 +204,7 @@ export async function confirmBooking(raw: unknown) {
   if (settings.bookingMode === 'direct') {
     const record = await db.serviceRecord.create({
       data: {
+        inventoryAccountingMode: await newRecordStockMode(db, send.organizationId),
         title,
         description: note,
         type: 'inspection',

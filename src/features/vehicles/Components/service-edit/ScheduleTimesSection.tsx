@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useModernWorkOrder } from '@/components/work-order-layout-context'
 import { useRouter } from 'next/navigation'
 import { AddPersonDialog } from '@/features/team/Components/AddPersonDialog'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -121,6 +121,7 @@ export function ScheduleTimesSection({
   onSaved,
 }: ScheduleTimesSectionProps) {
   const t = useTranslations('service.schedule')
+  const locale = useLocale()
   const router = useRouter()
   const sectionRef = useRef<HTMLDetailsElement>(null)
   function showError(message: string) {
@@ -529,17 +530,17 @@ export function ScheduleTimesSection({
         <span className="mt-1 block text-muted-foreground">
           {selectedTechName || summaryT('unassigned')} ·{' '}
           {startDateTime
-            ? startDateTime.toLocaleString(undefined, {
-                timeZone: timezone || undefined,
+            ? startDateTime.toLocaleString(locale, {
+                timeZone: timezone || 'UTC',
                 dateStyle: 'short',
                 timeStyle: 'short',
               })
             : '—'}
           {endDateTime
-            ? ` – ${endDateTime.toLocaleString(undefined, { timeZone: timezone || undefined, dateStyle: 'short', timeStyle: 'short' })}`
+            ? ` – ${endDateTime.toLocaleString(locale, { timeZone: timezone || 'UTC', dateStyle: 'short', timeStyle: 'short' })}`
             : ''}
           {promisedAt
-            ? ` · ${t('promisedAt')}: ${promisedAt.toLocaleString(undefined, { timeZone: timezone || undefined, dateStyle: 'short', timeStyle: 'short' })}`
+            ? ` · ${t('promisedAt')}: ${promisedAt.toLocaleString(locale, { timeZone: timezone || 'UTC', dateStyle: 'short', timeStyle: 'short' })}`
             : ''}
         </span>
       </summary>
@@ -660,10 +661,10 @@ export function ScheduleTimesSection({
               {startDateTime && technicians.length > 0 && (
                 <span className="text-[11px] text-muted-foreground" suppressHydrationWarning>
                   {t('loadOn', {
-                    date: startDateTime.toLocaleDateString(undefined, {
+                    date: startDateTime.toLocaleDateString(locale, {
                       day: 'numeric',
                       month: 'short',
-                      timeZone: timezone || undefined,
+                      timeZone: timezone || 'UTC',
                     }),
                   })}
                 </span>
@@ -812,18 +813,18 @@ export function ScheduleTimesSection({
                         className="text-[11px] leading-snug text-amber-800 dark:text-amber-300"
                       >
                         {c.label || t('anotherJob')} ·{' '}
-                        {new Date(c.start).toLocaleString(undefined, {
+                        {new Date(c.start).toLocaleString(locale, {
                           day: 'numeric',
                           month: 'short',
                           hour: '2-digit',
                           minute: '2-digit',
-                          timeZone: timezone || undefined,
+                          timeZone: timezone || 'UTC',
                         })}
                         {' – '}
-                        {new Date(c.end).toLocaleTimeString(undefined, {
+                        {new Date(c.end).toLocaleTimeString(locale, {
                           hour: '2-digit',
                           minute: '2-digit',
-                          timeZone: timezone || undefined,
+                          timeZone: timezone || 'UTC',
                         })}
                         {' · '}
                         {c.onTechnician && c.onBay

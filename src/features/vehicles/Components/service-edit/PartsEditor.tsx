@@ -1,4 +1,5 @@
 'use client'
+import { useWorkOrderStock } from '@/features/stock-ledger/Components/useWorkOrderStock'
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Package, Plus, ScanBarcode, Pencil, ArrowUp, ArrowDown } from 'lucide-react'
@@ -19,6 +20,8 @@ import { emptyPart } from './form-types'
 import { LineEditorDialog, LineField } from './LineEditorDialog'
 
 interface PartsEditorProps {
+  stockLedgerRecordId?: string
+  stockLedgerVersion?: string
   partItems: ServicePartInput[]
   setPartItems: React.Dispatch<React.SetStateAction<ServicePartInput[]>>
   updatePart: (
@@ -40,6 +43,8 @@ interface PartsEditorProps {
   locked?: boolean
 }
 export function PartsEditor({
+  stockLedgerRecordId,
+  stockLedgerVersion,
   partItems,
   setPartItems,
   partsSubtotal,
@@ -54,6 +59,7 @@ export function PartsEditor({
   onPendingPartConsumed,
   locked = false,
 }: PartsEditorProps) {
+  const stock = useWorkOrderStock(stockLedgerRecordId, stockLedgerVersion)
   const t = useTranslations('service.parts'),
     e = useTranslations('service.lineEditor'),
     format = useFormatCurrency()
@@ -78,11 +84,12 @@ export function PartsEditor({
   }, [locked])
   const draft = editing?.draft
   const dirty = !!editing && JSON.stringify(editing.draft) !== JSON.stringify(editing.original)
-  function change(field: keyof ServicePartInput, value: string | number) {
+  function change(field: keyof ServicePartInput, value: string | number | boolean) {
     setError('')
     setEditing((current) => {
       if (!current) return current
       let next = { ...current.draft, [field]: value }
+      if(field === 'stockOwnership' && value === 'CUSTOMER') next = {...next,unitCost:0}
       if (['unitCost', 'markupPercent', 'unitPrice'].includes(field))
         next = {
           ...next,
@@ -267,6 +274,7 @@ export function PartsEditor({
                 >
                   {p.name || e('unnamed')}
                 </button>
+                {stock.indicator(p)}
               </td>
               <td className="p-2 tabular-nums">
                 {p.quantity} {p.unit}
@@ -292,6 +300,7 @@ export function PartsEditor({
               </span>
               <span className="mt-1 block font-medium">{p.name || e('unnamed')}</span>
             </button>
+            {stock.indicator(p)}
             <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
               {[
                 [t('qty'), `${p.quantity} ${p.unit ?? ''}`],
@@ -438,6 +447,10 @@ export function PartsEditor({
               />
             </LineField>
           </div>
+          {stockLedgerRecordId && <div className="grid gap-3 rounded border p-3">
+            <LineField label="Чия запчастина"><select className="min-h-11 w-full border bg-background" value={draft.stockOwnership ?? 'OWN'} onChange={e=>change('stockOwnership',e.target.value)}><option value="OWN">Наша — потрібна видача зі складу</option><option value="CUSTOMER">Клієнта — без власного складського руху</option></select></LineField>
+            {draft.stockOwnership === 'CUSTOMER' && <label className="flex min-h-11 items-center gap-2"><input type="checkbox" checked={!!draft.customerPartInstalled} onChange={e=>change('customerPartInstalled',e.target.checked)} />Деталь клієнта встановлено</label>}
+          </div>}
           <details className="rounded-lg border p-3">
             <summary className="min-h-11 cursor-pointer text-sm font-medium">
               {e('internal')}
@@ -449,6 +462,7 @@ export function PartsEditor({
                   min="0"
                   step="0.01"
                   value={draft.unitCost}
+                  disabled={draft.stockOwnership === 'CUSTOMER'}
                   onChange={(v) => change('unitCost', v.target.value)}
                 />
               </LineField>
@@ -480,6 +494,7 @@ export function PartsEditor({
           </p>
         </LineEditorDialog>
       )}
+      {stock.dialog}
     </AppCard>
   )
 }

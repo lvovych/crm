@@ -12,7 +12,13 @@ import {
 import { D } from '../Lib/amounts'
 type Demand = NonNullable<Awaited<ReturnType<typeof listLedgerDemands>>['data']>[number]
 type Directory = NonNullable<Awaited<ReturnType<typeof getLedgerDirectory>>['data']>
-export function FulfillmentPanel() {
+export function FulfillmentPanel({
+  serviceRecordId,
+  servicePartId,
+}: {
+  serviceRecordId?: string
+  servicePartId?: string
+} = {}) {
   const [rows, setRows] = useState<Demand[]>([]),
     [directory, setDirectory] = useState<Directory>(),
     [search, setSearch] = useState(''),
@@ -26,11 +32,16 @@ export function FulfillmentPanel() {
     [price, setPrice] = useState('0'),
     [reason, setReason] = useState(''),
     [source, setSource] = useState(''),
-    [op, setOp] = useState<'reserve' | 'issue' | 'return' | 'release' | 'purchase'>('reserve')
+    [op, setOp] = useState<
+      'reserve' | 'issue' | 'return' | 'release' | 'purchase' | 'cancelDemand'
+    >('reserve')
   const [key, setKey] = useState(() => crypto.randomUUID())
   useEffect(() => {
     let active = true
-    Promise.all([listLedgerDemands(search), getLedgerDirectory()]).then(([d, w]) => {
+    Promise.all([
+      listLedgerDemands(search, { serviceRecordId, servicePartId }),
+      getLedgerDirectory(),
+    ]).then(([d, w]) => {
       if (!active) return
       setRows(d.data ?? [])
       setDirectory(w.data)
@@ -39,7 +50,7 @@ export function FulfillmentPanel() {
     return () => {
       active = false
     }
-  }, [search, revision])
+  }, [search, revision, serviceRecordId, servicePartId])
   const open = (r: Demand, action: typeof op) => {
     setSelected(r)
     setOp(action)
@@ -72,6 +83,7 @@ export function FulfillmentPanel() {
         quantity,
         effectiveAt,
         ...(op === 'return' ? { allocationId: source, reason } : {}),
+        ...(op === 'cancelDemand' ? { reason } : {}),
         ...(op === 'release' ? { reservationId: source } : {}),
       }
       const result =
@@ -132,16 +144,31 @@ export function FulfillmentPanel() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => open(r, 'reserve')}>Резерв</Button>
-            <Button onClick={() => open(r, 'issue')}>Видати</Button>
+            <Button disabled={r.stockOwnership === 'CUSTOMER'} onClick={() => open(r, 'reserve')}>
+              Резерв
+            </Button>
+            <Button disabled={r.stockOwnership === 'CUSTOMER'} onClick={() => open(r, 'issue')}>
+              Видати
+            </Button>
             <Button variant="outline" onClick={() => open(r, 'return')}>
               Повернути
             </Button>
             <Button variant="outline" onClick={() => open(r, 'release')}>
               Зняти резерв
             </Button>
-            <Button variant="outline" onClick={() => open(r, 'purchase')}>
+            <Button
+              disabled={r.stockOwnership === 'CUSTOMER'}
+              variant="outline"
+              onClick={() => open(r, 'purchase')}
+            >
               До закупівлі
+            </Button>
+            <Button
+              disabled={!r.demandId}
+              variant="outline"
+              onClick={() => open(r, 'cancelDemand')}
+            >
+              Скасувати потребу
             </Button>
           </div>
         </div>
@@ -152,11 +179,15 @@ export function FulfillmentPanel() {
           if (!v && !busy) setSelected(undefined)
         }}
       >
-        <DialogContent className="max-h-[90dvh] overflow-y-auto">
+        <DialogContent
+          onInput={(e) => e.stopPropagation()}
+          className="max-h-[90dvh] overflow-y-auto [&_button]:min-h-11 [&_input]:min-h-11"
+        >
           <DialogHeader>
             <DialogTitle>
               {
                 {
+                  cancelDemand: 'Скасувати складську потребу',
                   reserve: 'Зарезервувати',
                   issue: 'Видати в наряд',
                   return: 'Повернути з наряду',
@@ -168,7 +199,7 @@ export function FulfillmentPanel() {
           </DialogHeader>
           <p>{selected?.name}</p>
           {error && <p role="alert">{error}</p>}
-          <label>
+          <label hidden={op === 'cancelDemand'}>
             Кількість
             <Input
               inputMode="decimal"
@@ -179,7 +210,7 @@ export function FulfillmentPanel() {
               }}
             />
           </label>
-          <label>
+          <label hidden={op === 'cancelDemand'}>
             Склад
             <select
               className="min-h-11 w-full rounded border bg-background"
@@ -217,7 +248,7 @@ export function FulfillmentPanel() {
               </select>
             </label>
           )}
-          {op === 'return' && (
+          {(op === 'return' || op === 'cancelDemand') && (
             <label>
               Причина
               <Input

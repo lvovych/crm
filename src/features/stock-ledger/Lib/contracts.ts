@@ -181,3 +181,8 @@ export const chargeSchema = commandSchema.extend({
   effectiveAt: dateText,
   dueDate: dateText,
 })
+
+export const cancelDemandSchema = commandSchema.extend({
+  demandId: z.string().min(1),
+  reason: z.string().trim().min(5).max(1000),
+})

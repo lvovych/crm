@@ -153,6 +153,8 @@ export function DetailsLeftColumn({
       )}
 
       <PartsEditor
+        stockLedgerRecordId={record.stockLedgerEnabled ? record.id : undefined}
+        stockLedgerVersion={String(record.updatedAt ?? "")}
         pendingPart={pendingPart}
         onPendingPartConsumed={onPendingPartConsumed}
         locked={locked}

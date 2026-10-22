@@ -1,3 +1,4 @@
+import { approveStockCutover, newRecordStockMode } from '@/features/stock-ledger/Lib/cutover'
 import { reverseReceipt } from '@/features/stock-ledger/Lib/reverseReceipt'
 import { previewImport, commitImport } from '@/features/stock-ledger/Lib/importService'
 import { createFinance } from '@/features/stock-ledger/Lib/finance'
@@ -8,7 +9,7 @@ import { returnToSupplier } from '@/features/stock-ledger/Lib/supplierReturns'
 import { createSettlementOperations } from '@/features/stock-ledger/Lib/settlements'
 // @vitest-environment node
 import { randomUUID } from 'node:crypto'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { PrismaClient } from '@/generated/prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { createStockOperations } from '@/features/stock-ledger/Lib/stock'
@@ -654,5 +655,114 @@ suite('PostgreSQL supplier ledger', () => {
       where: { organizationId: org, inventoryDocumentId: draft.id },
     })
     expect(entry.amount.toFixed(2)).toBe('1.00')
+  })
+  it('cutover changes only future writers, requires approval and blocks fallback to legacy', async () => {
+    expect(await newRecordStockMode(db, org)).toBe('LEGACY')
+    const old = await db.serviceRecord.create({
+      data: { organizationId: org, title: 'Historical unchanged' },
+    })
+    const input = {
+      idempotencyKey: key(),
+      effectiveDate: new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Kyiv' }).format(
+        new Date()
+      ),
+      manifestChecksum: 'a'.repeat(64),
+      stockVerified: true,
+      supplierBalancesVerified: true,
+      maintenanceConfirmed: true,
+    }
+    await expect(approveStockCutover(db, ctx, { ...input, stockVerified: false })).rejects.toThrow()
+    await approveStockCutover(db, ctx, input)
+    vi.stubEnv('STOCK_LEDGER_ENABLED', 'true')
+    try {
+      expect(await newRecordStockMode(db, org)).toBe('LEDGER')
+      const next = await db.serviceRecord.create({
+        data: {
+          organizationId: org,
+          title: 'New accounting',
+          inventoryAccountingMode: await newRecordStockMode(db, org),
+        },
+      })
+      expect(next.inventoryAccountingMode).toBe('LEDGER')
+      expect(
+        (await db.serviceRecord.findUniqueOrThrow({ where: { id: old.id } }))
+          .inventoryAccountingMode
+      ).toBe('LEGACY')
+      await expect(
+        db.appSetting.deleteMany({
+          where: { organizationId: org, key: 'stockLedger.approvedCutover.v1' },
+        })
+      ).rejects.toThrow('immutable')
+      vi.stubEnv('STOCK_LEDGER_ENABLED', 'false')
+      await expect(newRecordStockMode(db, org)).rejects.toThrow('вже переведено')
+    } finally {
+      vi.unstubAllEnvs()
+    }
+  })
+
+  it('customer-owned parts require installation confirmation but no stock or AP', async () => {
+    const before = await db.inventoryLedgerEntry.count({ where: { organizationId: org } })
+    const job = await db.serviceRecord.create({
+      data: {
+        organizationId: org,
+        title: 'Customer parts',
+        inventoryAccountingMode: 'LEDGER',
+        status: 'in-progress',
+      },
+    })
+    const part = await db.servicePart.create({
+      data: {
+        serviceRecordId: job.id,
+        name: 'Customer filter',
+        stockOwnership: 'CUSTOMER',
+        quantity: 1,
+        unitCost: 999,
+      },
+    })
+    expect(part.unitCost).toBe(0)
+    await expect(
+      db.serviceRecord.update({ where: { id: job.id }, data: { status: 'completed' } })
+    ).rejects.toThrow()
+    await db.$transaction(async (tx) => {
+      await tx.serviceRecord.update({ where: { id: job.id }, data: { status: 'completed' } })
+      await tx.servicePart.update({ where: { id: part.id }, data: { customerPartInstalled: true } })
+    })
+    expect(await db.inventoryLedgerEntry.count({ where: { organizationId: org } })).toBe(before)
+    expect(
+      await db.settlementEntry.count({ where: { organizationId: org, serviceRecordId: job.id } })
+    ).toBe(0)
+  })
+  it('cancels empty demand without deleting its history and blocks unlinked own parts', async () => {
+    const job = await db.serviceRecord.create({
+      data: {
+        organizationId: org,
+        title: 'Cancelled need',
+        inventoryAccountingMode: 'LEDGER',
+        status: 'in-progress',
+      },
+    })
+    const part = await db.servicePart.create({
+      data: { serviceRecordId: job.id, name: 'Part', inventoryPartId: productId, quantity: 1 },
+    })
+    const ops = createStockOperations(db, ctx)
+    const demand = await ops.createDemand({ servicePartId: part.id, idempotencyKey: key() })
+    await expect(
+      db.servicePart.update({ where: { id: part.id }, data: { stockOwnership: 'CUSTOMER' } })
+    ).rejects.toThrow()
+    await ops.cancelDemand({
+      demandId: demand.id,
+      idempotencyKey: key(),
+      reason: 'Клієнт відмовився від деталі',
+    })
+    await db.servicePart.delete({ where: { id: part.id } })
+    const history = await db.stockDemand.findUniqueOrThrow({ where: { id: demand.id } })
+    expect(history.state).toBe('CANCELLED')
+    expect(history.servicePartId).toBeNull()
+    await db.servicePart.create({
+      data: { serviceRecordId: job.id, name: 'Unlinked own part', quantity: 1 },
+    })
+    await expect(
+      db.serviceRecord.update({ where: { id: job.id }, data: { status: 'completed' } })
+    ).rejects.toThrow()
   })
 })

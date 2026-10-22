@@ -3,6 +3,7 @@ import { nextDocumentNumber } from './numbers'
 import { D, fifo } from './amounts'
 import {
   demandSchema,
+  cancelDemandSchema,
   reserveSchema,
   releaseSchema,
   returnSchema,
@@ -98,6 +99,8 @@ export function createStockOperations(db: LedgerDB, ctx: LedgerContext) {
         })
         if (!part || !part.inventoryPartId)
           throw new Error('Виберіть складський товар у позиції наряду')
+        if (part.stockOwnership === 'CUSTOMER')
+          throw new Error('Деталь клієнта не резервується на власному складі')
         if (part.serviceRecord.inventoryAccountingMode !== 'LEDGER')
           throw new Error('Історичний наряд потребує окремої звірки перед переходом на новий склад')
         const old = await tx.stockDemand.findUnique({
@@ -114,6 +117,45 @@ export function createStockOperations(db: LedgerDB, ctx: LedgerContext) {
           },
         })
         return { id: demand.id }
+      })
+    },
+    async cancelDemand(raw: unknown) {
+      const input = cancelDemandSchema.parse(raw)
+      return ledgerCommand(db, ctx, 'demand.cancel', input, async (tx) => {
+        const demand = await tx.stockDemand.findFirst({
+          where: { ...org, id: input.demandId, state: 'ACTIVE' },
+          include: {
+            stockReservation_demand: true,
+            purchaseDemandAllocation_demand: {
+              include: { purchaseOrderLine: { include: { order: true } } },
+            },
+          },
+        })
+        if (!demand) throw new Error('Активна потреба не знайдена')
+        if (
+          (await netIssued(tx, ctx, demand.id)).gt(0) ||
+          demand.stockReservation_demand.some((r) => r.remainingQuantity.gt(0))
+        )
+          throw new Error('Поверніть видані деталі та звільніть резерв перед скасуванням потреби')
+        if (
+          demand.purchaseDemandAllocation_demand.some(
+            (a) =>
+              ['CONFIRMED', 'PARTIALLY_RECEIVED'].includes(a.purchaseOrderLine.order.status) &&
+              a.fulfilledQty.lt(a.quantity)
+          )
+        )
+          throw new Error('Спочатку скасуйте непоставлений залишок закупівлі')
+        if (
+          await tx.receiptDemandAllocation.count({
+            where: { ...org, demandId: demand.id, receiptLine: { document: { status: 'DRAFT' } } },
+          })
+        )
+          throw new Error('Спочатку зніміть розподіл у чернетці приходу')
+        await tx.stockDemand.update({
+          where: { id: demand.id },
+          data: { state: 'CANCELLED', servicePartId: null, version: { increment: 1 } },
+        })
+        return { id: demand.id, state: 'CANCELLED', reason: input.reason }
       })
     },
     async reserve(raw: unknown) {

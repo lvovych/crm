@@ -61,7 +61,7 @@ function setupAuth() {
 }
 
 /** Wire up a quote with the given part lines and capture what conversion does. */
-function setupConversion(partItems: any[]) {
+function setupConversion(partItems: any[], ledgerMode = false) {
   vi.mocked(db.quote.findFirst).mockResolvedValue({
     id: QUOTE_ID,
     quoteNumber: 'Q-1',
@@ -90,7 +90,9 @@ function setupConversion(partItems: any[]) {
 
   vi.mocked(db.$transaction).mockImplementation(async (fn: any) =>
     fn({
+      appSetting: { findUnique: vi.fn().mockResolvedValue(ledgerMode ? {value:JSON.stringify({effectiveDate:'2026-10-23',manifestChecksum:'a'.repeat(64),approvedById:USER_ID,approvedAt:'2026-10-23T00:00:00.000Z'})} : null) },
       serviceRecord: {
+        findFirst: vi.fn().mockResolvedValue({inventoryAccountingMode:ledgerMode?'LEDGER':'LEGACY'}),
         create: vi.fn().mockResolvedValue({
           id: 'sr-1',
           title: 'Brake job',
@@ -101,7 +103,7 @@ function setupConversion(partItems: any[]) {
       servicePart: { createMany: servicePartCreateMany },
       serviceLabor: { createMany: vi.fn() },
       serviceAttachment: { createMany: vi.fn() },
-      quote: { update: vi.fn() },
+      quote: { update: vi.fn(), updateMany: vi.fn().mockResolvedValue({count:1}) },
       stockMovement: { createMany: stockMovementCreateMany },
       $queryRaw: queryRaw,
     })
@@ -220,4 +222,15 @@ describe('convertQuoteToServiceRecord — inventory', () => {
 
     expect(queryRaw).not.toHaveBeenCalled()
   })
+  it('preserves stock links but does not deduct legacy quantity after cutover', async () => {
+    vi.stubEnv('STOCK_LEDGER_ENABLED','true')
+    try {
+      const {queryRaw,servicePartCreateMany}=setupConversion([{name:'Part',quantity:2,unitPrice:50,total:100,excluded:false,inventoryPartId:'inv-1'}],true)
+      const result=await convertQuoteToServiceRecord(QUOTE_ID,VEHICLE_ID)
+      expect(result.success).toBe(true)
+      expect(servicePartCreateMany).toHaveBeenCalled()
+      expect(queryRaw).not.toHaveBeenCalled()
+    } finally {vi.unstubAllEnvs()}
+  })
+
 })

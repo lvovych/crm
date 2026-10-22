@@ -384,6 +384,8 @@ export function ModernDetails(props: ModernDetailsProps) {
                   />
 
                   <PartsEditor
+                    stockLedgerRecordId={record.stockLedgerEnabled ? record.id : undefined}
+        stockLedgerVersion={String(record.updatedAt ?? "")}
                     pendingPart={props.pendingPart}
                     onPendingPartConsumed={props.onPendingPartConsumed}
                     locked={locked}

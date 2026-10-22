@@ -273,6 +273,8 @@ export async function ServiceRecordPage({
       confirmedByName: c.confirmedBy?.name ?? null,
     })),
     partItems: record.partItems.map((p) => ({
+      stockOwnership: p.stockOwnership as 'OWN' | 'CUSTOMER',
+      customerPartInstalled: p.customerPartInstalled,
       id: p.id,
       discountType: p.discountType as 'none' | 'percentage' | 'fixed',
       discountValue: p.discountValue,
@@ -403,7 +405,7 @@ export async function ServiceRecordPage({
     <div className="flex h-svh flex-col overflow-hidden">
       <PageHeader />
       <ServicePageClient
-        record={result.data}
+        record={{...result.data,stockLedgerEnabled:process.env.STOCK_LEDGER_ENABLED === 'true' && result.data.inventoryAccountingMode === 'LEDGER'}}
         videoCall={
           videoCallResult.success && videoCallResult.data
             ? videoCallResult.data

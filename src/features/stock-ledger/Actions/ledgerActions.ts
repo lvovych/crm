@@ -342,16 +342,26 @@ export async function getSupplierFinances(partyId?: string) {
   )
 }
 
-export async function listLedgerDemands(search = '') {
+export async function listLedgerDemands(
+  search = '',
+  filter: { serviceRecordId?: string; servicePartId?: string } = {}
+) {
   return withAuth(
     async (ctx) => {
       enabled()
       z.string().max(100).parse(search)
+      const scope = z
+        .object({
+          serviceRecordId: z.string().min(1).optional(),
+          servicePartId: z.string().min(1).optional(),
+        })
+        .parse(filter)
       const rows = await db.servicePart.findMany({
         where: {
           serviceRecord: {
             organizationId: ctx.organizationId,
             inventoryAccountingMode: 'LEDGER',
+            ...(scope.serviceRecordId ? { id: scope.serviceRecordId } : {}),
             ...(search
               ? {
                   OR: [
@@ -362,6 +372,7 @@ export async function listLedgerDemands(search = '') {
               : {}),
           },
           inventoryPartId: { not: null },
+          ...(scope.servicePartId ? { id: scope.servicePartId } : {}),
         },
         include: {
           serviceRecord: { select: { invoiceNumber: true, title: true } },
@@ -379,7 +390,7 @@ export async function listLedgerDemands(search = '') {
             },
           },
         },
-        take: 50,
+        take: scope.serviceRecordId ? 500 : 50,
         orderBy: { id: 'asc' },
       })
       return rows.map((p) => {
@@ -395,6 +406,8 @@ export async function listLedgerDemands(search = '') {
           demandId: d?.id,
           name: p.name,
           job: p.serviceRecord.invoiceNumber ?? p.serviceRecord.title,
+          stockOwnership: p.stockOwnership,
+          customerPartInstalled: p.customerPartInstalled,
           quantity: String(p.quantity),
           expected:
             d?.purchaseDemandAllocation_demand
@@ -424,7 +437,15 @@ export async function listLedgerDemands(search = '') {
 }
 
 export async function stockOperation(
-  operation: 'demand' | 'reserve' | 'release' | 'issue' | 'return' | 'transfer' | 'supplierReturn',
+  operation:
+    | 'demand'
+    | 'cancelDemand'
+    | 'reserve'
+    | 'release'
+    | 'issue'
+    | 'return'
+    | 'transfer'
+    | 'supplierReturn',
   input: unknown
 ) {
   return withAuth(
@@ -434,6 +455,8 @@ export async function stockOperation(
       switch (operation) {
         case 'demand':
           return service.createDemand(input)
+        case 'cancelDemand':
+          return service.cancelDemand(input)
         case 'reserve':
           return service.reserve(input)
         case 'release':

@@ -1,4 +1,5 @@
 'use server'
+import { newRecordStockMode } from '@/features/stock-ledger/Lib/cutover'
 
 import { prepareParts, prepareLabor } from '../Lib/saveServiceLines'
 import { calculateTotals, discountAmountFor } from '@/lib/tax'
@@ -520,6 +521,7 @@ export async function createServiceRecord(input: unknown) {
         }
         const created = await tx.serviceRecord.create({
           data: {
+            inventoryAccountingMode: await newRecordStockMode(tx, organizationId),
             ...recordData,
             organizationId,
             createdById: userId,
@@ -578,6 +580,8 @@ export async function createServiceRecord(input: unknown) {
               unitCost: resolvedUnitCost,
               markupPercent: p.markupPercent ?? 0,
               inventoryPartId: p.inventoryPartId || null,
+              stockOwnership: p.stockOwnership ?? 'OWN',
+              customerPartInstalled: p.customerPartInstalled ?? false,
               serviceRecordId: created.id,
             })
           }
@@ -912,7 +916,9 @@ export async function updateServiceRecord(input: unknown) {
               })
             : []
           const brandByStock = new Map(stockBrands.map((p) => [p.id, p.brand.name]))
-          await tx.servicePart.deleteMany({ where: { serviceRecordId: id, id: { notIn: normalizedParts.flatMap(p => p.id ? [p.id] : []) } } })
+          const retainedPartIds = normalizedParts.flatMap(p => p.id ? [p.id] : [])
+          if (existing.inventoryAccountingMode === 'LEDGER' && await tx.stockDemand.count({where:{organizationId,serviceRecordId:id,state:'ACTIVE',servicePartId:{notIn:retainedPartIds}}})) throw new Error('Спочатку скасуйте складську потребу позиції; історія видач і повернень збережеться')
+          await tx.servicePart.deleteMany({ where: { serviceRecordId: id, id: { notIn: retainedPartIds } } })
           if (partItems.length > 0) {
             const replacementParts = normalizedParts.map((p) => ({
                 id: p.id,
@@ -933,6 +939,8 @@ export async function updateServiceRecord(input: unknown) {
                 unitCost: p.unitCost ?? 0,
                 markupPercent: p.markupPercent ?? 0,
                 inventoryPartId: p.inventoryPartId || null,
+                stockOwnership: p.stockOwnership ?? 'OWN',
+                customerPartInstalled: p.customerPartInstalled ?? false,
                 serviceRecordId: id,
               }))
             for (const part of replacementParts) {

@@ -1,4 +1,5 @@
 'use server'
+import { newRecordStockMode } from '@/features/stock-ledger/Lib/cutover'
 
 import { db } from '@/lib/db'
 import { withAuth } from '@/lib/with-auth'
@@ -343,13 +344,15 @@ export async function processRecurringInvoices() {
         })
 
         const serviceRecord = await db.$transaction(async (tx) => {
+          const stockMode = await newRecordStockMode(tx, organizationId)
           const sr = await tx.serviceRecord.create({
             data: {
               organizationId,
               title: ri.title,
               description: ri.description,
               type: ri.type,
-              status: 'completed',
+              inventoryAccountingMode: stockMode,
+                status: stockMode === 'LEDGER' && ri.templateParts.length ? 'pending' : 'completed',
               cost: ri.cost,
               serviceDate: now,
               startDateTime: now,

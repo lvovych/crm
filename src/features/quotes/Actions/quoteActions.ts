@@ -1,4 +1,5 @@
 'use server'
+import { newRecordStockMode } from '@/features/stock-ledger/Lib/cutover'
 
 import { resolveBrandSnapshot } from '@/features/inventory/Lib/brandSnapshot'
 
@@ -493,6 +494,7 @@ export async function convertQuoteToServiceRecord(quoteId: string, vehicleId: st
       const record = await db.$transaction(async (tx) => {
         const created = await tx.serviceRecord.create({
           data: {
+            inventoryAccountingMode: await newRecordStockMode(tx, organizationId),
             organizationId,
             createdById: userId,
             title: quote.title,
