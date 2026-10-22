@@ -49,6 +49,8 @@ resource "hcloud_server" "crm" {
   public_net {
     ipv4_enabled = true
     ipv6_enabled = true
+    ipv4         = hcloud_primary_ip.crm_ipv4.id
+    ipv6         = hcloud_primary_ip.crm_ipv6.id
   }
 
   labels = {
@@ -59,5 +61,8 @@ resource "hcloud_server" "crm" {
 
   lifecycle {
     prevent_destroy = true
+    # Imported public_net changes can delete Primary IPs (provider issue #1381).
+    # Reassign addresses explicitly; do not let the server resource manage them.
+    ignore_changes = [ssh_keys, public_net]
   }
 }

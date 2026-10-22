@@ -1,0 +1,35 @@
+---
+- name: Start restored CRM with the validated multi architecture image
+  hosts: crm
+  become: true
+  vars_files:
+    - ../group_vars/all/main.yml
+  tasks:
+    - name: Require ARM host and immutable image
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.architecture == 'aarch64'
+          - "'@sha256:' in crm_image"
+    - name: Pin restored Compose to validated images without replacing secrets
+      ansible.builtin.template:
+        src: ../templates/compose.yml.j2
+        dest: /srv/crm/compose.yml
+        mode: '0600'
+    - name: Validate configuration
+      ansible.builtin.command: docker compose config --quiet
+      args: {chdir: /srv/crm}
+      changed_when: false
+    - name: Pull validated images
+      ansible.builtin.command: docker compose pull --policy missing
+      args: {chdir: /srv/crm}
+    - name: Start application and proxy
+      ansible.builtin.command: docker compose up -d --wait --wait-timeout 240
+      args: {chdir: /srv/crm}
+    - name: Verify application health
+      ansible.builtin.uri:
+        url: http://127.0.0.1:3000/api/v1/health
+        status_code: 200
+    - name: Verify ARM native image processing
+      ansible.builtin.command: docker compose exec -T app node -e "if(process.arch!=='arm64')process.exit(1);require('sharp');console.log('arm64 sharp OK')"
+      args: {chdir: /srv/crm}
+      changed_when: false

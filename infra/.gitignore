@@ -15,3 +15,5 @@ ansible/group_vars/all/vault.yml
 # Commit .terraform.lock.hcl after terraform init.
 
 .secrets/
+
+ansible/inventory/migration.yml

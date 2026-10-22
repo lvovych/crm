@@ -3,4 +3,6 @@ crm_domain: crm.srv.lauto.com.ua
 crm_root: /srv/crm
 # DNS and initial administrator setup are complete.
 crm_public_https: true
-crm_image: ghcr.io/lvovych/crm@sha256:c2a4161e28c1863744c4fd26c864e34791b5b4610874854a1998937ec0c8a08c
+crm_image: ghcr.io/lvovych/crm@sha256:98d4378f139c19333af1a094e6fa6bdb30354b4b3bd9d4f2e2c4e15b21632bef
+backup_server: u681240.your-storagebox.de
+backup_username: u681240

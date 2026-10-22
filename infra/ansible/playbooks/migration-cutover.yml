@@ -1,0 +1,106 @@
+---
+- name: Move preserved Primary IPs between stopped Hetzner servers
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    api: https://api.hetzner.cloud/v1
+    api_headers:
+      Authorization: "Bearer {{ lookup('env', 'HCLOUD_TOKEN') }}"
+  tasks:
+    - name: Require completed restore validation
+      ansible.builtin.assert:
+        that:
+          - confirm_verified_cutover | default(false) | bool
+          - lookup('env', 'HCLOUD_TOKEN') | length > 0
+          - temporary_ip_ids is defined
+          - source_server is defined
+          - target_server is defined
+          - production_ips is defined
+    - name: Request clean shutdown of both servers
+      ansible.builtin.uri:
+        url: "{{ api }}/servers/{{ item }}/actions/shutdown"
+        method: POST
+        headers: "{{ api_headers }}"
+        status_code: 201
+      loop: "{{ [source_server, target_server] }}"
+      no_log: true
+    - name: Wait until both servers are powered off
+      ansible.builtin.uri:
+        url: "{{ api }}/servers/{{ item }}"
+        headers: "{{ api_headers }}"
+      register: server_state
+      until: server_state.json.server.status == 'off'
+      retries: 30
+      delay: 3
+      loop: "{{ [source_server, target_server] }}"
+      no_log: true
+    - name: Unassign old and temporary IPs
+      ansible.builtin.uri:
+        url: "{{ api }}/primary_ips/{{ item }}/actions/unassign"
+        method: POST
+        headers: "{{ api_headers }}"
+        status_code: 201
+      loop: "{{ production_ips + temporary_ip_ids }}"
+      register: unassign_results
+      no_log: true
+    - name: Wait for unassign actions to finish
+      ansible.builtin.uri:
+        url: "{{ api }}/primary_ips/actions/{{ item.json.action.id }}"
+        headers: "{{ api_headers }}"
+      register: completed_action
+      until: completed_action.json.action.status == 'success'
+      retries: 30
+      delay: 2
+      loop: "{{ unassign_results.results }}"
+      no_log: true
+    - name: Wait for all IPs to be unassigned
+      ansible.builtin.uri:
+        url: "{{ api }}/primary_ips/{{ item }}"
+        headers: "{{ api_headers }}"
+      register: ip_state
+      until: ip_state.json.primary_ip.assignee_id == None
+      retries: 20
+      delay: 2
+      loop: "{{ production_ips + temporary_ip_ids }}"
+      no_log: true
+    - name: Assign production IPs to CAX21
+      ansible.builtin.uri:
+        url: "{{ api }}/primary_ips/{{ item }}/actions/assign"
+        method: POST
+        headers: "{{ api_headers }}"
+        body_format: json
+        body:
+          assignee_id: "{{ target_server | int }}"
+          assignee_type: server
+        status_code: 201
+      loop: "{{ production_ips }}"
+      register: assign_results
+      no_log: true
+    - name: Wait for assignment actions before starting server
+      ansible.builtin.uri:
+        url: "{{ api }}/primary_ips/actions/{{ item.json.action.id }}"
+        headers: "{{ api_headers }}"
+      register: completed_assignment
+      until: completed_assignment.json.action.status == 'success'
+      retries: 30
+      delay: 2
+      loop: "{{ assign_results.results }}"
+      no_log: true
+    - name: Verify assignments
+      ansible.builtin.uri:
+        url: "{{ api }}/primary_ips/{{ item }}"
+        headers: "{{ api_headers }}"
+      register: assigned_ip
+      until: assigned_ip.json.primary_ip.assignee_id == target_server | int
+      retries: 20
+      delay: 2
+      loop: "{{ production_ips }}"
+      no_log: true
+    - name: Start replacement server
+      ansible.builtin.uri:
+        url: "{{ api }}/servers/{{ target_server }}/actions/poweron"
+        method: POST
+        headers: "{{ api_headers }}"
+        status_code: 201
+      no_log: true

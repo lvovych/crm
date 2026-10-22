@@ -1,0 +1,27 @@
+---
+- name: Stage production network for the next boot
+  hosts: crm
+  become: true
+  tasks:
+    - name: Require migration IPv6 address
+      ansible.builtin.assert:
+        that:
+          - migration_ipv6 is defined
+          - ansible_facts.architecture == 'aarch64'
+    - name: Preserve explicit network configuration on reboot
+      ansible.builtin.copy:
+        dest: /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
+        mode: '0644'
+        content: "network: {config: disabled}\n"
+    - name: Stage DHCP IPv4 and the original production IPv6
+      ansible.builtin.copy:
+        dest: /etc/network/interfaces.d/50-cloud-init
+        mode: '0644'
+        content: |
+          # Managed by Ansible. IPv4 follows the assigned Hetzner Primary IP.
+          auto eth0
+          iface eth0 inet dhcp
+          iface eth0 inet6 static
+              address {{ migration_ipv6 }}/64
+              gateway fe80::1
+              dns-nameservers 2a01:4ff:ff00::add:2 2a01:4ff:ff00::add:1

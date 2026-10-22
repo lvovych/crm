@@ -8,7 +8,8 @@ source /etc/crm-backup.env
 export RESTIC_REPOSITORY RESTIC_PASSWORD_FILE RESTIC_SFTP_COMMAND
 stage=/var/lib/crm-backup/current
 mkdir -p "$stage"
-resume() { docker compose start app >/dev/null; }
+app_was_running=$(docker compose ps --status running --services | grep -cx app || true)
+resume() { if [ "$app_was_running" = 1 ]; then docker compose start app >/dev/null; fi; }
 trap resume EXIT
 docker compose stop -t 60 app
 # App and background writers are stopped: database and uploads form one recovery set.
@@ -16,6 +17,10 @@ docker compose exec -T db pg_dump -U crm -d crm -Fc > "$stage/database.dump.tmp"
 mv "$stage/database.dump.tmp" "$stage/database.dump"
 tar -czf "$stage/uploads.tar.gz.tmp" uploads
 mv "$stage/uploads.tar.gz.tmp" "$stage/uploads.tar.gz"
+if [ -d caddy ]; then
+  tar -czf "$stage/caddy.tar.gz.tmp" caddy
+  mv "$stage/caddy.tar.gz.tmp" "$stage/caddy.tar.gz"
+fi
 cp .env compose.yml Caddyfile "$stage/"
 date -u +%FT%TZ > "$stage/created-at"
 docker compose images --format json > "$stage/images.json"

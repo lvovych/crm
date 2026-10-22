@@ -1,0 +1,41 @@
+---
+- name: Quiesce source and capture the final migration backup
+  hosts: crm
+  become: true
+  tasks:
+    - name: Require explicit migration selection
+      ansible.builtin.assert:
+        that: ["confirm_migration_stop | default(false) | bool"]
+    - name: Disable automatic backups during migration
+      ansible.builtin.systemd_service:
+        name: crm-backup.timer
+        enabled: false
+        state: stopped
+    - name: Wait for any running backup to finish
+      ansible.builtin.command: systemctl is-active crm-backup.service
+      register: backup_active
+      until: backup_active.stdout != 'active' and backup_active.stdout != 'activating'
+      retries: 60
+      delay: 5
+      failed_when: false
+      changed_when: false
+    - name: Install backup preserving stopped applications
+      ansible.builtin.copy:
+        src: ../files/crm-backup
+        dest: /usr/local/sbin/crm-backup
+        mode: '0700'
+    - name: Stop application writers and ingress
+      ansible.builtin.command: docker compose stop -t 60 app caddy
+      args:
+        chdir: /srv/crm
+    - name: Capture final consistent remote recovery set
+      ansible.builtin.command: /usr/local/sbin/crm-backup
+      async: 3600
+      poll: 5
+    - name: Verify app stays stopped
+      ansible.builtin.command: docker compose ps --status running --services
+      args:
+        chdir: /srv/crm
+      register: running_services
+      changed_when: false
+      failed_when: "'app' in running_services.stdout_lines or 'caddy' in running_services.stdout_lines"

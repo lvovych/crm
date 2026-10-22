@@ -40,6 +40,22 @@
         mode: '0600'
       loop: [.env, compose.yml, Caddyfile]
       no_log: true
+    - name: Use validated images for a cross architecture restore
+      ansible.builtin.template:
+        src: ../templates/compose.yml.j2
+        dest: "{{ crm_root }}/compose.yml"
+        mode: '0600'
+      when: restore_use_current_images | default(false) | bool
+    - name: Check for saved TLS data
+      ansible.builtin.stat:
+        path: "{{ restore_target }}/var/lib/crm-backup/current/caddy.tar.gz"
+      register: restored_tls
+    - name: Restore TLS data when available
+      ansible.builtin.unarchive:
+        remote_src: true
+        src: "{{ restore_target }}/var/lib/crm-backup/current/caddy.tar.gz"
+        dest: "{{ crm_root }}"
+      when: restored_tls.stat.exists
     - name: Restore uploaded files
       ansible.builtin.unarchive:
         remote_src: true
