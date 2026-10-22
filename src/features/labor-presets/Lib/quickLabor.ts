@@ -6,7 +6,7 @@ export function normalizeLaborSearch(value: string) {
     .toLocaleLowerCase()
     .normalize('NFKC')
     .replace(/[’'`ʼ]/g, '')
-    .replace(/масл\S*/gu, 'олив')
+    .replace(/(?:масл|мастил)\S*/gu, 'олив')
     .replace(/замен\S*/gu, 'заміна')
     .replace(/фильтр\S*/gu, 'фільтр')
     .replace(/\s+/g, ' ')

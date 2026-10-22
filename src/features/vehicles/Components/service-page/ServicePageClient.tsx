@@ -383,7 +383,7 @@ export function ServicePageClient({
       total: lineTotal(item.hours, item.rate),
       pricingType: (item.pricingType as 'hourly' | 'service') || 'hourly',
     }))
-    formState.dirtySetLaborItems((prev) => [...newItems, ...prev])
+    formState.dirtySetLaborItems((prev) => [...prev, ...newItems])
 
     if (preset.parts?.length) {
       const newParts = preset.parts.map((part) => ({
@@ -398,7 +398,7 @@ export function ServicePageClient({
         markupPercent: 0,
         inventoryPartId: part.inventoryPartId || '',
       }))
-      formState.dirtySetPartItems((prev) => [...newParts, ...prev])
+      formState.dirtySetPartItems((prev) => [...prev, ...newParts])
     }
   }
 

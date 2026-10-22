@@ -52,6 +52,7 @@ beforeEach(() => localStorage.clear())
 describe('quick labor workflow', () => {
   it('searches synonyms and all words independent of order, ranks favorites', () => {
     expect(searchLaborPresets([oil, bundle], 'масла замена', [], [])).toEqual([oil, bundle])
+    expect(searchLaborPresets([oil], 'мастила', [], [])).toEqual([oil])
     expect(searchLaborPresets([oil, bundle], '', ['bundle'], [oil.id])[0]).toEqual(bundle)
   })
   it('selects with Enter, edits decimal price, adds and returns focus without submitting or dirtying the outer form', () => {
