@@ -60,6 +60,13 @@ model Brand {
 }
 
 model InventoryPart {
+  purchaseOrderLine_inventoryPart PurchaseOrderLine[] @relation("PurchaseOrderLine_inventoryPart")
+
+  stockDemand_inventoryPart StockDemand[] @relation("StockDemand_inventoryPart")
+
+  inventoryDocumentLine_inventoryPart InventoryDocumentLine[] @relation("InventoryDocumentLine_inventoryPart")
+  stockLot_inventoryPart              StockLot[]              @relation("StockLot_inventoryPart")
+
   brandId       String  @default("brand_unknown")
   brand         Brand   @relation(fields: [brandId], references: [id], onDelete: Restrict)
   id            String  @id @default(cuid())
@@ -102,6 +109,7 @@ model InventoryPart {
   gallery   StoredImage[]   @relation("InventoryPartImages")
   movements StockMovement[]
 
+  @@unique([organizationId, id])
   @@unique([organizationId, barcode])
   @@index([brandId])
   @@index([organizationId])

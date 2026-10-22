@@ -32,6 +32,40 @@ model DashboardWidget {
 }
 
 model Organization {
+  ledgerDocumentSequence DocumentSequence[] @relation("LedgerOrgDocumentSequence")
+  ledgerAllocationEvent AllocationEvent[] @relation("LedgerOrgAllocationEvent")
+  ledgerSupplierServiceDocument SupplierServiceDocument[] @relation("LedgerOrgSupplierServiceDocument")
+  ledgerSupplierServiceLine SupplierServiceLine[] @relation("LedgerOrgSupplierServiceLine")
+  ledgerOpeningBalance OpeningBalance[] @relation("LedgerOrgOpeningBalance")
+
+  ledgerPurchaseOrder PurchaseOrder[] @relation("LedgerOrgPurchaseOrder")
+  ledgerPurchaseOrderLine PurchaseOrderLine[] @relation("LedgerOrgPurchaseOrderLine")
+  ledgerPurchaseDemandAllocation PurchaseDemandAllocation[] @relation("LedgerOrgPurchaseDemandAllocation")
+  ledgerReceiptDemandAllocation ReceiptDemandAllocation[] @relation("LedgerOrgReceiptDemandAllocation")
+  ledgerLedgerImportJob LedgerImportJob[] @relation("LedgerOrgLedgerImportJob")
+
+  ledgerStockDemand StockDemand[] @relation("LedgerOrgStockDemand")
+  ledgerStockReservation StockReservation[] @relation("LedgerOrgStockReservation")
+  ledgerReservationEvent ReservationEvent[] @relation("LedgerOrgReservationEvent")
+  ledgerDocumentLotAllocation DocumentLotAllocation[] @relation("LedgerOrgDocumentLotAllocation")
+
+  ledgerSupplier              Supplier[]              @relation("LedgerOrgSupplier")
+  ledgerWarehouse             Warehouse[]             @relation("LedgerOrgWarehouse")
+  ledgerInventoryDocument     InventoryDocument[]     @relation("LedgerOrgInventoryDocument")
+  ledgerInventoryDocumentLine InventoryDocumentLine[] @relation("LedgerOrgInventoryDocumentLine")
+  ledgerStockLot              StockLot[]              @relation("LedgerOrgStockLot")
+  ledgerStockLotBalance       StockLotBalance[]       @relation("LedgerOrgStockLotBalance")
+  ledgerInventoryLedgerEntry  InventoryLedgerEntry[]  @relation("LedgerOrgInventoryLedgerEntry")
+  ledgerSettlementParty       SettlementParty[]       @relation("LedgerOrgSettlementParty")
+  ledgerCashAccount           CashAccount[]           @relation("LedgerOrgCashAccount")
+  ledgerMoneyTransaction      MoneyTransaction[]      @relation("LedgerOrgMoneyTransaction")
+  ledgerCashLedgerEntry       CashLedgerEntry[]       @relation("LedgerOrgCashLedgerEntry")
+  ledgerSettlementEntry       SettlementEntry[]       @relation("LedgerOrgSettlementEntry")
+  ledgerSettlementAllocation  SettlementAllocation[]  @relation("LedgerOrgSettlementAllocation")
+  ledgerLedgerAuditEvent      LedgerAuditEvent[]      @relation("LedgerOrgLedgerAuditEvent")
+  ledgerLedgerCommand         LedgerCommand[]         @relation("LedgerOrgLedgerCommand")
+  ledgerAccountingPeriodLock  AccountingPeriodLock[]  @relation("LedgerOrgAccountingPeriodLock")
+
   id         String   @id @default(cuid())
   name       String
   portalSlug String?  @unique

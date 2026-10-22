@@ -91,6 +91,13 @@ export async function reconcileInventoryForParts(
   next: readonly StockPartLine[],
   context: StockMovementContext
 ): Promise<void> {
+  if (context.serviceRecordId) {
+    const record = await tx.serviceRecord.findFirst({
+      where: { id: context.serviceRecordId, organizationId },
+      select: { inventoryAccountingMode: true },
+    })
+    if (record?.inventoryAccountingMode === 'LEDGER') return
+  }
   // inventoryPartId -> net units to DECREMENT (negative = restock)
   const netDecrement = new Map<string, number>()
 

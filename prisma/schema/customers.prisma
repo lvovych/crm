@@ -1,4 +1,6 @@
 model Customer {
+  settlementParty_customer SettlementParty[] @relation("SettlementParty_customer")
+
   id             String   @id @default(cuid())
   /// Human-facing customer number: auto-assigned sequentially on create,
   /// editable afterwards. Unique per organization (nulls allowed for
@@ -49,6 +51,7 @@ model Customer {
   importBatchId String?
   importBatch   ImportBatch? @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
 
+  @@unique([organizationId, id])
   @@unique([organizationId, customerNumber])
   @@index([organizationId])
   @@index([importBatchId])

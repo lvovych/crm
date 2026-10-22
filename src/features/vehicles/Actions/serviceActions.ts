@@ -912,10 +912,9 @@ export async function updateServiceRecord(input: unknown) {
               })
             : []
           const brandByStock = new Map(stockBrands.map((p) => [p.id, p.brand.name]))
-          await tx.servicePart.deleteMany({ where: { serviceRecordId: id } })
+          await tx.servicePart.deleteMany({ where: { serviceRecordId: id, id: { notIn: normalizedParts.flatMap(p => p.id ? [p.id] : []) } } })
           if (partItems.length > 0) {
-            await tx.servicePart.createMany({
-              data: normalizedParts.map((p) => ({
+            const replacementParts = normalizedParts.map((p) => ({
                 id: p.id,
                 discountType: p.discountType,
                 discountValue: p.discountValue,
@@ -935,8 +934,12 @@ export async function updateServiceRecord(input: unknown) {
                 markupPercent: p.markupPercent ?? 0,
                 inventoryPartId: p.inventoryPartId || null,
                 serviceRecordId: id,
-              })),
-            })
+              }))
+            for (const part of replacementParts) {
+              const current = part.id ? previousParts.find(p => p.id === part.id) : undefined
+              if (current) await tx.servicePart.update({ where: { id: current.id }, data: part })
+              else await tx.servicePart.create({ data: part })
+            }
           }
 
           await reconcileInventoryForParts(tx, organizationId, previousParts, partItems, {
@@ -1473,7 +1476,7 @@ export async function deleteServiceRecord(recordId: string) {
           where: { serviceRecordId: recordId },
           select: { inventoryPartId: true, quantity: true },
         })
-        await reconcileInventoryForParts(tx, organizationId, parts, [], {
+        if (record.inventoryAccountingMode !== 'LEDGER') await reconcileInventoryForParts(tx, organizationId, parts, [], {
           reason: 'service_record_deleted',
           userId,
           // Deliberately no serviceRecordId: the record is deleted in this same

@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { resolveCurrencyCode } from '@/lib/currencies'
 import { resolveListSort } from '@/lib/list-sort-preference.server'
 import {
@@ -70,6 +71,7 @@ export default async function InventoryPage({
     <>
       <PageHeader />
       <ListPage>
+        {process.env.STOCK_LEDGER_ENABLED === 'true' && <Link href="/stock-ledger" className="mb-4 inline-flex min-h-11 items-center rounded-md border px-4">Склад і постачальники</Link>}
         <InventoryClient
           data={result.data}
           search={params.search || ''}

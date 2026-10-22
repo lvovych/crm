@@ -1,4 +1,38 @@
 model User {
+  ledgerDocumentSequence DocumentSequence[] @relation("LedgerActorDocumentSequence")
+  ledgerAllocationEvent AllocationEvent[] @relation("LedgerActorAllocationEvent")
+  ledgerSupplierServiceDocument SupplierServiceDocument[] @relation("LedgerActorSupplierServiceDocument")
+  ledgerSupplierServiceLine SupplierServiceLine[] @relation("LedgerActorSupplierServiceLine")
+  ledgerOpeningBalance OpeningBalance[] @relation("LedgerActorOpeningBalance")
+
+  ledgerPurchaseOrder PurchaseOrder[] @relation("LedgerActorPurchaseOrder")
+  ledgerPurchaseOrderLine PurchaseOrderLine[] @relation("LedgerActorPurchaseOrderLine")
+  ledgerPurchaseDemandAllocation PurchaseDemandAllocation[] @relation("LedgerActorPurchaseDemandAllocation")
+  ledgerReceiptDemandAllocation ReceiptDemandAllocation[] @relation("LedgerActorReceiptDemandAllocation")
+  ledgerLedgerImportJob LedgerImportJob[] @relation("LedgerActorLedgerImportJob")
+
+  ledgerStockDemand StockDemand[] @relation("LedgerActorStockDemand")
+  ledgerStockReservation StockReservation[] @relation("LedgerActorStockReservation")
+  ledgerReservationEvent ReservationEvent[] @relation("LedgerActorReservationEvent")
+  ledgerDocumentLotAllocation DocumentLotAllocation[] @relation("LedgerActorDocumentLotAllocation")
+
+  ledgerSupplier              Supplier[]              @relation("LedgerActorSupplier")
+  ledgerWarehouse             Warehouse[]             @relation("LedgerActorWarehouse")
+  ledgerInventoryDocument     InventoryDocument[]     @relation("LedgerActorInventoryDocument")
+  ledgerInventoryDocumentLine InventoryDocumentLine[] @relation("LedgerActorInventoryDocumentLine")
+  ledgerStockLot              StockLot[]              @relation("LedgerActorStockLot")
+  ledgerStockLotBalance       StockLotBalance[]       @relation("LedgerActorStockLotBalance")
+  ledgerInventoryLedgerEntry  InventoryLedgerEntry[]  @relation("LedgerActorInventoryLedgerEntry")
+  ledgerSettlementParty       SettlementParty[]       @relation("LedgerActorSettlementParty")
+  ledgerCashAccount           CashAccount[]           @relation("LedgerActorCashAccount")
+  ledgerMoneyTransaction      MoneyTransaction[]      @relation("LedgerActorMoneyTransaction")
+  ledgerCashLedgerEntry       CashLedgerEntry[]       @relation("LedgerActorCashLedgerEntry")
+  ledgerSettlementEntry       SettlementEntry[]       @relation("LedgerActorSettlementEntry")
+  ledgerSettlementAllocation  SettlementAllocation[]  @relation("LedgerActorSettlementAllocation")
+  ledgerLedgerAuditEvent      LedgerAuditEvent[]      @relation("LedgerActorLedgerAuditEvent")
+  ledgerLedgerCommand         LedgerCommand[]         @relation("LedgerActorLedgerCommand")
+  ledgerAccountingPeriodLock  AccountingPeriodLock[]  @relation("LedgerActorAccountingPeriodLock")
+
   id            String   @id @default(cuid())
   name          String
   email         String   @unique

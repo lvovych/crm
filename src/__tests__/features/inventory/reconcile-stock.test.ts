@@ -47,7 +47,11 @@ function makeTx(balanceFor: (partId: string) => number | null = () => 100) {
 
   const createMany = vi.fn().mockResolvedValue({ count: 0 })
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const tx = { $queryRaw, stockMovement: { createMany } } as any
+  const tx = {
+    $queryRaw,
+    stockMovement: { createMany },
+    serviceRecord: { findFirst: vi.fn().mockResolvedValue({ inventoryAccountingMode: 'LEGACY' }) },
+  } as any
   return { tx, updates, createMany, $queryRaw }
 }
 
@@ -59,6 +63,14 @@ function ledger(createMany: any) {
 }
 
 describe('reconcileInventoryForParts', () => {
+  it('never writes the legacy stock projection for a LEDGER work order', async () => {
+    const { tx, $queryRaw, createMany } = makeTx()
+    tx.serviceRecord.findFirst.mockResolvedValue({ inventoryAccountingMode: 'LEDGER' })
+    await reconcileInventoryForParts(tx, ORG, [], [{ inventoryPartId: 'p1', quantity: 2 }], CTX)
+    expect($queryRaw).not.toHaveBeenCalled()
+    expect(createMany).not.toHaveBeenCalled()
+  })
+
   it('deducts stock for newly added linked parts (delta from empty)', async () => {
     const { tx, updates } = makeTx()
     await reconcileInventoryForParts(tx, ORG, [], [{ inventoryPartId: 'p1', quantity: 3 }], CTX)

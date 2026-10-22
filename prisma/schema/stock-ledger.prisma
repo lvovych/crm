@@ -1,0 +1,732 @@
+model Supplier {
+  supplierServiceDocument_supplier SupplierServiceDocument[] @relation("SupplierServiceDocument_supplier")
+
+  purchaseOrder_supplier   PurchaseOrder[]   @relation("PurchaseOrder_supplier")
+  ledgerImportJob_supplier LedgerImportJob[] @relation("LedgerImportJob_supplier")
+
+  id                         String              @id @default(cuid())
+  organizationId             String
+  createdAt                  DateTime            @default(now()) @db.Timestamptz(3)
+  createdById                String?
+  name                       String
+  normalizedName             String
+  kind                       String              @default("GOODS")
+  countryCode                String              @default("UA")
+  taxId                      String?
+  phone                      String?
+  email                      String?
+  address                    String?
+  paymentTermsDays           Int                 @default(0)
+  bankDetails                Json?
+  notes                      String?
+  archivedAt                 DateTime?           @db.Timestamptz(3)
+  version                    Int                 @default(1)
+  inventoryDocument_supplier InventoryDocument[] @relation("InventoryDocument_supplier")
+  settlementParty_supplier   SettlementParty[]   @relation("SettlementParty_supplier")
+  organization               Organization        @relation("LedgerOrgSupplier", fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy                  User?               @relation("LedgerActorSupplier", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, id])
+  @@map("suppliers")
+}
+
+model Warehouse {
+  purchaseOrder_warehouse PurchaseOrder[] @relation("PurchaseOrder_warehouse")
+
+  stockReservation_warehouse      StockReservation[]      @relation("StockReservation_warehouse")
+  documentLotAllocation_warehouse DocumentLotAllocation[] @relation("DocumentLotAllocation_warehouse")
+
+  id                                String                 @id @default(cuid())
+  organizationId                    String
+  createdAt                         DateTime               @default(now()) @db.Timestamptz(3)
+  createdById                       String?
+  code                              String
+  name                              String
+  isDefault                         Boolean                @default(false)
+  reservable                        Boolean                @default(true)
+  archivedAt                        DateTime?              @db.Timestamptz(3)
+  version                           Int                    @default(1)
+  inventoryDocument_sourceWarehouse InventoryDocument[]    @relation("InventoryDocument_sourceWarehouse")
+  inventoryDocument_targetWarehouse InventoryDocument[]    @relation("InventoryDocument_targetWarehouse")
+  stockLotBalance_warehouse         StockLotBalance[]      @relation("StockLotBalance_warehouse")
+  inventoryLedgerEntry_warehouse    InventoryLedgerEntry[] @relation("InventoryLedgerEntry_warehouse")
+  organization                      Organization           @relation("LedgerOrgWarehouse", fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy                         User?                  @relation("LedgerActorWarehouse", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, code])
+  @@unique([organizationId, id])
+  @@map("warehouses")
+}
+
+model InventoryDocument {
+  ledgerImportJob_document LedgerImportJob[] @relation("LedgerImportJob_document")
+
+  id                                String                  @id @default(cuid())
+  organizationId                    String
+  createdAt                         DateTime                @default(now()) @db.Timestamptz(3)
+  createdById                       String?
+  number                            String
+  kind                              String
+  status                            String                  @default("DRAFT")
+  effectiveAt                       DateTime                @db.Date
+  postedAt                          DateTime?               @db.Timestamptz(3)
+  externalNumber                    String?
+  externalDate                      DateTime?               @db.Date
+  dueDate                           DateTime?               @db.Date
+  currency                          String                  @default("UAH") @db.Char(3)
+  subtotal                          Decimal                 @default(0) @db.Decimal(20, 2)
+  taxAmount                         Decimal                 @default(0) @db.Decimal(20, 2)
+  totalAmount                       Decimal                 @default(0) @db.Decimal(20, 2)
+  note                              String?
+  version                           Int                     @default(1)
+  supplierId                        String?
+  supplier                          Supplier?               @relation("InventoryDocument_supplier", fields: [organizationId, supplierId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  sourceWarehouseId                 String?
+  sourceWarehouse                   Warehouse?              @relation("InventoryDocument_sourceWarehouse", fields: [organizationId, sourceWarehouseId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  targetWarehouseId                 String?
+  targetWarehouse                   Warehouse?              @relation("InventoryDocument_targetWarehouse", fields: [organizationId, targetWarehouseId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  sourceDocumentId                  String?
+  sourceDocument                    InventoryDocument?      @relation("InventoryDocument_sourceDocument", fields: [organizationId, sourceDocumentId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  inventoryDocument_sourceDocument  InventoryDocument[]     @relation("InventoryDocument_sourceDocument")
+  inventoryDocumentLine_document    InventoryDocumentLine[] @relation("InventoryDocumentLine_document")
+  settlementEntry_inventoryDocument SettlementEntry[]       @relation("SettlementEntry_inventoryDocument")
+  organization                      Organization            @relation("LedgerOrgInventoryDocument", fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy                         User?                   @relation("LedgerActorInventoryDocument", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, number])
+  @@unique([organizationId, id])
+  @@index([organizationId, effectiveAt, id])
+  @@map("inventory_documents")
+}
+
+model InventoryDocumentLine {
+  purchaseOrderLineId                 String?
+  purchaseOrderLine                   PurchaseOrderLine?        @relation("InventoryDocumentLine_purchaseOrderLine", fields: [organizationId, purchaseOrderLineId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  receiptDemandAllocation_receiptLine ReceiptDemandAllocation[] @relation("ReceiptDemandAllocation_receiptLine")
+
+  reservationEvent_documentLine      ReservationEvent[]      @relation("ReservationEvent_documentLine")
+  documentLotAllocation_documentLine DocumentLotAllocation[] @relation("DocumentLotAllocation_documentLine")
+
+  id                                String                 @id @default(cuid())
+  organizationId                    String
+  createdAt                         DateTime               @default(now()) @db.Timestamptz(3)
+  createdById                       String?
+  quantity                          Decimal                @db.Decimal(18, 3)
+  unitPrice                         Decimal                @db.Decimal(20, 6)
+  discountType                      String                 @default("NONE")
+  discountValue                     Decimal                @default(0) @db.Decimal(20, 6)
+  discountAmount                    Decimal                @db.Decimal(20, 2)
+  taxMode                           String                 @default("NONE")
+  taxRate                           Decimal                @default(0) @db.Decimal(6, 3)
+  netAmount                         Decimal                @db.Decimal(20, 2)
+  taxAmount                         Decimal                @db.Decimal(20, 2)
+  totalAmount                       Decimal                @db.Decimal(20, 2)
+  snapshotName                      String
+  snapshotBrand                     String
+  snapshotArticle                   String?
+  snapshotUnit                      String
+  sortOrder                         Int
+  documentId                        String
+  document                          InventoryDocument      @relation("InventoryDocumentLine_document", fields: [organizationId, documentId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  inventoryPartId                   String
+  inventoryPart                     InventoryPart          @relation("InventoryDocumentLine_inventoryPart", fields: [organizationId, inventoryPartId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  stockLot_sourceLine               StockLot[]             @relation("StockLot_sourceLine")
+  inventoryLedgerEntry_documentLine InventoryLedgerEntry[] @relation("InventoryLedgerEntry_documentLine")
+  organization                      Organization           @relation("LedgerOrgInventoryDocumentLine", fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy                         User?                  @relation("LedgerActorInventoryDocumentLine", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, id])
+  @@index([organizationId, documentId])
+  @@map("inventory_document_lines")
+}
+
+model StockLot {
+  stockReservation_lot      StockReservation[]      @relation("StockReservation_lot")
+  documentLotAllocation_lot DocumentLotAllocation[] @relation("DocumentLotAllocation_lot")
+
+  id                       String                 @id @default(cuid())
+  organizationId           String
+  createdAt                DateTime               @default(now()) @db.Timestamptz(3)
+  createdById              String?
+  acquiredAt               DateTime               @db.Date
+  unitCost                 Decimal                @db.Decimal(20, 6)
+  currency                 String                 @default("UAH") @db.Char(3)
+  sourceLineId             String
+  sourceLine               InventoryDocumentLine  @relation("StockLot_sourceLine", fields: [organizationId, sourceLineId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  inventoryPartId          String
+  inventoryPart            InventoryPart          @relation("StockLot_inventoryPart", fields: [organizationId, inventoryPartId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  stockLotBalance_lot      StockLotBalance[]      @relation("StockLotBalance_lot")
+  inventoryLedgerEntry_lot InventoryLedgerEntry[] @relation("InventoryLedgerEntry_lot")
+  organization             Organization           @relation("LedgerOrgStockLot", fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy                User?                  @relation("LedgerActorStockLot", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, sourceLineId])
+  @@unique([organizationId, id])
+  @@map("stock_lots")
+}
+
+model StockLotBalance {
+  id             String       @id @default(cuid())
+  organizationId String
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+  createdById    String?
+  onHandQty      Decimal      @default(0) @db.Decimal(18, 3)
+  reservedQty    Decimal      @default(0) @db.Decimal(18, 3)
+  version        Int          @default(1)
+  lotId          String
+  lot            StockLot     @relation("StockLotBalance_lot", fields: [organizationId, lotId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  warehouseId    String
+  warehouse      Warehouse    @relation("StockLotBalance_warehouse", fields: [organizationId, warehouseId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  organization   Organization @relation("LedgerOrgStockLotBalance", fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy      User?        @relation("LedgerActorStockLotBalance", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, lotId, warehouseId])
+  @@unique([organizationId, id])
+  @@map("stock_lot_balances")
+}
+
+model InventoryLedgerEntry {
+  id              String                @id @default(cuid())
+  organizationId  String
+  createdAt       DateTime              @default(now()) @db.Timestamptz(3)
+  createdById     String?
+  quantityDelta   Decimal               @db.Decimal(18, 3)
+  costAmountDelta Decimal               @db.Decimal(20, 6)
+  effectiveAt     DateTime              @db.Date
+  operationKey    String
+  lotId           String
+  lot             StockLot              @relation("InventoryLedgerEntry_lot", fields: [organizationId, lotId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  warehouseId     String
+  warehouse       Warehouse             @relation("InventoryLedgerEntry_warehouse", fields: [organizationId, warehouseId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  documentLineId  String
+  documentLine    InventoryDocumentLine @relation("InventoryLedgerEntry_documentLine", fields: [organizationId, documentLineId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  organization    Organization          @relation("LedgerOrgInventoryLedgerEntry", fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy       User?                 @relation("LedgerActorInventoryLedgerEntry", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, operationKey])
+  @@unique([organizationId, id])
+  @@index([organizationId, lotId, warehouseId, effectiveAt])
+  @@map("inventory_ledger_entries")
+}
+
+model SettlementParty {
+  openingBalance_party OpeningBalance[] @relation("OpeningBalance_party")
+
+  id                     String             @id @default(cuid())
+  organizationId         String
+  createdAt              DateTime           @default(now()) @db.Timestamptz(3)
+  createdById            String?
+  kind                   String
+  displayNameSnapshot    String
+  supplierId             String?
+  supplier               Supplier?          @relation("SettlementParty_supplier", fields: [organizationId, supplierId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  customerId             String?
+  customer               Customer?          @relation("SettlementParty_customer", fields: [organizationId, customerId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  moneyTransaction_party MoneyTransaction[] @relation("MoneyTransaction_party")
+  settlementEntry_party  SettlementEntry[]  @relation("SettlementEntry_party")
+  organization           Organization       @relation("LedgerOrgSettlementParty", fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy              User?              @relation("LedgerActorSettlementParty", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, supplierId])
+  @@unique([organizationId, customerId])
+  @@unique([organizationId, id])
+  @@map("settlement_parties")
+}
+
+model CashAccount {
+  openingBalance_account OpeningBalance[] @relation("OpeningBalance_account")
+
+  id                       String             @id @default(cuid())
+  organizationId           String
+  createdAt                DateTime           @default(now()) @db.Timestamptz(3)
+  createdById              String?
+  name                     String
+  kind                     String             @default("BANK")
+  currency                 String             @default("UAH") @db.Char(3)
+  archivedAt               DateTime?          @db.Timestamptz(3)
+  moneyTransaction_account MoneyTransaction[] @relation("MoneyTransaction_account")
+  cashLedgerEntry_account  CashLedgerEntry[]  @relation("CashLedgerEntry_account")
+  organization             Organization       @relation("LedgerOrgCashAccount", fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy                User?              @relation("LedgerActorCashAccount", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, id])
+  @@map("cash_accounts")
+}
+
+model MoneyTransaction {
+  reversalOfId                String?
+  reversalOf                  MoneyTransaction?  @relation("MoneyTransaction_reversalOf", fields: [organizationId, reversalOfId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  moneyTransaction_reversalOf MoneyTransaction[] @relation("MoneyTransaction_reversalOf")
+
+  id                               String            @id @default(cuid())
+  organizationId                   String
+  createdAt                        DateTime          @default(now()) @db.Timestamptz(3)
+  createdById                      String?
+  direction                        String
+  amount                           Decimal           @db.Decimal(20, 2)
+  currency                         String            @default("UAH") @db.Char(3)
+  effectiveAt                      DateTime          @db.Date
+  method                           String
+  note                             String?
+  status                           String            @default("POSTED")
+  version                          Int               @default(1)
+  partyId                          String
+  party                            SettlementParty   @relation("MoneyTransaction_party", fields: [organizationId, partyId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  accountId                        String
+  account                          CashAccount       @relation("MoneyTransaction_account", fields: [organizationId, accountId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  cashLedgerEntry_moneyTransaction CashLedgerEntry[] @relation("CashLedgerEntry_moneyTransaction")
+  settlementEntry_moneyTransaction SettlementEntry[] @relation("SettlementEntry_moneyTransaction")
+  organization                     Organization      @relation("LedgerOrgMoneyTransaction", fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy                        User?             @relation("LedgerActorMoneyTransaction", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, id])
+  @@index([organizationId, effectiveAt, id])
+  @@map("money_transactions")
+}
+
+model CashLedgerEntry {
+  openingBalanceId String?
+  openingBalance   OpeningBalance? @relation("CashLedgerEntry_openingBalance", fields: [organizationId, openingBalanceId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  id                 String            @id @default(cuid())
+  organizationId     String
+  createdAt          DateTime          @default(now()) @db.Timestamptz(3)
+  createdById        String?
+  amountDelta        Decimal           @db.Decimal(20, 2)
+  effectiveAt        DateTime          @db.Date
+  operationKey       String
+  accountId          String
+  account            CashAccount       @relation("CashLedgerEntry_account", fields: [organizationId, accountId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  moneyTransactionId String?
+  moneyTransaction   MoneyTransaction? @relation("CashLedgerEntry_moneyTransaction", fields: [organizationId, moneyTransactionId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  organization       Organization      @relation("LedgerOrgCashLedgerEntry", fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy          User?             @relation("LedgerActorCashLedgerEntry", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, operationKey])
+  @@unique([organizationId, id])
+  @@map("cash_ledger_entries")
+}
+
+model SettlementEntry {
+  openingBalanceId           String?
+  openingBalance             OpeningBalance?          @relation("SettlementEntry_openingBalance", fields: [organizationId, openingBalanceId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  supplierServiceDocumentId  String?
+  supplierServiceDocument    SupplierServiceDocument? @relation("SettlementEntry_supplierServiceDocument", fields: [organizationId, supplierServiceDocumentId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  serviceRecordId            String?
+  serviceRecord              ServiceRecord?           @relation("SettlementEntry_serviceRecord", fields: [organizationId, serviceRecordId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  reversalOfId               String?
+  reversalOf                 SettlementEntry?         @relation("SettlementEntry_reversalOf", fields: [organizationId, reversalOfId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  settlementEntry_reversalOf SettlementEntry[]        @relation("SettlementEntry_reversalOf")
+
+  id                               String                 @id @default(cuid())
+  organizationId                   String
+  createdAt                        DateTime               @default(now()) @db.Timestamptz(3)
+  createdById                      String?
+  side                             String
+  polarity                         String
+  amount                           Decimal                @db.Decimal(20, 2)
+  currency                         String                 @default("UAH") @db.Char(3)
+  effectiveAt                      DateTime               @db.Date
+  dueDate                          DateTime?              @db.Date
+  operationKey                     String
+  partyId                          String
+  party                            SettlementParty        @relation("SettlementEntry_party", fields: [organizationId, partyId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  inventoryDocumentId              String?
+  inventoryDocument                InventoryDocument?     @relation("SettlementEntry_inventoryDocument", fields: [organizationId, inventoryDocumentId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  moneyTransactionId               String?
+  moneyTransaction                 MoneyTransaction?      @relation("SettlementEntry_moneyTransaction", fields: [organizationId, moneyTransactionId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  settlementAllocation_debitEntry  SettlementAllocation[] @relation("SettlementAllocation_debitEntry")
+  settlementAllocation_creditEntry SettlementAllocation[] @relation("SettlementAllocation_creditEntry")
+  organization                     Organization           @relation("LedgerOrgSettlementEntry", fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy                        User?                  @relation("LedgerActorSettlementEntry", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, operationKey])
+  @@unique([organizationId, id])
+  @@index([organizationId, partyId, side, effectiveAt])
+  @@map("settlement_entries")
+}
+
+model SettlementAllocation {
+  allocationEvent_allocation AllocationEvent[] @relation("AllocationEvent_allocation")
+
+  id             String          @id @default(cuid())
+  organizationId String
+  createdAt      DateTime        @default(now()) @db.Timestamptz(3)
+  createdById    String?
+  amount         Decimal         @db.Decimal(20, 2)
+  effectiveAt    DateTime        @db.Date
+  reversedAt     DateTime?       @db.Timestamptz(3)
+  reversalReason String?
+  operationKey   String
+  debitEntryId   String
+  debitEntry     SettlementEntry @relation("SettlementAllocation_debitEntry", fields: [organizationId, debitEntryId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  creditEntryId  String
+  creditEntry    SettlementEntry @relation("SettlementAllocation_creditEntry", fields: [organizationId, creditEntryId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  organization   Organization    @relation("LedgerOrgSettlementAllocation", fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy      User?           @relation("LedgerActorSettlementAllocation", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, operationKey])
+  @@unique([organizationId, id])
+  @@map("settlement_allocations")
+}
+
+model LedgerAuditEvent {
+  id             String       @id @default(cuid())
+  organizationId String
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+  createdById    String?
+  entityType     String
+  entityId       String
+  action         String
+  requestId      String
+  payload        Json
+  organization   Organization @relation("LedgerOrgLedgerAuditEvent", fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy      User?        @relation("LedgerActorLedgerAuditEvent", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, id])
+  @@index([organizationId, entityType, entityId])
+  @@map("ledger_audit_events")
+}
+
+model LedgerCommand {
+  id             String       @id @default(cuid())
+  organizationId String
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+  createdById    String?
+  scope          String
+  key            String
+  requestHash    String
+  response       Json
+  organization   Organization @relation("LedgerOrgLedgerCommand", fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy      User?        @relation("LedgerActorLedgerCommand", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, scope, key])
+  @@unique([organizationId, id])
+  @@map("ledger_commands")
+}
+
+model AccountingPeriodLock {
+  id                     String       @id @default(cuid())
+  organizationId         String
+  createdAt              DateTime     @default(now()) @db.Timestamptz(3)
+  createdById            String?
+  inventoryClosedThrough DateTime?    @db.Date
+  financeClosedThrough   DateTime?    @db.Date
+  reason                 String
+  organization           Organization @relation("LedgerOrgAccountingPeriodLock", fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy              User?        @relation("LedgerActorAccountingPeriodLock", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId])
+  @@unique([organizationId, id])
+  @@map("accounting_period_locks")
+}
+
+model StockDemand {
+  purchaseDemandAllocation_demand PurchaseDemandAllocation[] @relation("PurchaseDemandAllocation_demand")
+  receiptDemandAllocation_demand  ReceiptDemandAllocation[]  @relation("ReceiptDemandAllocation_demand")
+
+  id                           String                  @id @default(cuid())
+  organizationId               String
+  createdAt                    DateTime                @default(now()) @db.Timestamptz(3)
+  createdById                  String?
+  requiredQty                  Decimal                 @db.Decimal(18, 3)
+  ownership                    String                  @default("OWN")
+  state                        String                  @default("ACTIVE")
+  version                      Int                     @default(1)
+  servicePartId                String
+  servicePart                  ServicePart             @relation("StockDemand_servicePart", fields: [organizationId, servicePartId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  serviceRecordId              String
+  serviceRecord                ServiceRecord           @relation("StockDemand_serviceRecord", fields: [organizationId, serviceRecordId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  inventoryPartId              String
+  inventoryPart                InventoryPart           @relation("StockDemand_inventoryPart", fields: [organizationId, inventoryPartId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  stockReservation_demand      StockReservation[]      @relation("StockReservation_demand")
+  documentLotAllocation_demand DocumentLotAllocation[] @relation("DocumentLotAllocation_demand")
+  organization                 Organization            @relation("LedgerOrgStockDemand", fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy                    User?                   @relation("LedgerActorStockDemand", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, servicePartId])
+  @@unique([organizationId, id])
+  @@map("stock_demands")
+}
+
+model StockReservation {
+  id                           String             @id @default(cuid())
+  organizationId               String
+  createdAt                    DateTime           @default(now()) @db.Timestamptz(3)
+  createdById                  String?
+  createdQuantity              Decimal            @db.Decimal(18, 3)
+  remainingQuantity            Decimal            @db.Decimal(18, 3)
+  version                      Int                @default(1)
+  demandId                     String
+  demand                       StockDemand        @relation("StockReservation_demand", fields: [organizationId, demandId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  lotId                        String
+  lot                          StockLot           @relation("StockReservation_lot", fields: [organizationId, lotId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  warehouseId                  String
+  warehouse                    Warehouse          @relation("StockReservation_warehouse", fields: [organizationId, warehouseId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  reservationEvent_reservation ReservationEvent[] @relation("ReservationEvent_reservation")
+  organization                 Organization       @relation("LedgerOrgStockReservation", fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy                    User?              @relation("LedgerActorStockReservation", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, id])
+  @@map("stock_reservations")
+}
+
+model ReservationEvent {
+  id             String                 @id @default(cuid())
+  organizationId String
+  createdAt      DateTime               @default(now()) @db.Timestamptz(3)
+  createdById    String?
+  kind           String
+  quantity       Decimal                @db.Decimal(18, 3)
+  effectiveAt    DateTime               @db.Date
+  operationKey   String
+  reservationId  String
+  reservation    StockReservation       @relation("ReservationEvent_reservation", fields: [organizationId, reservationId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  documentLineId String?
+  documentLine   InventoryDocumentLine? @relation("ReservationEvent_documentLine", fields: [organizationId, documentLineId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  organization   Organization           @relation("LedgerOrgReservationEvent", fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy      User?                  @relation("LedgerActorReservationEvent", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, operationKey])
+  @@unique([organizationId, id])
+  @@map("reservation_events")
+}
+
+model DocumentLotAllocation {
+  id                                          String                  @id @default(cuid())
+  organizationId                              String
+  createdAt                                   DateTime                @default(now()) @db.Timestamptz(3)
+  createdById                                 String?
+  quantity                                    Decimal                 @db.Decimal(18, 3)
+  unitCostSnapshot                            Decimal                 @db.Decimal(20, 6)
+  documentLineId                              String
+  documentLine                                InventoryDocumentLine   @relation("DocumentLotAllocation_documentLine", fields: [organizationId, documentLineId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  lotId                                       String
+  lot                                         StockLot                @relation("DocumentLotAllocation_lot", fields: [organizationId, lotId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  warehouseId                                 String
+  warehouse                                   Warehouse               @relation("DocumentLotAllocation_warehouse", fields: [organizationId, warehouseId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  demandId                                    String?
+  demand                                      StockDemand?            @relation("DocumentLotAllocation_demand", fields: [organizationId, demandId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  sourceIssueAllocationId                     String?
+  sourceIssueAllocation                       DocumentLotAllocation?  @relation("DocumentLotAllocation_sourceIssueAllocation", fields: [organizationId, sourceIssueAllocationId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  documentLotAllocation_sourceIssueAllocation DocumentLotAllocation[] @relation("DocumentLotAllocation_sourceIssueAllocation")
+  organization                                Organization            @relation("LedgerOrgDocumentLotAllocation", fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy                                   User?                   @relation("LedgerActorDocumentLotAllocation", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, id])
+  @@index([organizationId, demandId])
+  @@map("document_lot_allocations")
+}
+
+model PurchaseOrder {
+  id                      String              @id @default(cuid())
+  organizationId          String
+  createdAt               DateTime            @default(now()) @db.Timestamptz(3)
+  createdById             String?
+  number                  String
+  status                  String              @default("DRAFT")
+  expectedAt              DateTime?           @db.Date
+  version                 Int                 @default(1)
+  note                    String?
+  supplierId              String
+  supplier                Supplier            @relation("PurchaseOrder_supplier", fields: [organizationId, supplierId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  warehouseId             String
+  warehouse               Warehouse           @relation("PurchaseOrder_warehouse", fields: [organizationId, warehouseId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  purchaseOrderLine_order PurchaseOrderLine[] @relation("PurchaseOrderLine_order")
+  organization            Organization        @relation("LedgerOrgPurchaseOrder", fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy               User?               @relation("LedgerActorPurchaseOrder", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, number])
+  @@unique([organizationId, id])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderLine {
+  id                                         String                     @id @default(cuid())
+  organizationId                             String
+  createdAt                                  DateTime                   @default(now()) @db.Timestamptz(3)
+  createdById                                String?
+  qtyOrdered                                 Decimal                    @db.Decimal(18, 3)
+  qtyCancelled                               Decimal                    @default(0) @db.Decimal(18, 3)
+  quotedUnitPrice                            Decimal                    @db.Decimal(20, 6)
+  snapshotName                               String
+  snapshotBrand                              String
+  snapshotArticle                            String?
+  snapshotUnit                               String
+  sortOrder                                  Int
+  orderId                                    String
+  order                                      PurchaseOrder              @relation("PurchaseOrderLine_order", fields: [organizationId, orderId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  inventoryPartId                            String
+  inventoryPart                              InventoryPart              @relation("PurchaseOrderLine_inventoryPart", fields: [organizationId, inventoryPartId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  purchaseDemandAllocation_purchaseOrderLine PurchaseDemandAllocation[] @relation("PurchaseDemandAllocation_purchaseOrderLine")
+  inventoryDocumentLine_purchaseOrderLine    InventoryDocumentLine[]    @relation("InventoryDocumentLine_purchaseOrderLine")
+  organization                               Organization               @relation("LedgerOrgPurchaseOrderLine", fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy                                  User?                      @relation("LedgerActorPurchaseOrderLine", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, id])
+  @@map("purchase_order_lines")
+}
+
+model PurchaseDemandAllocation {
+  id                                         String                    @id @default(cuid())
+  organizationId                             String
+  createdAt                                  DateTime                  @default(now()) @db.Timestamptz(3)
+  createdById                                String?
+  quantity                                   Decimal                   @db.Decimal(18, 3)
+  fulfilledQty                               Decimal                   @default(0) @db.Decimal(18, 3)
+  purchaseOrderLineId                        String
+  purchaseOrderLine                          PurchaseOrderLine         @relation("PurchaseDemandAllocation_purchaseOrderLine", fields: [organizationId, purchaseOrderLineId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  demandId                                   String
+  demand                                     StockDemand               @relation("PurchaseDemandAllocation_demand", fields: [organizationId, demandId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  receiptDemandAllocation_purchaseAllocation ReceiptDemandAllocation[] @relation("ReceiptDemandAllocation_purchaseAllocation")
+  organization                               Organization              @relation("LedgerOrgPurchaseDemandAllocation", fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy                                  User?                     @relation("LedgerActorPurchaseDemandAllocation", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, purchaseOrderLineId, demandId])
+  @@unique([organizationId, id])
+  @@map("purchase_demand_allocations")
+}
+
+model ReceiptDemandAllocation {
+  id                   String                    @id @default(cuid())
+  organizationId       String
+  createdAt            DateTime                  @default(now()) @db.Timestamptz(3)
+  createdById          String?
+  quantity             Decimal                   @db.Decimal(18, 3)
+  receiptLineId        String
+  receiptLine          InventoryDocumentLine     @relation("ReceiptDemandAllocation_receiptLine", fields: [organizationId, receiptLineId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  demandId             String
+  demand               StockDemand               @relation("ReceiptDemandAllocation_demand", fields: [organizationId, demandId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  purchaseAllocationId String?
+  purchaseAllocation   PurchaseDemandAllocation? @relation("ReceiptDemandAllocation_purchaseAllocation", fields: [organizationId, purchaseAllocationId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  organization         Organization              @relation("LedgerOrgReceiptDemandAllocation", fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy            User?                     @relation("LedgerActorReceiptDemandAllocation", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, receiptLineId, demandId])
+  @@unique([organizationId, id])
+  @@map("receipt_demand_allocations")
+}
+
+model LedgerImportJob {
+  id             String             @id @default(cuid())
+  organizationId String
+  createdAt      DateTime           @default(now()) @db.Timestamptz(3)
+  createdById    String?
+  fileHash       String
+  mapping        Json
+  sourceName     String
+  rowCount       Int
+  supplierId     String
+  supplier       Supplier           @relation("LedgerImportJob_supplier", fields: [organizationId, supplierId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  documentId     String?
+  document       InventoryDocument? @relation("LedgerImportJob_document", fields: [organizationId, documentId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  organization   Organization       @relation("LedgerOrgLedgerImportJob", fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy      User?              @relation("LedgerActorLedgerImportJob", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, supplierId, fileHash])
+  @@unique([organizationId, id])
+  @@map("ledger_import_jobs")
+}
+
+model DocumentSequence {
+  id             String       @id @default(cuid())
+  organizationId String
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+  createdById    String?
+  kind           String
+  year           Int
+  nextValue      Int          @default(1)
+  organization   Organization @relation("LedgerOrgDocumentSequence", fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy      User?        @relation("LedgerActorDocumentSequence", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, kind, year])
+  @@unique([organizationId, id])
+  @@map("document_sequences")
+}
+
+model AllocationEvent {
+  id             String               @id @default(cuid())
+  organizationId String
+  createdAt      DateTime             @default(now()) @db.Timestamptz(3)
+  createdById    String?
+  kind           String
+  amount         Decimal              @db.Decimal(20, 2)
+  effectiveAt    DateTime             @db.Timestamptz(3)
+  allocationId   String
+  allocation     SettlementAllocation @relation("AllocationEvent_allocation", fields: [organizationId, allocationId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  organization   Organization         @relation("LedgerOrgAllocationEvent", fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy      User?                @relation("LedgerActorAllocationEvent", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, id])
+  @@map("allocation_events")
+}
+
+model SupplierServiceDocument {
+  id                                      String                @id @default(cuid())
+  organizationId                          String
+  createdAt                               DateTime              @default(now()) @db.Timestamptz(3)
+  createdById                             String?
+  number                                  String
+  externalNumber                          String?
+  effectiveAt                             DateTime              @db.Date
+  dueDate                                 DateTime              @db.Date
+  status                                  String                @default("POSTED")
+  currency                                String                @default("UAH") @db.Char(3)
+  totalAmount                             Decimal               @db.Decimal(20, 2)
+  version                                 Int                   @default(1)
+  supplierId                              String
+  supplier                                Supplier              @relation("SupplierServiceDocument_supplier", fields: [organizationId, supplierId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  supplierServiceLine_document            SupplierServiceLine[] @relation("SupplierServiceLine_document")
+  settlementEntry_supplierServiceDocument SettlementEntry[]     @relation("SettlementEntry_supplierServiceDocument")
+  organization                            Organization          @relation("LedgerOrgSupplierServiceDocument", fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy                               User?                 @relation("LedgerActorSupplierServiceDocument", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, number])
+  @@unique([organizationId, id])
+  @@map("supplier_service_documents")
+}
+
+model SupplierServiceLine {
+  id                  String                  @id @default(cuid())
+  organizationId      String
+  createdAt           DateTime                @default(now()) @db.Timestamptz(3)
+  createdById         String?
+  descriptionSnapshot String
+  quantity            Decimal                 @db.Decimal(18, 3)
+  unitCost            Decimal                 @db.Decimal(20, 6)
+  totalAmount         Decimal                 @db.Decimal(20, 2)
+  documentId          String
+  document            SupplierServiceDocument @relation("SupplierServiceLine_document", fields: [organizationId, documentId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  serviceRecordId     String
+  serviceRecord       ServiceRecord           @relation("SupplierServiceLine_serviceRecord", fields: [organizationId, serviceRecordId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  organization        Organization            @relation("LedgerOrgSupplierServiceLine", fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy           User?                   @relation("LedgerActorSupplierServiceLine", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, id])
+  @@map("supplier_service_lines")
+}
+
+model OpeningBalance {
+  id                             String            @id @default(cuid())
+  organizationId                 String
+  createdAt                      DateTime          @default(now()) @db.Timestamptz(3)
+  createdById                    String?
+  side                           String?
+  polarity                       String?
+  amount                         Decimal           @db.Decimal(20, 2)
+  asOfDate                       DateTime          @db.Date
+  sourceNote                     String
+  batchKey                       String
+  partyId                        String?
+  party                          SettlementParty?  @relation("OpeningBalance_party", fields: [organizationId, partyId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  accountId                      String?
+  account                        CashAccount?      @relation("OpeningBalance_account", fields: [organizationId, accountId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  settlementEntry_openingBalance SettlementEntry[] @relation("SettlementEntry_openingBalance")
+  cashLedgerEntry_openingBalance CashLedgerEntry[] @relation("CashLedgerEntry_openingBalance")
+  organization                   Organization      @relation("LedgerOrgOpeningBalance", fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy                      User?             @relation("LedgerActorOpeningBalance", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, batchKey])
+  @@unique([organizationId, id])
+  @@map("opening_balances")
+}

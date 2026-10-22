@@ -7,6 +7,9 @@ export enum PermissionAction {
 }
 
 export enum PermissionSubject {
+  STOCK_LEDGER = 'stock_ledger',
+  STOCK_COST = 'stock_cost',
+  SUPPLIER_FINANCE = 'supplier_finance',
   DASHBOARD = 'dashboard',
   VEHICLES = 'vehicles',
   CUSTOMERS = 'customers',
@@ -40,6 +43,19 @@ export type PermissionGroup = {
 }
 
 export const permissionGroups: PermissionGroup[] = [
+  { name: 'Stock ledger', subject: PermissionSubject.STOCK_LEDGER, permissions: [
+    { action: PermissionAction.READ, label: 'View stock documents' },
+    { action: PermissionAction.CREATE, label: 'Save drafts' },
+    { action: PermissionAction.MANAGE, label: 'Post stock documents' },
+  ] },
+  { name: 'Purchase costs', subject: PermissionSubject.STOCK_COST, permissions: [
+    { action: PermissionAction.READ, label: 'View purchase costs' },
+  ] },
+  { name: 'Supplier settlements', subject: PermissionSubject.SUPPLIER_FINANCE, permissions: [
+    { action: PermissionAction.READ, label: 'View balances' },
+    { action: PermissionAction.CREATE, label: 'Register payments' },
+    { action: PermissionAction.MANAGE, label: 'Allocate payments' },
+  ] },
   {
     name: 'Dashboard',
     subject: PermissionSubject.DASHBOARD,

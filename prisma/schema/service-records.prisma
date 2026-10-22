@@ -1,4 +1,13 @@
 model ServiceRecord {
+  supplierServiceLine_serviceRecord SupplierServiceLine[] @relation("SupplierServiceLine_serviceRecord")
+  settlementEntry_serviceRecord SettlementEntry[] @relation("SettlementEntry_serviceRecord")
+  ledgerFinancialSnapshot Json?
+
+  stockDemand_serviceRecord StockDemand[] @relation("StockDemand_serviceRecord")
+  inventoryAccountingMode String @default("LEGACY")
+  financeAccountingMode String @default("LEGACY")
+  @@unique([organizationId, id])
+
   id              String    @id @default(cuid())
   title           String
   description     String?
@@ -289,6 +298,10 @@ model ServiceAttachment {
 }
 
 model ServicePart {
+  stockDemand_servicePart StockDemand[] @relation("StockDemand_servicePart")
+  organizationId String?
+  @@unique([organizationId, id])
+
   discountType String @default("none")
   discountValue Float @default(0)
   sortOrder Int @default(0)
@@ -314,6 +327,8 @@ model ServicePart {
 }
 
 model ServiceLabor {
+  executionType String @default("INTERNAL")
+
   @@index([technicianId], map: "service_labor_technician_idx")
   technicianId String?
   technician Technician? @relation(fields: [technicianId], references: [id], onDelete: Restrict)
