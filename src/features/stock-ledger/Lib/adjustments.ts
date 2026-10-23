@@ -1,6 +1,7 @@
 import { assertLotDate } from './chronology'
 import { nextDocumentNumber } from './numbers'
 import { openingStockSchema, adjustmentSchema } from './contracts'
+import { outgoingCost } from './valuation'
 import { D, cents } from './amounts'
 import {
   assertPeriod,
@@ -75,7 +76,7 @@ export function createStockAdjustments(db: LedgerDB, ctx: LedgerContext) {
               inventoryPartId: product.id,
               sourceLineId: line.id,
               acquiredAt: input.effectiveAt,
-              unitCost: inputLine.unitPrice,
+              unitCost: total.div(inputLine.quantity).toDecimalPlaces(6),
             },
           })
           await tx.stockLotBalance.create({
@@ -93,7 +94,7 @@ export function createStockAdjustments(db: LedgerDB, ctx: LedgerContext) {
               lotId: lot.id,
               warehouseId: warehouse.id,
               quantityDelta: inputLine.quantity,
-              costAmountDelta: D(inputLine.quantity).mul(inputLine.unitPrice),
+              costAmountDelta: total,
               effectiveAt: input.effectiveAt,
               operationKey: 'opening:' + line.id,
             },
@@ -137,6 +138,17 @@ export function createStockAdjustments(db: LedgerDB, ctx: LedgerContext) {
         const product = balance.lot.inventoryPart
         if (['pcs', 'шт', 'шт.'].includes(product.unit ?? 'pcs') && !counted.isInteger())
           throw new Error('Кількість штучного товару має бути цілою')
+        const costDelta = difference.lt(0)
+          ? (
+              await outgoingCost(
+                tx,
+                ctx,
+                balance.lotId,
+                balance.warehouseId,
+                difference.abs().toString()
+              )
+            ).negated()
+          : difference.mul(balance.lot.unitCost).toDecimalPlaces(6)
         const doc = await tx.inventoryDocument.create({
           data: {
             ...meta,
@@ -177,7 +189,7 @@ export function createStockAdjustments(db: LedgerDB, ctx: LedgerContext) {
             lotId: balance.lotId,
             warehouseId: balance.warehouseId,
             quantityDelta: difference,
-            costAmountDelta: difference.mul(balance.lot.unitCost),
+            costAmountDelta: costDelta,
             effectiveAt: input.effectiveAt,
             operationKey: input.idempotencyKey,
           },

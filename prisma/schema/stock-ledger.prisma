@@ -499,6 +499,7 @@ model DocumentLotAllocation {
   createdById                                 String?
   quantity                                    Decimal                 @db.Decimal(18, 3)
   unitCostSnapshot                            Decimal                 @db.Decimal(20, 6)
+  costAmountSnapshot                          Decimal                 @db.Decimal(20, 6)
   documentLineId                              String
   documentLine                                InventoryDocumentLine   @relation("DocumentLotAllocation_documentLine", fields: [organizationId, documentLineId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
   lotId                                       String

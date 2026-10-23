@@ -31,3 +31,81 @@ describe('purchase import preview', () => {
     expect(normalizeArticle(' ab-12 / C ')).toBe('AB12C')
   })
 })
+
+describe('import numerical validation and XLSX', () => {
+  it.each([
+    ['0.0001', '1', '0'],
+    ['1', '1.0000001', '0'],
+    ['1', '10', '10.01'],
+    ['1e3', '1', '0'],
+    ['1', 'NaN', '0'],
+    ['1', '-1', '0'],
+  ])('does not silently round or accept invalid q=%s p=%s discount=%s', async (q, p, d) => {
+    const result = await parsePurchaseFile(
+      Buffer.from(`Артикул;Бренд;Кількість;Ціна;Знижка\nA;---;${q};${p};${d}`),
+      'csv',
+      { ...mapping, discount: 'Знижка' }
+    )
+    expect(result.rows).toHaveLength(1)
+    expect(result.rows[0].errors.length).toBeGreaterThan(0)
+  })
+  it('preserves precision and decimal commas with BOM', async () => {
+    const result = await parsePurchaseFile(
+      Buffer.from('\uFEFFАртикул;Бренд;Кількість;Ціна;Знижка\nA;---;0,333;1,234567;0,01'),
+      'csv',
+      { ...mapping, discount: 'Знижка' }
+    )
+    expect(result.rows[0]).toMatchObject({
+      quantity: '0.333',
+      unitPrice: '1.234567',
+      discountValue: '0.01',
+      errors: [],
+    })
+  })
+  it('rejects empty, malformed, oversized or missing-column files', async () => {
+    for (const bytes of [
+      Buffer.alloc(0),
+      Buffer.alloc(10 * 1024 * 1024 + 1),
+      Buffer.from('A;B\n1;2'),
+      Buffer.from('Артикул;Бренд;Кількість;Ціна\n"unterminated'),
+    ])
+      await expect(parsePurchaseFile(bytes, 'csv', mapping)).rejects.toThrow()
+    await expect(
+      parsePurchaseFile(
+        Buffer.from('Артикул;Бренд;Кількість;Ціна\n' + 'A;---;1;1\n'.repeat(10001)),
+        'csv',
+        mapping
+      )
+    ).rejects.toThrow()
+  })
+  it('reads real XLSX numeric and text cells without executing formulas', async () => {
+    const { Workbook } = await import('exceljs')
+    const workbook = new Workbook(),
+      sheet = workbook.addWorksheet('Receipt')
+    sheet.addRow(['Артикул', 'Бренд', 'Кількість', 'Ціна'])
+    sheet.addRow(['A', '---', 0.333, 1.234567])
+    sheet.addRow(['B', '---', 1, { formula: '1+1', result: 2 }])
+    sheet.addRow(['C', '---', 1, { text: '10', hyperlink: 'https://example.test' }])
+    const result = await parsePurchaseFile(
+      Buffer.from(await workbook.xlsx.writeBuffer()),
+      'xlsx',
+      mapping
+    )
+    expect(result.rows[0]).toMatchObject({ quantity: '0.333', unitPrice: '1.234567', errors: [] })
+    expect(result.rows).toHaveLength(3)
+    expect(result.rows[1].errors.length).toBeGreaterThan(0)
+    expect(result.rows[2].errors.length).toBeGreaterThan(0)
+  })
+  it('rejects empty XLSX and excessive ZIP entries before spreadsheet parsing', async () => {
+    const { Workbook } = await import('exceljs')
+    await expect(
+      parsePurchaseFile(Buffer.from(await new Workbook().xlsx.writeBuffer()), 'xlsx', mapping)
+    ).rejects.toThrow()
+    const JSZip = (await import('jszip')).default,
+      zip = new JSZip()
+    for (let i = 0; i < 501; i++) zip.file(`file${i}`, '')
+    await expect(
+      parsePurchaseFile(await zip.generateAsync({ type: 'nodebuffer' }), 'xlsx', mapping)
+    ).rejects.toThrow('об’єктів')
+  })
+})

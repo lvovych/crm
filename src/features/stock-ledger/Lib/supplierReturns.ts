@@ -1,6 +1,7 @@
 import { assertLotDate } from './chronology'
 import { nextDocumentNumber } from './numbers'
-import { cents, D } from './amounts'
+import { outgoingCost } from './valuation'
+import { proportionalAmount, D } from './amounts'
 import { supplierReturnSchema } from './contracts'
 import {
   assertPeriod,
@@ -41,13 +42,29 @@ export function returnToSupplier(db: LedgerDB, ctx: LedgerContext, raw: unknown)
     const returnedQty = returned.reduce((s, l) => s.plus(l.quantity), D(0))
     if (returnedQty.plus(input.quantity).gt(source.quantity))
       throw new Error('Повернення перевищує кількість приходу')
-    const final = returnedQty.plus(input.quantity).eq(source.quantity)
-    const netLeft = source.netAmount.minus(returned.reduce((s, l) => s.plus(l.netAmount), D(0)))
-    const taxLeft = source.taxAmount.minus(returned.reduce((s, l) => s.plus(l.taxAmount), D(0)))
-    const proportionalNet = cents(source.netAmount.mul(input.quantity).div(source.quantity))
-    const proportionalTax = cents(source.taxAmount.mul(input.quantity).div(source.quantity))
-    const net = final || proportionalNet.gt(netLeft) ? netLeft : proportionalNet
-    const tax = final || proportionalTax.gt(taxLeft) ? taxLeft : proportionalTax
+    const net = proportionalAmount(
+      source.netAmount.toString(),
+      source.quantity.toString(),
+      returned.reduce((s, l) => s.plus(l.netAmount), D(0)).toString(),
+      returnedQty.toString(),
+      input.quantity,
+      2
+    )
+    const tax = proportionalAmount(
+      source.taxAmount.toString(),
+      source.quantity.toString(),
+      returned.reduce((s, l) => s.plus(l.taxAmount), D(0)).toString(),
+      returnedQty.toString(),
+      input.quantity,
+      2
+    )
+    const stockCost = await outgoingCost(
+      tx,
+      ctx,
+      balance.lotId,
+      balance.warehouseId,
+      input.quantity
+    )
     const doc = await tx.inventoryDocument.create({
       data: {
         ...meta,
@@ -92,7 +109,7 @@ export function returnToSupplier(db: LedgerDB, ctx: LedgerContext, raw: unknown)
         lotId: balance.lotId,
         warehouseId: balance.warehouseId,
         quantityDelta: D(input.quantity).negated(),
-        costAmountDelta: D(input.quantity).mul(balance.lot.unitCost).negated(),
+        costAmountDelta: stockCost.negated(),
         effectiveAt: input.effectiveAt,
         operationKey: input.idempotencyKey,
       },

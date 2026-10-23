@@ -17,7 +17,8 @@
     "test:coverage": "vitest --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "seed:demo": "npx tsx prisma/seed_dummy_data.ts"
+    "seed:demo": "npx tsx prisma/seed_dummy_data.ts",
+    "test:stock-ledger": "node scripts/test-stock-ledger.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-ses": "^3.1045.0",

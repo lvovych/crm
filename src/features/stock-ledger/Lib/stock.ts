@@ -1,6 +1,7 @@
 import { assertLotDate } from './chronology'
 import { nextDocumentNumber } from './numbers'
-import { D, fifo } from './amounts'
+import { outgoingCost } from './valuation'
+import { D, fifo, proportionalAmount } from './amounts'
 import {
   demandSchema,
   cancelDemandSchema,
@@ -295,7 +296,7 @@ export function createStockOperations(db: LedgerDB, ctx: LedgerContext) {
           if (remaining.isZero()) break
           await assertLotDate(tx, ctx, r.lotId, input.effectiveAt, input.quantity)
           const q = D(r.remainingQuantity).lt(remaining) ? r.remainingQuantity : remaining
-          const amount = q.mul(r.lot.unitCost)
+          const amount = await outgoingCost(tx, ctx, r.lotId, r.warehouseId, q.toString())
           await tx.stockReservation.update({
             where: { id: r.id },
             data: { remainingQuantity: { decrement: q }, version: { increment: 1 } },
@@ -323,6 +324,7 @@ export function createStockOperations(db: LedgerDB, ctx: LedgerContext) {
               demandId: demand.id,
               quantity: q,
               unitCostSnapshot: r.lot.unitCost,
+              costAmountSnapshot: amount,
             },
           })
           await tx.reservationEvent.create({
@@ -373,10 +375,18 @@ export function createStockOperations(db: LedgerDB, ctx: LedgerContext) {
           throw new Error('Дата повернення передує видачі')
         const returned = await tx.documentLotAllocation.aggregate({
           where: { ...org, sourceIssueAllocationId: source.id },
-          _sum: { quantity: true },
+          _sum: { quantity: true, costAmountSnapshot: true },
         })
         if (D(input.quantity).gt(source.quantity.minus(returned._sum.quantity ?? 0)))
           throw new Error('Повернення перевищує видану кількість')
+        const returnCost = proportionalAmount(
+          source.costAmountSnapshot.toString(),
+          source.quantity.toString(),
+          (returned._sum.costAmountSnapshot ?? D(0)).toString(),
+          (returned._sum.quantity ?? D(0)).toString(),
+          input.quantity,
+          6
+        )
         const doc = await document(
           tx,
           ctx,
@@ -419,6 +429,7 @@ export function createStockOperations(db: LedgerDB, ctx: LedgerContext) {
             demandId: source.demandId,
             quantity: input.quantity,
             unitCostSnapshot: source.unitCostSnapshot,
+            costAmountSnapshot: returnCost,
             sourceIssueAllocationId: source.id,
           },
         })
@@ -429,7 +440,7 @@ export function createStockOperations(db: LedgerDB, ctx: LedgerContext) {
             lotId: source.lotId,
             warehouseId: warehouse.id,
             quantityDelta: input.quantity,
-            costAmountDelta: D(input.quantity).mul(source.unitCostSnapshot),
+            costAmountDelta: returnCost,
             effectiveAt: input.effectiveAt,
             operationKey: input.idempotencyKey,
           },
@@ -455,6 +466,13 @@ export function createStockOperations(db: LedgerDB, ctx: LedgerContext) {
         await assertLotDate(tx, ctx, balance.lotId, input.effectiveAt, input.quantity)
         if (D(input.quantity).gt(balance.onHandQty.minus(balance.reservedQty)))
           throw new Error('Недостатньо вільного залишку для переміщення')
+        const transferCost = await outgoingCost(
+          tx,
+          ctx,
+          balance.lotId,
+          balance.warehouseId,
+          input.quantity
+        )
         const doc = await document(
           tx,
           ctx,
@@ -502,7 +520,7 @@ export function createStockOperations(db: LedgerDB, ctx: LedgerContext) {
               lotId: balance.lotId,
               warehouseId,
               quantityDelta: D(input.quantity).mul(sign),
-              costAmountDelta: D(input.quantity).mul(balance.lot.unitCost).mul(sign),
+              costAmountDelta: transferCost.mul(sign),
               effectiveAt: input.effectiveAt,
               operationKey: input.idempotencyKey + ':' + warehouseId,
             },

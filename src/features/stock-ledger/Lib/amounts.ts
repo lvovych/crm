@@ -27,8 +27,14 @@ export const lineSchema = z.object({
   taxRate: decimalText.default('0'),
 })
 export type LineInput = z.infer<typeof lineSchema>
+// Isolate ledger precision from Prisma's global Decimal configuration. Products of
+// permitted inputs need more than Decimal's default 20 significant digits.
+const LedgerDecimal = Prisma.Decimal.clone({
+  precision: 80,
+  rounding: Prisma.Decimal.ROUND_HALF_UP,
+})
 export const D = (value: string | number | InstanceType<typeof Prisma.Decimal>) =>
-  new Prisma.Decimal(value)
+  new LedgerDecimal(value)
 export const cents = (value: InstanceType<typeof Prisma.Decimal>) =>
   value.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP)
 export function calculateLine(input: LineInput) {
@@ -70,11 +76,14 @@ export function fifo(
   quantity: string,
   lots: { id: string; available: string; unitCost: string }[]
 ) {
-  let remaining = D(quantity)
+  let remaining = D(quantityText.parse(quantity))
   const allocations: { lotId: string; quantity: string; unitCost: string; cost: string }[] = []
   for (const lot of lots) {
     if (remaining.isZero()) break
-    const taken = Prisma.Decimal.min(remaining, D(lot.available))
+    const available = D(decimalText.parse(lot.available))
+    if (available.decimalPlaces() > 3) throw new Error('Некоректна точність залишку')
+    decimalText.parse(lot.unitCost)
+    const taken = remaining.lt(available) ? remaining : available
     if (taken.lte(0)) continue
     allocations.push({
       lotId: lot.id,
@@ -86,4 +95,39 @@ export function fifo(
   }
   if (remaining.gt(0)) throw new Error('Недостатньо доступного залишку')
   return allocations
+}
+
+/** Allocate a bounded amount; the final quantity absorbs the rounding remainder. */
+export function proportionalAmount(
+  total: string,
+  totalQty: string,
+  usedAmount: string,
+  usedQty: string,
+  quantity: string,
+  places: number
+) {
+  const amount = D(total),
+    qty = D(totalQty),
+    used = D(usedAmount),
+    taken = D(usedQty),
+    next = D(quantity)
+  if (
+    !amount.isFinite() ||
+    !qty.isFinite() ||
+    !used.isFinite() ||
+    !taken.isFinite() ||
+    !next.isFinite() ||
+    amount.lt(0) ||
+    qty.lte(0) ||
+    used.lt(0) ||
+    used.gt(amount) ||
+    taken.lt(0) ||
+    next.lte(0) ||
+    taken.plus(next).gt(qty)
+  )
+    throw new Error('Некоректний розподіл суми або кількості')
+  const left = amount.minus(used)
+  if (taken.plus(next).eq(qty)) return left
+  const share = amount.mul(next).div(qty).toDecimalPlaces(places, Prisma.Decimal.ROUND_HALF_UP)
+  return share.gt(left) ? left : share
 }

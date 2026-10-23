@@ -1,0 +1,46 @@
+name: Stock ledger calculations & PostgreSQL
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [feature/inventory-supplier-settlements]
+permissions:
+  contents: read
+concurrency:
+  group: stock-ledger-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  stock-ledger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: crm_test
+          POSTGRES_PASSWORD: local_test_only
+          POSTGRES_DB: crm_ledger_test
+        ports:
+          - 55439:5432
+        options: >-
+          --health-cmd "pg_isready -U crm_test -d crm_ledger_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://crm_test:local_test_only@127.0.0.1:55439/crm_ledger_test
+      LEDGER_TEST_DATABASE_URL: postgresql://crm_test:local_test_only@127.0.0.1:55439/crm_ledger_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npx prisma migrate deploy
+      - run: npm run test:stock-ledger -- --coverage
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stock-ledger-coverage
+          path: test-results/stock-ledger-coverage
+          retention-days: 14
