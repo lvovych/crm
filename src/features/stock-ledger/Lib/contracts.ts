@@ -20,6 +20,7 @@ export const accountSchema = commandSchema.extend({
   kind: z.enum(['CASH', 'BANK', 'CARD_CLEARING']).default('BANK'),
 })
 export const receiptSchema = commandSchema.extend({
+  autoAllocatePurchase: z.boolean().default(false),
   documentId: z.string().optional(),
   expectedVersion: z.number().int().positive().optional(),
   supplierId: z.string().min(1),

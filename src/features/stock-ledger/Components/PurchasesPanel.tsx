@@ -63,6 +63,7 @@ export function PurchasesPanel() {
       }))
     const r = await saveReceipt({
       idempotencyKey: key,
+      autoAllocatePurchase: true,
       supplierId: selected.supplierId,
       warehouseId: selected.warehouseId,
       effectiveAt: date,
@@ -76,7 +77,9 @@ export function PurchasesPanel() {
     else {
       setSelected(undefined)
       setRevision((v) => v + 1)
-      setError('Чернетку приходу створено. Відкрийте її у «Надходженнях», перевірте й проведіть.')
+      setError(
+        'Чернетку приходу створено. Відкрийте її у «Надходженнях», перевірте автоматичний розподіл між нарядами й проведіть.'
+      )
     }
   }
   return (

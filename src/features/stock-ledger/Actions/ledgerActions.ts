@@ -718,3 +718,131 @@ export async function reverseLedgerReceipt(input: unknown) {
     return reverseReceipt(ledgerDB, ctx, input)
   })
 }
+
+export async function listManagedDirectories() {
+  return withAuth(async (ctx) => {
+    enabled()
+    if (!ctx.isAdmin) throw new Error('Довідники змінює адміністратор')
+    const where = { organizationId: ctx.organizationId }
+    const [suppliers, warehouses, accounts] = await Promise.all([
+      db.supplier.findMany({ where, orderBy: { name: 'asc' } }),
+      db.warehouse.findMany({ where, orderBy: { name: 'asc' } }),
+      db.cashAccount.findMany({ where, orderBy: { name: 'asc' } }),
+    ])
+    return { suppliers, warehouses, accounts }
+  })
+}
+export async function updateLedgerDirectory(
+  kind: 'supplier' | 'warehouse' | 'account',
+  input: unknown
+) {
+  return withAuth(async (ctx) => {
+    enabled()
+    if (!ctx.isAdmin) throw new Error('Довідники змінює адміністратор')
+    const { directoryOperations } = await import('../Lib/directories')
+    const operation = z.enum(['supplier', 'warehouse', 'account']).parse(kind)
+    return directoryOperations(ledgerDB, ctx)[operation](input)
+  })
+}
+export async function getStockSummary(input: unknown) {
+  return withAuth(
+    async (ctx) => {
+      enabled()
+      const { stockSummary } = await import('../Lib/stockReports')
+      return ledgerDB.$transaction((tx) => stockSummary(tx, ctx, input), {
+        isolationLevel: 'RepeatableRead',
+      })
+    },
+    { requiredPermissions: [permission(A.READ, S.STOCK_LEDGER)] }
+  )
+}
+export async function getStockHistory(input: unknown) {
+  return withAuth(
+    async (ctx) => {
+      enabled()
+      const { stockHistory } = await import('../Lib/stockReports')
+      return ledgerDB.$transaction((tx) => stockHistory(tx, ctx, input), {
+        isolationLevel: 'RepeatableRead',
+      })
+    },
+    { requiredPermissions: [permission(A.READ, S.STOCK_LEDGER)] }
+  )
+}
+export async function getStockWarehouses() {
+  return withAuth(
+    async (ctx) => {
+      enabled()
+      return db.warehouse.findMany({
+        where: { organizationId: ctx.organizationId },
+        select: { id: true, name: true },
+        orderBy: { name: 'asc' },
+      })
+    },
+    { requiredPermissions: [permission(A.READ, S.STOCK_LEDGER)] }
+  )
+}
+export async function closeAccountingPeriod(input: unknown) {
+  return withAuth(async (ctx) => {
+    enabled()
+    if (!ctx.isAdmin) throw new Error('Періоди закриває адміністратор')
+    const { closeLedgerPeriod } = await import('../Lib/administration')
+    return closeLedgerPeriod(ledgerDB, ctx, input)
+  })
+}
+export async function getLedgerAdministration(page = 1) {
+  return withAuth(async (ctx) => {
+    enabled()
+    if (!ctx.isAdmin) throw new Error('Доступ лише для адміністратора')
+    const p = z.number().int().min(1).max(100000).parse(page),
+      where = { organizationId: ctx.organizationId }
+    const [parties, accounts, warehouses, period, audit, total] = await Promise.all([
+      db.settlementParty.findMany({
+        where,
+        select: { id: true, kind: true, displayNameSnapshot: true },
+        orderBy: { displayNameSnapshot: 'asc' },
+      }),
+      db.cashAccount.findMany({
+        where: { ...where, archivedAt: null },
+        select: { id: true, name: true },
+      }),
+      db.warehouse.findMany({
+        where: { ...where, archivedAt: null },
+        select: { id: true, name: true },
+      }),
+      db.accountingPeriodLock.findUnique({ where }),
+      db.ledgerAuditEvent.findMany({
+        where,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        skip: (p - 1) * 25,
+        take: 25,
+        select: {
+          id: true,
+          createdAt: true,
+          createdById: true,
+          action: true,
+          entityId: true,
+          payload: true,
+        },
+      }),
+      db.ledgerAuditEvent.count({ where }),
+    ])
+    return { parties, accounts, warehouses, period, audit, total }
+  })
+}
+export async function getFinancialReport(input: unknown) {
+  return withAuth(
+    async (ctx) => {
+      enabled()
+      const { financialReport } = await import('../Lib/financialReport')
+      return ledgerDB.$transaction((tx) => financialReport(tx, ctx, input), {
+        isolationLevel: 'RepeatableRead',
+      })
+    },
+    {
+      requiredPermissions: [
+        permission(A.READ, S.SUPPLIER_FINANCE),
+        permission(A.READ, S.STOCK_COST),
+      ],
+    }
+  )
+}

@@ -362,3 +362,98 @@ export async function refreshPurchaseOrders(tx: Tx, ctx: LedgerContext, ids: Set
     })
   }
 }
+
+/** Draft-only proposal. Existing draft allocations are counted so two partial
+ * deliveries cannot promise the same demand. Posting revalidates every limit. */
+export async function autoAllocatePurchaseReceipt(tx: Tx, ctx: LedgerContext, documentId: string) {
+  const org = { organizationId: ctx.organizationId }
+  const doc = await tx.inventoryDocument.findFirstOrThrow({
+    where: { ...org, id: documentId, status: 'DRAFT' },
+    include: { inventoryDocumentLine_document: { orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] } },
+  })
+  for (const line of doc.inventoryDocumentLine_document) {
+    if (!line.purchaseOrderLineId) continue
+    const po = await tx.purchaseOrderLine.findFirstOrThrow({
+      where: { ...org, id: line.purchaseOrderLineId },
+      include: {
+        order: true,
+        purchaseDemandAllocation_purchaseOrderLine: {
+          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        },
+      },
+    })
+    if (
+      po.order.supplierId !== doc.supplierId ||
+      po.order.warehouseId !== doc.targetWarehouseId ||
+      po.inventoryPartId !== line.inventoryPartId ||
+      !['CONFIRMED', 'PARTIALLY_RECEIVED'].includes(po.order.status)
+    )
+      throw new Error('Закупівля не відповідає приходу або вже закрита')
+    const drafts = await tx.inventoryDocumentLine.aggregate({
+      where: { ...org, purchaseOrderLineId: po.id, document: { status: 'DRAFT', kind: 'RECEIPT' } },
+      _sum: { quantity: true },
+    })
+    if (
+      (drafts._sum.quantity ?? D(0))
+        .plus(await receivedQty(tx, ctx, po.id))
+        .gt(po.qtyOrdered.minus(po.qtyCancelled))
+    )
+      throw new Error(
+        'Кількість уже включена в іншу чернетку приходу або перевищує залишок закупівлі'
+      )
+    let available = D(line.quantity)
+    for (const allocation of po.purchaseDemandAllocation_purchaseOrderLine) {
+      if (available.isZero()) break
+      const demand = await tx.stockDemand.findFirst({
+        where: { ...org, id: allocation.demandId, state: 'ACTIVE', ownership: 'OWN' },
+        include: {
+          stockReservation_demand: true,
+          documentLotAllocation_demand: {
+            include: { documentLine: { include: { document: true } } },
+          },
+        },
+      })
+      if (!demand) continue
+      const draftAllocations = await tx.receiptDemandAllocation.findMany({
+        where: {
+          ...org,
+          receiptLine: { document: { status: 'DRAFT' } },
+          OR: [{ demandId: demand.id }, { purchaseAllocationId: allocation.id }],
+        },
+      })
+      const pending = D(allocation.quantity)
+        .minus(allocation.fulfilledQty)
+        .minus(
+          draftAllocations
+            .filter((a) => a.purchaseAllocationId === allocation.id)
+            .reduce((sum, a) => sum.plus(a.quantity), D(0))
+        )
+      const issued = demand.documentLotAllocation_demand.reduce(
+        (sum, a) => sum.plus(a.quantity.mul(a.documentLine.document.kind === 'ISSUE' ? 1 : -1)),
+        D(0)
+      )
+      const need = D(demand.requiredQty)
+        .minus(issued)
+        .minus(
+          demand.stockReservation_demand.reduce((sum, r) => sum.plus(r.remainingQuantity), D(0))
+        )
+        .minus(
+          draftAllocations
+            .filter((a) => a.demandId === demand.id)
+            .reduce((sum, a) => sum.plus(a.quantity), D(0))
+        )
+      const quantity = [available, pending, need].reduce((a, b) => (a.lt(b) ? a : b))
+      if (quantity.lte(0)) continue
+      await tx.receiptDemandAllocation.create({
+        data: {
+          ...metadata(ctx),
+          receiptLineId: line.id,
+          demandId: demand.id,
+          purchaseAllocationId: allocation.id,
+          quantity,
+        },
+      })
+      available = available.minus(quantity)
+    }
+  }
+}

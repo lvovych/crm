@@ -6,6 +6,10 @@ import { PurchasesPanel } from './PurchasesPanel'
 import { SettlementReversal, StatementDownload } from './SettlementTools'
 import { StockActions } from './StockActions'
 import { ReceiptAllocation } from './ReceiptAllocation'
+import { FinancialReportPanel } from './FinancialReportPanel'
+import { AdministrationPanel } from './AdministrationPanel'
+import { StockOverview } from './StockOverview'
+import { DirectoryManager } from './DirectoryManager'
 import { ImportPanel } from './ImportPanel'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -64,6 +68,25 @@ export function LedgerWorkspace() {
   const [party, setParty] = useState(''),
     [page, setPage] = useState(1),
     [search, setSearch] = useState('')
+  useEffect(() => {
+    const view = new URLSearchParams(window.location.search).get('view')
+    if (
+      view &&
+      [
+        'receipts',
+        'overview',
+        'stock',
+        'demands',
+        'purchases',
+        'import',
+        'report',
+        'finances',
+        'directories',
+        'administration',
+      ].includes(view)
+    )
+      setTab(view)
+  }, [])
   const keys = useRef(new Map<string, string>())
   const execute = async <T,>(action: (v: unknown) => Promise<ActionResult<T>>, payload: object) => {
     const fingerprint = JSON.stringify(payload) + action.name
@@ -293,12 +316,15 @@ export function LedgerWorkspace() {
       <nav aria-label="Складський облік" className="flex flex-wrap gap-2">
         {[
           ['receipts', 'Надходження'],
-          ['stock', 'Залишки'],
+          ['overview', 'Залишки'],
+          ['stock', 'Партії та операції'],
           ['demands', 'Потреби нарядів'],
           ['purchases', 'Закупівлі'],
           ['import', 'Імпорт'],
+          ['report', 'Звіти на дату'],
           ['finances', 'Розрахунки'],
           ['directories', 'Довідники'],
+          ...(directory?.isAdmin ? [['administration', 'Адміністрування']] : []),
         ].map(([key, label]) => (
           <Button
             key={key}
@@ -306,6 +332,9 @@ export function LedgerWorkspace() {
             onClick={() => {
               if (!leave()) return
               setTab(key)
+              const url = new URL(window.location.href)
+              url.searchParams.set('view', key)
+              window.history.replaceState(null, '', url)
               setPage(1)
             }}
           >
@@ -681,6 +710,9 @@ export function LedgerWorkspace() {
       {tab === 'purchases' && <PurchasesPanel />}
       {tab === 'import' && <ImportPanel />}
       {tab === 'demands' && <FulfillmentPanel />}
+      {tab === 'report' && <FinancialReportPanel />}
+      {tab === 'administration' && directory?.isAdmin && <AdministrationPanel />}
+      {tab === 'overview' && <StockOverview />}
       {tab === 'stock' && (
         <>
           {stock?.rows.map((r) => (
@@ -808,14 +840,9 @@ export function LedgerWorkspace() {
             Створити
           </Button>
           <p className="text-sm text-muted-foreground">Довідники створює адміністратор.</p>
-          {directory?.suppliers.map((s) => (
-            <p key={s.id}>{s.name}</p>
-          ))}
-          {directory?.warehouses.map((w) => (
-            <p key={w.id}>
-              {w.code} — {w.name}
-            </p>
-          ))}
+          {directory?.isAdmin && (
+            <DirectoryManager revision={revision} onSaved={() => setRevision((v) => v + 1)} />
+          )}
         </section>
       )}
       {tab === 'finances' && finances && (

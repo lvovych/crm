@@ -240,6 +240,7 @@ model CashAccount {
   organizationId           String
   createdAt                DateTime           @default(now()) @db.Timestamptz(3)
   createdById              String?
+  version                  Int @default(1)
   name                     String
   kind                     String             @default("BANK")
   currency                 String             @default("UAH") @db.Char(3)

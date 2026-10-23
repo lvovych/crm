@@ -1,6 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import { nextDocumentNumber } from './numbers'
-import { postReceiptProcurement, refreshPurchaseOrders } from './procurement'
+import {
+  postReceiptProcurement,
+  refreshPurchaseOrders,
+  autoAllocatePurchaseReceipt,
+} from './procurement'
 import { D, calculateLine } from './amounts'
 import {
   accountSchema,
@@ -161,6 +165,7 @@ export function createStockLedger(db: LedgerDB, ctx: LedgerContext) {
         await tx.inventoryDocumentLine.createMany({
           data: lines.map((l) => ({ ...l, documentId: doc.id })),
         })
+        if (input.autoAllocatePurchase) await autoAllocatePurchaseReceipt(tx, ctx, doc.id)
         return { id: doc.id, version: 1, status: 'DRAFT', total: totals.totalAmount.toFixed(2) }
       })
     },

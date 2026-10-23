@@ -28,6 +28,10 @@ vi.mock('@/lib/realtime/actor.server', () => ({
 }))
 import {
   getLedgerDocument,
+  getFinancialReport,
+  getLedgerAdministration,
+  updateLedgerDirectory,
+  closeAccountingPeriod,
   listLedgerStock,
   postReceipt,
   reverseLedgerReceipt,
@@ -86,4 +90,14 @@ it('blocks even an owner while the feature flag is disabled', async () => {
   expect((await getLedgerDocument('id')).success).toBe(false)
   consoleError.mockRestore()
   expect(mocks.document).not.toHaveBeenCalled()
+})
+
+it('stock-only readers cannot inspect financial reports or administer directories and periods', async () => {
+  const quiet = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+  expect((await getFinancialReport({ through: '2026-10-20' })).forbidden).toBe(true)
+  expect((await getLedgerAdministration()).success).toBe(false)
+  expect((await updateLedgerDirectory('supplier', {})).success).toBe(false)
+  expect((await closeAccountingPeriod({})).success).toBe(false)
+  expect(mocks.transaction).not.toHaveBeenCalled()
+  quiet.mockRestore()
 })
