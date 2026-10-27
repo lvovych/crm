@@ -175,7 +175,7 @@ export function CompletionActPDF({
         : p.discountType === 'fixed'
           ? money(p.discountValue ?? 0)
           : '—',
-    name: p.name + (p.partNumber ? ` (арт. ${p.partNumber})` : ''),
+    name: p.name,
     unit: p.unit || 'шт',
     quantity: p.quantity,
     price: p.unitPrice,

@@ -82,6 +82,7 @@ export interface ServiceRecordFormProps {
 }
 
 export const emptyPart = (defaultMarkupPercent: number = 0): ServicePartInput => ({
+  unit: 'шт.',
   partNumber: '',
   name: '',
   quantity: 1,
