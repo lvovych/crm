@@ -18,7 +18,20 @@ done
 echo "PostgreSQL is ready!"
 
 echo "Applying database migrations..."
-if ! npx prisma migrate deploy 2>/dev/null; then
+migration_log=$(mktemp)
+if NO_COLOR=1 npx prisma migrate deploy >"$migration_log" 2>&1; then
+  cat "$migration_log"
+  rm -f "$migration_log"
+else
+  migration_status=$?
+  cat "$migration_log" >&2
+  # Only an explicitly unbaselined database permits the legacy recovery path.
+  # Disk, connection and failed-migration errors must stop startup unchanged.
+  if ! grep -q '^Error: P3005' "$migration_log"; then
+    rm -f "$migration_log"
+    exit "$migration_status"
+  fi
+  rm -f "$migration_log"
   # P3005: existing DB without migration history (from db push).
   # Create empty migration table so migrate deploy can run.
   # 0_init is fully idempotent — safe on any DB state.
