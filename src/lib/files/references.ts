@@ -68,6 +68,8 @@ const anywhere = (table: string, column: string, cast = '') =>
 const json = (table: string, column: string) => anywhere(table, column, '::text')
 
 export const FILE_REFERENCES: FileReference[] = [
+  { model: 'LedgerAuditEvent', field: 'payload', sql: json('ledger_audit_events', 'payload') },
+  { model: 'LedgerCommand', field: 'response', sql: json('ledger_commands', 'response') },
   { model: 'ServiceAttachment', field: 'fileUrl', sql: text('service_attachments', 'fileUrl') },
   { model: 'QuoteAttachment', field: 'fileUrl', sql: text('quote_attachments', 'fileUrl') },
   { model: 'TireSetAttachment', field: 'fileUrl', sql: text('tire_set_attachments', 'fileUrl') },

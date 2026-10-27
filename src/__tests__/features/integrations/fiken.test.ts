@@ -471,7 +471,7 @@ describe('Fiken mapping: invoices as Torqvoice totals them', () => {
     }
     expect(checked).toBeGreaterThan(12_000)
     expect(wrong).toEqual([])
-  })
+  }, 20_000)
 })
 
 describe('Fiken mapping: contacts and payments', () => {

@@ -15,7 +15,7 @@ import {
   LICENSE_TOKEN_MAX_AGE_DAYS,
   LICENSE_TOKEN_WARN_AGE_DAYS,
   type LicenseTokenStatus,
-} from '@/lib/license/token'
+} from '@/lib/license/shared'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 

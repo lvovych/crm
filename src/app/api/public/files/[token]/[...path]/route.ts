@@ -54,45 +54,77 @@ export async function GET(
     return NextResponse.json({ error: 'Invalid filename' }, { status: 400 })
   }
 
-  // Validate token and get org (check both invoice and quote tokens)
-  let orgId: string | undefined
-
+  // A share token grants access to one document, never the entire workshop.
   const serviceRecord = await db.serviceRecord.findUnique({
     where: { publicToken: token },
-    select: { organizationId: true },
+    select: {
+      organizationId: true,
+      attachments: { where: { includeInInvoice: true }, select: { fileUrl: true } },
+    },
   })
-
-  if (serviceRecord?.organizationId) {
-    orgId = serviceRecord.organizationId
-  } else {
-    const quote = await db.quote.findFirst({
-      where: { publicToken: token },
-      select: { organizationId: true },
-    })
-    if (quote?.organizationId) {
-      orgId = quote.organizationId
-    } else {
-      const inspection = await db.inspection.findFirst({
+  const quote = serviceRecord
+    ? null
+    : await db.quote.findFirst({
         where: { publicToken: token },
-        select: { organizationId: true },
+        select: {
+          organizationId: true,
+          attachments: { where: { includeInInvoice: true }, select: { fileUrl: true } },
+        },
       })
-      if (inspection?.organizationId) {
-        orgId = inspection.organizationId
-      }
-    }
+  const inspection =
+    serviceRecord || quote
+      ? null
+      : await db.inspection.findFirst({
+          where: { publicToken: token },
+          select: {
+            organizationId: true,
+            attachments: { where: { includeInReport: true }, select: { fileUrl: true } },
+            items: { select: { imageUrls: true } },
+          },
+        })
+  const statusReport =
+    serviceRecord || quote || inspection
+      ? null
+      : await db.statusReport.findFirst({
+          where: { publicToken: token },
+          select: { organizationId: true, videoUrl: true, expiresAt: true },
+        })
+  const orgId = (serviceRecord ?? quote ?? inspection ?? statusReport)?.organizationId
+  if (!orgId || (statusReport?.expiresAt && statusReport.expiresAt <= new Date())) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  if (!orgId) {
-    const statusReport = await db.statusReport.findFirst({
-      where: { publicToken: token },
-      select: { organizationId: true },
+  const urls = [
+    ...(serviceRecord?.attachments ?? []),
+    ...(quote?.attachments ?? []),
+    ...(inspection?.attachments ?? []),
+  ].map((file) => file.fileUrl)
+  urls.push(...(inspection?.items.flatMap((item) => item.imageUrls) ?? []))
+  if (statusReport?.videoUrl) urls.push(statusReport.videoUrl)
+
+  // Only configured document logos are public, not arbitrary files in logos/.
+  if (category === 'logos') {
+    const logos = await db.appSetting.findMany({
+      where: {
+        organizationId: orgId,
+        key: {
+          in: [
+            'workshop.logo',
+            'invoice.logo',
+            'quote.logo',
+            'certificate.logo',
+            'work_order.logo',
+          ],
+        },
+      },
+      select: { value: true },
     })
-    if (statusReport?.organizationId) {
-      orgId = statusReport.organizationId
-    }
+    urls.push(...logos.map((logo) => logo.value))
   }
-
-  if (!orgId) {
+  const suffix = `${orgId}/${category}/${filename}`
+  if (
+    !urls.some((url) => url === `/api/protected/files/${suffix}` || url === `/api/files/${suffix}`)
+  ) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
   const filePath = path.join(uploadsRoot(), orgId, category, filename)
@@ -107,7 +139,7 @@ export async function GET(
   const ext = filename.split('.').pop()?.toLowerCase() || ''
   if (ext === 'svg') {
     return new NextResponse(buffer, {
-      headers: svgDownloadHeaders('public, max-age=31536000, immutable'),
+      headers: svgDownloadHeaders('private, no-store'),
     })
   }
   const contentType = MIME_TYPES[ext] || 'application/octet-stream'
@@ -115,7 +147,7 @@ export async function GET(
   return new NextResponse(buffer, {
     headers: {
       'Content-Type': contentType,
-      'Cache-Control': 'public, max-age=31536000, immutable',
+      'Cache-Control': 'private, no-store',
       'X-Robots-Tag': 'noindex, nofollow',
     },
   })

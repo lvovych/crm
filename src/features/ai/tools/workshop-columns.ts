@@ -16,6 +16,8 @@ import { PermissionSubject } from '@/lib/permissions'
 
 /** Columns deliberately kept from the model, wherever they occur. */
 export const HIDDEN_COLUMNS: readonly string[] = [
+  // Internal accounting pointers and frozen financial data stay outside chat.
+  'billedPartyId', 'financeAccountingMode', 'inventoryAccountingMode', 'ledgerFinancialSnapshot',
   'publicToken',
   'issuedData',
   'editUnlockedById',
@@ -119,7 +121,7 @@ export const TABLE_COLUMNS: Readonly<Record<string, readonly string[]>> = {
     'sortOrder',
     'importBatchId',
   ],
-  service_parts: [
+  service_parts: ['stockOwnership', 'customerPartInstalled', 'organizationId', 'discountType', 'discountValue', 'sortOrder', 'brand',
     'id',
     'partNumber',
     'name',
@@ -132,7 +134,7 @@ export const TABLE_COLUMNS: Readonly<Record<string, readonly string[]>> = {
     'inventoryPartId',
     'serviceRecordId',
   ],
-  service_labor: ['id', 'description', 'hours', 'rate', 'total', 'pricingType', 'serviceRecordId'],
+  service_labor: ['executionType', 'technicianId', 'executorName', 'executorFrozen', 'executorLegacy', 'sortOrder', 'id', 'description', 'hours', 'rate', 'total', 'pricingType', 'serviceRecordId'],
   service_attachments: [
     'id',
     'fileName',
@@ -231,7 +233,7 @@ export const TABLE_COLUMNS: Readonly<Record<string, readonly string[]>> = {
     'vehicleId',
     'inspectionId',
   ],
-  quote_parts: [
+  quote_parts: ['brand',
     'id',
     'partNumber',
     'name',
@@ -267,7 +269,7 @@ export const TABLE_COLUMNS: Readonly<Record<string, readonly string[]>> = {
     'createdAt',
     'quoteId',
   ],
-  inventory_parts: [
+  inventory_parts: ['brandId',
     'id',
     'partNumber',
     'barcode',

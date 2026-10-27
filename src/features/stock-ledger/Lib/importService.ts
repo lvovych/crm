@@ -61,7 +61,7 @@ export async function previewImport(
         ).values(),
       ]
       const products = await tx.$queryRaw<{ id: string; article: string; brand: string }[]>`
-   SELECT p.id,w.article,w.brand FROM inventory_parts p JOIN brands b ON b.id=p."brandId"
+   SELECT p.id,w.article,w.brand FROM "public"."inventory_parts" p JOIN "public"."brands" b ON b.id=p."brandId"
    JOIN jsonb_to_recordset(${JSON.stringify(pairs)}::jsonb) AS w(article text,brand text)
     ON regexp_replace(upper(normalize(COALESCE(p."partNumber",''),NFKC)),'[[:space:]./_-]','','g')=w.article
     AND lower(normalize(b.name,NFKC))=w.brand

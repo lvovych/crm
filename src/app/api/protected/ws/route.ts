@@ -11,7 +11,6 @@ import {
   broadcast,
   leaveAll,
   parseTenantRoom,
-  roomsOf,
   tenantRoom,
 } from '@/lib/realtime/rooms.server'
 import { leaveAllRooms, onPresenceChange, startPresence } from '@/lib/realtime/presence.server'
@@ -355,11 +354,4 @@ export function UPGRADE(ws: WebSocket, _server: unknown, _request: IncomingMessa
       ws.close(4500, 'Auth error')
     }
   })()
-}
-
-/** What this instance is holding, for a health readout and for the tests. */
-export function socketStats(): { sockets: number; rooms: number } {
-  let rooms = 0
-  for (const socket of clients) rooms += roomsOf(socket).size
-  return { sockets: clients.size, rooms }
 }

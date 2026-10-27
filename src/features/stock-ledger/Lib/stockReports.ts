@@ -16,11 +16,11 @@ export async function stockSummary(tx: Tx, ctx: LedgerContext, raw: unknown) {
       br.name AS brand, p.unit, w.name AS warehouse,
       SUM(b."onHandQty") AS "onHand", SUM(b."reservedQty") AS reserved,
       SUM(b."onHandQty" - b."reservedQty") AS available
-    FROM stock_lot_balances b
-    JOIN stock_lots l ON l.id=b."lotId" AND l."organizationId"=b."organizationId"
-    JOIN inventory_parts p ON p.id=l."inventoryPartId" AND p."organizationId"=b."organizationId"
-    JOIN brands br ON br.id=p."brandId"
-    JOIN warehouses w ON w.id=b."warehouseId" AND w."organizationId"=b."organizationId"
+    FROM "public"."stock_lot_balances" b
+    JOIN "public"."stock_lots" l ON l.id=b."lotId" AND l."organizationId"=b."organizationId"
+    JOIN "public"."inventory_parts" p ON p.id=l."inventoryPartId" AND p."organizationId"=b."organizationId"
+    JOIN "public"."brands" br ON br.id=p."brandId"
+    JOIN "public"."warehouses" w ON w.id=b."warehouseId" AND w."organizationId"=b."organizationId"
     WHERE b."organizationId"=${ctx.organizationId}
       AND (${input.warehouseId}='' OR w.id=${input.warehouseId})
       AND POSITION(LOWER(${input.search}) IN LOWER(CONCAT_WS(' ',p.name,p."partNumber",br.name)))>0

@@ -1,3 +1,4 @@
+import { requiresFullBackup, FULL_BACKUP_REQUIRED } from '@/lib/backup/ledger-policy'
 import { NextRequest, NextResponse } from 'next/server'
 import { rateLimit } from '@/lib/rate-limit'
 import { getAuthContext } from '@/lib/get-auth-context'
@@ -66,6 +67,10 @@ export async function POST(request: NextRequest) {
   // Reading or replacing the whole workshop is an owner's or admin's call.
   if (!ctx.isAdmin) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  if (await requiresFullBackup(db, ctx.organizationId)) {
+    return NextResponse.json({ error: FULL_BACKUP_REQUIRED }, { status: 409 })
   }
 
   let options: ExportOptions = DEFAULT_OPTIONS

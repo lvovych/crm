@@ -175,6 +175,21 @@ describe('PasskeySettings', () => {
       expect(mockToastSuccess).toHaveBeenCalledWith('Passkey registered successfully')
     })
 
+    it.each([
+      'REGISTRATION_CANCELLED',
+      'ERROR_CEREMONY_ABORTED',
+    ])('allows retry after %s without an error toast', async (code) => {
+      mockListUserPasskeys.mockResolvedValue({ data: [] })
+      mockAddPasskey.mockResolvedValue({ error: { code, message: 'Cancelled' } })
+      render(<PasskeySettings />)
+      const button = await screen.findByRole('button', { name: 'Register Passkey' })
+      await userEvent.click(button)
+      await waitFor(() => expect(button).toBeEnabled())
+      expect(mockToastError).not.toHaveBeenCalled()
+      await userEvent.click(button)
+      expect(mockAddPasskey).toHaveBeenCalledTimes(2)
+    })
+
     it('shows error toast when registration fails', async () => {
       mockListUserPasskeys.mockResolvedValue({ data: [] })
       mockAddPasskey.mockRejectedValue(new Error('WebAuthn not supported'))
@@ -244,6 +259,21 @@ describe('PasskeySettings', () => {
       expect(mockToastSuccess).toHaveBeenCalledWith('Passkey deleted')
     })
 
+    it('does not remove the credential from the UI when the server returns an error', async () => {
+      mockListUserPasskeys.mockResolvedValue({ data: [MOCK_PASSKEY] })
+      mockDeletePasskey.mockResolvedValue({ error: { message: 'Session expired' } })
+      render(<PasskeySettings />)
+      await screen.findByText('MacBook Pro')
+      await userEvent.click(screen.getByTestId('icon-trash').closest('button')!)
+      const confirm = screen
+        .getAllByText('Delete')
+        .find((button) => button.closest('[data-testid="dialog"]'))!
+      await userEvent.click(confirm)
+      await waitFor(() => expect(mockToastError).toHaveBeenCalledWith('Failed to delete passkey'))
+      expect(screen.getByText('MacBook Pro')).toBeInTheDocument()
+      expect(mockToastSuccess).not.toHaveBeenCalled()
+    })
+
     it('shows error toast when delete fails', async () => {
       mockListUserPasskeys.mockResolvedValue({ data: [MOCK_PASSKEY] })
       mockDeletePasskey.mockRejectedValue(new Error('Server error'))
@@ -309,6 +339,20 @@ describe('PasskeySettings', () => {
           name: 'Work Laptop',
         })
       })
+    })
+
+    it('keeps the original name when the server returns an error', async () => {
+      mockListUserPasskeys.mockResolvedValue({ data: [MOCK_PASSKEY] })
+      mockUpdatePasskey.mockResolvedValue({ error: { message: 'Session expired' } })
+      render(<PasskeySettings />)
+      await screen.findByText('MacBook Pro')
+      await userEvent.click(screen.getByTestId('icon-pencil').closest('button')!)
+      await userEvent.clear(screen.getByLabelText('Name'))
+      await userEvent.type(screen.getByLabelText('Name'), 'Not saved')
+      await userEvent.click(screen.getByText('Save'))
+      await waitFor(() => expect(mockToastError).toHaveBeenCalledWith('Failed to rename passkey'))
+      expect(screen.getByText('MacBook Pro')).toBeInTheDocument()
+      expect(screen.getByTestId('dialog')).toBeInTheDocument()
     })
 
     it('shows error toast when rename fails', async () => {

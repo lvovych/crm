@@ -170,7 +170,8 @@ describe('the import route rewrites every restored file column', () => {
    * an issued document prints comes from the frozen bytes beside it
    * (DocumentAssetSnapshot), not from the URL inside it.
    */
-  const FROZEN = ['DocumentDesignSnapshot.template']
+  // Ledger history uses whole-database restore, retaining its original organization IDs.
+  const FROZEN = ['DocumentDesignSnapshot.template', 'LedgerAuditEvent.payload', 'LedgerCommand.response']
 
   it('covers every column in FILE_REFERENCES', () => {
     const listed = FILE_REFERENCES.map((ref) => `${ref.model}.${ref.field}`)

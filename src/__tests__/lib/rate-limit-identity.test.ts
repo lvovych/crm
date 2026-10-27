@@ -86,3 +86,20 @@ describe('client address', () => {
     expect(rateLimit(tech('bob'), opts)).toBeNull()
   })
 })
+
+describe('anonymous public endpoints', () => {
+  it('does not grant a fresh budget for an invented bearer token', async () => {
+    const rateLimit = await freshLimiter()
+    const attempt = (token: string) =>
+      req(
+        {
+          'x-real-ip': '203.0.113.9',
+          authorization: `Bearer ${token}`,
+        },
+        '/api/public/share/invoice/org/token/checkout'
+      )
+    expect(rateLimit(attempt('a'), ATTACKER)).toBeNull()
+    expect(rateLimit(attempt('b'), ATTACKER)).toBeNull()
+    expect(rateLimit(attempt('c'), ATTACKER)?.status).toBe(429)
+  })
+})

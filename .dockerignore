@@ -10,3 +10,9 @@ public/uploads
 backups
 data/uploads
 infra
+
+# Browser authentication state and test artifacts must not enter images.
+e2e/.auth
+playwright-report
+blob-report
+test-results

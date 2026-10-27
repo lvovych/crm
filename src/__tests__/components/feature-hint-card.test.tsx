@@ -63,6 +63,9 @@ function clickOutside() {
       new PointerEvent('pointerdown', { bubbles: true, cancelable: true })
     )
     document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }))
+    document.body.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }))
+    document.body.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
+    document.body.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
   })
 }
 

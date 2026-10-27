@@ -144,7 +144,11 @@ function SignInFormInner({
       const result = await authClient.signIn.passkey()
       if (result?.error) {
         // User dismissed the passkey prompt — not an error state
-        if ('code' in result.error && result.error.code === 'AUTH_CANCELLED') return
+        if (
+          'code' in result.error &&
+          ['AUTH_CANCELLED', 'ERROR_CEREMONY_ABORTED'].includes(String(result.error.code))
+        )
+          return
         const msg = typeof result.error.message === 'string' ? result.error.message : ''
         setError(msg || t('errors.passkeyFailed'))
       } else {

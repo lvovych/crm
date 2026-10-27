@@ -19,7 +19,11 @@ const source = readFileSync(file, 'utf8')
 const anchor = '    const handleUpgrade = module2.userland.UPGRADE;\n'
 const fix = '    if (typeof module2.ensureUserland === "function") await module2.ensureUserland();\n'
 
-if (source.includes(fix)) {
+// next-ws 2.2.19 waits in importRouteModule, before returning to the handler.
+const upstreamFix = source.includes('await routeModule?.ensureUserland?.();') &&
+  source.includes('const module2 = await importRouteModule(nextServer, route.filename);')
+
+if (source.includes(fix) || upstreamFix) {
   console.log(`[next-ws] first-upgrade fix already applied to ${file}`)
 } else if (source.includes(anchor)) {
   writeFileSync(file, source.replace(anchor, fix + anchor))

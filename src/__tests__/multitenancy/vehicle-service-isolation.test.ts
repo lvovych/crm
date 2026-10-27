@@ -39,7 +39,7 @@ vi.mock('@/lib/files/manager', () => ({
 vi.mock('@/lib/db', () => ({
   db: {
     user: { findUnique: vi.fn() },
-    appSetting: { findMany: vi.fn() },
+    appSetting: { findUnique: async () => null, findMany: vi.fn() },
     vehicle: {
       findFirst: vi.fn(),
       findMany: vi.fn(),
@@ -55,6 +55,7 @@ vi.mock('@/lib/db', () => ({
       delete: vi.fn(),
     },
     servicePart: { findMany: vi.fn() },
+    serviceLabor: { findMany: async () => [] },
     inventoryPart: { updateMany: vi.fn() },
     $transaction: vi.fn(),
   },
@@ -372,3 +373,10 @@ describe('deleteServiceAttachment — cross-org isolation', () => {
     expect((result.data as any)?.deleted).toBe(true)
   })
 })
+
+// These fixtures exercise legacy accounting. Ledger cutover is covered separately.
+vi.mock('@/features/stock-ledger/Lib/cutover', async (original) => ({
+  ...(await original<typeof import('@/features/stock-ledger/Lib/cutover')>()),
+  newRecordStockMode: async () => 'LEGACY',
+  newRecordFinanceMode: async () => 'LEGACY',
+}))

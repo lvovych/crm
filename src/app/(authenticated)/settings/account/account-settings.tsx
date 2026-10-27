@@ -96,13 +96,15 @@ export function AccountSettings({
     }
     setEnabling2FA(true)
     try {
-      const result = await authClient.twoFactor.enable({ password: twoFactorPassword })
+      const result = await authClient.twoFactor.enable({ password: twoFactorPassword, method: 'totp' })
       if (result.error) {
         toast.error(result.error.message || t('account.failedEnable2FA'))
-      } else {
-        setTotpURI(result.data?.totpURI || '')
-        setBackupCodes(result.data?.backupCodes || [])
+      } else if (result.data && 'totpURI' in result.data) {
+        setTotpURI(result.data.totpURI)
+        setBackupCodes(result.data.backupCodes)
         setSetupStep('qr')
+      } else {
+        toast.error(t('account.failedEnable2FA'))
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('account.failedEnable2FA'))

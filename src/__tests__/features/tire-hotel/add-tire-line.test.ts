@@ -44,7 +44,7 @@ function makeTx(balance = 12) {
   })
 
   // A stand-in for Prisma's client, narrowed at the call site.
-  const tx = { servicePart: { create }, stockMovement: { createMany }, $queryRaw }
+  const tx = { serviceRecord: { findFirst: async () => ({ inventoryAccountingMode: 'LEGACY' }) }, servicePart: { create }, appSetting: { findUnique: async () => null }, stockMovement: { createMany }, $queryRaw }
   return { tx, create, createMany, updates }
 }
 
@@ -116,3 +116,10 @@ describe('putting tires on a job', () => {
     expect(updates.every((u) => u.decrement > 0)).toBe(true)
   })
 })
+
+// These fixtures exercise legacy accounting. Ledger cutover is covered separately.
+vi.mock('@/features/stock-ledger/Lib/cutover', async (original) => ({
+  ...(await original<typeof import('@/features/stock-ledger/Lib/cutover')>()),
+  newRecordStockMode: async () => 'LEGACY',
+  newRecordFinanceMode: async () => 'LEGACY',
+}))

@@ -25,7 +25,10 @@ RUN npx prisma generate
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN npm run build
+# The production bundle exceeds Node 22's default ~2 GiB heap.
+# Scope the larger heap to the build command, not the runtime image.
+ARG BUILD_NODE_OPTIONS="--max-old-space-size=4096"
+RUN NODE_OPTIONS="$BUILD_NODE_OPTIONS" npm run build
 
 # Production image, copy all the files and run next
 FROM base AS runner
@@ -63,38 +66,16 @@ COPY --from=builder --chown=nextjs:nodejs /app/src/generated ./src/generated
 # properties of null (reading 'edgesOut')" resolving vitest's peers this way).
 COPY --from=builder --chown=nextjs:nodejs /app/package-lock.json ./package-lock.json
 
-# Remove Next.js standalone's traced stubs for pg/prisma (tracer copies package.json
-# but not all files), then install the full runtime packages fresh.
-RUN rm -rf \
-      /app/node_modules/pg \
-      /app/node_modules/pg-types \
-      /app/node_modules/pg-pool \
-      /app/node_modules/pg-connection-string \
-      /app/node_modules/pg-protocol \
-      /app/node_modules/pg-int8 \
-      /app/node_modules/pg-cloudflare \
-      /app/node_modules/pgpass \
-      /app/node_modules/postgres-array \
-      /app/node_modules/postgres-bytea \
-      /app/node_modules/postgres-date \
-      /app/node_modules/postgres-interval \
-      /app/node_modules/split2 \
-      /app/node_modules/prisma \
-      /app/node_modules/@prisma \
-      /app/node_modules/.prisma \
-    && npm install --omit=dev prisma@7.6.0 @prisma/client@7.6.0 @prisma/adapter-pg@7.6.0 pg dotenv tsx sharp
+# Replace traced package fragments with the exact production lockfile tree.
+# Do not downgrade Prisma or resolve new versions in the runtime image.
+# Scripts are skipped here because the custom prepare file is copied below;
+# Next's WebSocket patches are then applied explicitly.
+RUN npm ci --omit=dev --ignore-scripts
 
-# The npm install above re-resolves the dependency tree and replaces the
-# standalone build's PATCHED next package with a fresh unpatched copy from the
-# registry, which silently breaks all WebSocket routes (live updates, work
-# board sync). Re-apply the next-ws patch so the runtime server can accept
-# WebSocket upgrades. next-ws itself is already in the standalone bundle.
-#
-# sharp is named in that install for the same reason. It is the only native
-# module in the tree, its binary lives in a platform-specific optional
-# dependency (@img/sharp-linuxmusl-x64 on this image), and re-resolving the
-# tree can leave the traced copy without one. Installing it by name makes npm
-# resolve the binary against the platform the image will actually run on.
+# --ignore-scripts skips Prisma's engine download. Bring the engine installed
+# for this exact platform/lockfile from deps so non-root startup stays offline.
+COPY --from=deps --chown=nextjs:nodejs /app/node_modules/@prisma/engines/schema-engine-* ./node_modules/@prisma/engines/
+
 RUN npx next-ws patch --yes
 
 # next-ws reads a route module's exports the moment an upgrade arrives, and

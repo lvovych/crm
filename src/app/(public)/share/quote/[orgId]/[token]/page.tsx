@@ -55,7 +55,7 @@ export default async function PublicQuotePage({
         },
       },
       laborItems: true,
-      attachments: true,
+      attachments: { where: { includeInInvoice: true } },
       customer: {
         select: {
           name: true,

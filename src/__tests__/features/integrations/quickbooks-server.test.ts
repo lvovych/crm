@@ -1,5 +1,5 @@
 import { realmRef } from '@/integrations/quickbooks/mapping'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
   AccountingCustomer,
   AccountingInvoice,
@@ -248,7 +248,10 @@ function emptyCompany(): Answer {
   }
 }
 
+afterEach(() => vi.useRealTimers())
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-09-06T12:00:00Z'))
   vi.clearAllMocks()
   loadInvoice.mockResolvedValue(invoice)
   loadPayment.mockResolvedValue(payment)

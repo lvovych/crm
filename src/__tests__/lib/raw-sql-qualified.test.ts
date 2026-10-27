@@ -28,7 +28,7 @@ const TABLE_REF = /\b(FROM|JOIN|UPDATE|INTO)\s+("[^"]+"|[A-Za-z_][A-Za-z0-9_]*)/
 
 // Names that are not tables: a schema qualifier, a placeholder for an
 // interpolated fragment, or the keywords that can follow the clause word.
-const NOT_A_TABLE = new Set(['public', 'pg_temp', 'only', 'lateral', 'select', 'values'])
+const NOT_A_TABLE = new Set(['public', 'pg_temp', 'jsonb_to_recordset', 'only', 'lateral', 'select', 'values'])
 
 function sourceFiles(dir: string): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {

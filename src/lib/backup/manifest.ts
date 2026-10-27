@@ -1,3 +1,5 @@
+import { Prisma } from '@/generated/prisma/client'
+
 /**
  * What a backup contains, in one place.
  *
@@ -423,3 +425,10 @@ export function clearPlanFor(presentKeys: Iterable<string>): string[] {
     .sort((a, b) => (a.clearOrder ?? 0) - (b.clearOrder ?? 0))
     .map((entity) => entity.model)
 }
+
+/** Immutable ledger history is backed up by scripts/full-backup.py (whole database + files).
+ * Application JSON replacement is explicitly refused whenever these models contain data. */
+const SUPPORTED_FULL_DATABASE_MODELS = ["Supplier", "Warehouse", "InventoryDocument", "InventoryDocumentLine", "StockLot", "StockLotBalance", "InventoryLedgerEntry", "SettlementParty", "CashAccount", "MoneyTransaction", "CashLedgerEntry", "SettlementEntry", "SettlementAllocation", "LedgerAuditEvent", "LedgerCommand", "AccountingPeriodLock", "StockDemand", "StockReservation", "ReservationEvent", "DocumentLotAllocation", "PurchaseOrder", "PurchaseOrderLine", "PurchaseDemandAllocation", "ReceiptDemandAllocation", "LedgerImportJob", "DocumentSequence", "AllocationEvent", "SupplierServiceDocument", "SupplierServiceLine", "OpeningBalance", "LedgerStockCount", "LedgerStockCountLine", "LedgerImportTask", "CustomerAdjustment", "UnitOfMeasure", "WarehouseLocation", "SupplierProduct", "LedgerAttachment", "LedgerMigrationBatch"] as const
+
+// Only query delegates present in this release; a missing active delegate still fails closed.
+export const FULL_DATABASE_MODELS = SUPPORTED_FULL_DATABASE_MODELS.filter((model) => model in Prisma.ModelName)

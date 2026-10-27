@@ -252,7 +252,7 @@ describe('updateServiceRecord', () => {
   function runTransaction() {
     const update = vi.fn().mockResolvedValue({ ...existing })
     vi.mocked(db.$transaction).mockImplementation(async (fn: any) =>
-      fn({ serviceRecord: { update } })
+      fn({ servicePart: { findMany: async () => [] }, serviceLabor: { findMany: async () => [] }, serviceRecord: { update } })
     )
     return update
   }
@@ -298,3 +298,10 @@ describe('updateServiceRecord', () => {
     }
   })
 })
+
+// These fixtures exercise legacy accounting. Ledger cutover is covered separately.
+vi.mock('@/features/stock-ledger/Lib/cutover', async (original) => ({
+  ...(await original<typeof import('@/features/stock-ledger/Lib/cutover')>()),
+  newRecordStockMode: async () => 'LEGACY',
+  newRecordFinanceMode: async () => 'LEGACY',
+}))

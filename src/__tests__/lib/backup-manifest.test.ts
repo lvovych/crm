@@ -3,6 +3,7 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   BACKUP_ENTITIES,
+  FULL_DATABASE_MODELS,
   clearPlanFor,
   EXCLUDED_MODELS,
   topLevelEntities,
@@ -94,7 +95,7 @@ function tenantScopedModels(): string[] {
 
 describe('backup manifest', () => {
   it('accounts for every organisation-scoped model', () => {
-    const known = new Set([...BACKUP_ENTITIES.map((e) => e.model), ...Object.keys(EXCLUDED_MODELS)])
+    const known = new Set([...BACKUP_ENTITIES.map((e) => e.model), ...Object.keys(EXCLUDED_MODELS), ...FULL_DATABASE_MODELS])
     const unclassified = tenantScopedModels().filter((model) => !known.has(model))
 
     expect(
@@ -106,7 +107,7 @@ describe('backup manifest', () => {
   it('carries everything a restore deletes', () => {
     // Clearing a table takes its children with it. Anything reachable that way
     // has to be in the backup, or a restore is a one-way loss.
-    const known = new Set([...BACKUP_ENTITIES.map((e) => e.model), ...Object.keys(EXCLUDED_MODELS)])
+    const known = new Set([...BACKUP_ENTITIES.map((e) => e.model), ...Object.keys(EXCLUDED_MODELS), ...FULL_DATABASE_MODELS])
     const lost = deletedByRestore().filter((model) => !known.has(model))
 
     expect(

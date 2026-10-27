@@ -62,7 +62,11 @@ export function PasskeySettings() {
       const result = await authClient.passkey.addPasskey()
       if (result?.error) {
         // User dismissed the passkey prompt — not an error state
-        if ('code' in result.error && result.error.code === 'REGISTRATION_CANCELLED') return
+        if (
+          'code' in result.error &&
+          ['REGISTRATION_CANCELLED', 'ERROR_CEREMONY_ABORTED'].includes(String(result.error.code))
+        )
+          return
         const msg = typeof result.error.message === 'string' ? result.error.message : ''
         toast.error(msg || t('account.passkey.registerFailed'))
       } else {
@@ -71,15 +75,17 @@ export function PasskeySettings() {
       }
     } catch {
       toast.error(t('account.passkey.registerFailed'))
+    } finally {
+      setRegistering(false)
     }
-    setRegistering(false)
   }
 
   const handleDelete = async () => {
     if (!passKeyToDelete) return
     setDeletingId(passKeyToDelete.id)
     try {
-      await authClient.passkey.deletePasskey({ id: passKeyToDelete.id })
+      const result = await authClient.passkey.deletePasskey({ id: passKeyToDelete.id })
+      if (result?.error) throw new Error('Passkey deletion rejected')
       toast.success(t('account.passkey.deleteSuccess'))
       setPasskeys((prev) => prev.filter((p) => p.id !== passKeyToDelete.id))
     } catch {
@@ -94,10 +100,11 @@ export function PasskeySettings() {
     if (!renamingPasskey || !newName.trim()) return
     setSaving(true)
     try {
-      await authClient.passkey.updatePasskey({
+      const result = await authClient.passkey.updatePasskey({
         id: renamingPasskey.id,
         name: newName.trim(),
       })
+      if (result?.error) throw new Error('Passkey rename rejected')
       setPasskeys((prev) =>
         prev.map((p) => (p.id === renamingPasskey.id ? { ...p, name: newName.trim() } : p))
       )

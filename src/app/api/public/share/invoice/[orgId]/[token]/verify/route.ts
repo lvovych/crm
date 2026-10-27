@@ -19,7 +19,7 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ orgId: string; token: string }> }
 ) {
-  const limited = rateLimit(request, { limit: 10, windowMs: 60_000 })
+  const limited = rateLimit(request, { limit: 10, windowMs: 60_000, anonymous: true })
   if (limited) return limited
 
   try {

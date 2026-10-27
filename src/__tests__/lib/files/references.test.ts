@@ -19,6 +19,19 @@ import { allReferencedSuffixes, FILE_REFERENCES, referencedSuffixes } from '@/li
 
 /** Columns that look as if they could hold a file and do not, and why. */
 const NOT_FILES: Record<string, string> = {
+  'ServiceRecord.ledgerFinancialSnapshot': 'Ledger scalar reference, hash, column mapping or financial snapshot; not an upload URL',
+  'Supplier.bankDetails': 'Ledger scalar reference, hash, column mapping or financial snapshot; not an upload URL',
+  'InventoryDocument.sourceDocumentId': 'Ledger scalar reference, hash, column mapping or financial snapshot; not an upload URL',
+  'InventoryDocumentLine.documentId': 'Ledger scalar reference, hash, column mapping or financial snapshot; not an upload URL',
+  'InventoryLedgerEntry.documentLineId': 'Ledger scalar reference, hash, column mapping or financial snapshot; not an upload URL',
+  'SettlementEntry.supplierServiceDocumentId': 'Ledger scalar reference, hash, column mapping or financial snapshot; not an upload URL',
+  'SettlementEntry.inventoryDocumentId': 'Ledger scalar reference, hash, column mapping or financial snapshot; not an upload URL',
+  'ReservationEvent.documentLineId': 'Ledger scalar reference, hash, column mapping or financial snapshot; not an upload URL',
+  'DocumentLotAllocation.documentLineId': 'Ledger scalar reference, hash, column mapping or financial snapshot; not an upload URL',
+  'LedgerImportJob.fileHash': 'Ledger scalar reference, hash, column mapping or financial snapshot; not an upload URL',
+  'LedgerImportJob.mapping': 'Ledger scalar reference, hash, column mapping or financial snapshot; not an upload URL',
+  'LedgerImportJob.documentId': 'Ledger scalar reference, hash, column mapping or financial snapshot; not an upload URL',
+  'SupplierServiceLine.documentId': 'Ledger scalar reference, hash, column mapping or financial snapshot; not an upload URL',
   'AuditLog.metadata': 'history of what happened; never a live use of a file',
   'DashboardWidget.config': 'widget settings',
   'DocumentDesign.documentType': 'invoice or quote',
@@ -150,6 +163,8 @@ describe('referencedSuffixes', () => {
     // A pattern costs about a hundred times more per row than cutting the
     // last two segments off; the one-URL columns are the big tables.
     const anywhere = new Set([
+      'LedgerAuditEvent.payload',
+      'LedgerCommand.response',
       'AppSetting.value',
       'DocumentDesign.template',
       'DocumentDesignSnapshot.template',

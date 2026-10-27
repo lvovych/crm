@@ -12,7 +12,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const serviceRecord = { findFirst: vi.fn(), update: vi.fn() }
 const workOrderStatus = { findFirst: vi.fn() }
-vi.mock('@/lib/db', () => ({ db: { serviceRecord, workOrderStatus } }))
+vi.mock('@/lib/db', () => ({ db: { serviceRecord, workOrderStatus, $transaction: async (fn: (tx: unknown) => Promise<unknown>) => fn({ serviceRecord }) } }))
 vi.mock('@/lib/with-auth', () => ({
   withAuth: async (fn: (ctx: { organizationId: string; userId: string }) => Promise<unknown>) => {
     try {
@@ -124,3 +124,10 @@ describe('updateServiceStatus', () => {
     expect(serviceRecord.update).not.toHaveBeenCalled()
   })
 })
+
+// These fixtures exercise legacy accounting. Ledger cutover is covered separately.
+vi.mock('@/features/stock-ledger/Lib/cutover', async (original) => ({
+  ...(await original<typeof import('@/features/stock-ledger/Lib/cutover')>()),
+  newRecordStockMode: async () => 'LEGACY',
+  newRecordFinanceMode: async () => 'LEGACY',
+}))

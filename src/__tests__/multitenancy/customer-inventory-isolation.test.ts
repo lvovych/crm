@@ -504,3 +504,10 @@ describe('adjustInventoryStock — cross-org isolation', () => {
     expect(result.error).toBe('Insufficient stock')
   })
 })
+
+// These fixtures exercise legacy accounting. Ledger cutover is covered separately.
+vi.mock('@/features/stock-ledger/Lib/cutover', async (original) => ({
+  ...(await original<typeof import('@/features/stock-ledger/Lib/cutover')>()),
+  newRecordStockMode: async () => 'LEGACY',
+  newRecordFinanceMode: async () => 'LEGACY',
+}))

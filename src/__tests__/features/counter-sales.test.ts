@@ -195,7 +195,7 @@ describe('updateServiceRecord — counter sale semantics', () => {
     } as any)
     const txUpdate = vi.fn().mockResolvedValue({ id: 'sr-a', status: 'pending', title: 'x' })
     vi.mocked(db.$transaction).mockImplementation(async (fn: any) =>
-      fn({ serviceRecord: { update: txUpdate } })
+      fn({ servicePart: { findMany: async () => [] }, serviceLabor: { findMany: async () => [] }, serviceRecord: { update: txUpdate } })
     )
 
     const result = await updateServiceRecord({ id: 'sr-a', vehicleId: null, title: 'x' })
@@ -246,7 +246,7 @@ describe('updateServiceRecord — counter sale semantics', () => {
     vi.mocked(db.vehicle.findFirst).mockResolvedValue({ id: 'veh-a' } as any)
     const txUpdate = vi.fn().mockResolvedValue({ id: 'sr-a', status: 'pending', title: 'x' })
     vi.mocked(db.$transaction).mockImplementation(async (fn: any) =>
-      fn({ serviceRecord: { update: txUpdate } })
+      fn({ servicePart: { findMany: async () => [] }, serviceLabor: { findMany: async () => [] }, serviceRecord: { update: txUpdate } })
     )
 
     const result = await updateServiceRecord({ id: 'sr-a', vehicleId: 'veh-a' })
@@ -295,3 +295,10 @@ describe('createDraftCounterSale — cross-org isolation', () => {
     )
   })
 })
+
+// These fixtures exercise legacy accounting. Ledger cutover is covered separately.
+vi.mock('@/features/stock-ledger/Lib/cutover', async (original) => ({
+  ...(await original<typeof import('@/features/stock-ledger/Lib/cutover')>()),
+  newRecordStockMode: async () => 'LEGACY',
+  newRecordFinanceMode: async () => 'LEGACY',
+}))

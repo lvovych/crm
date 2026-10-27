@@ -139,7 +139,7 @@ describe('createServiceRecord — invoice number', () => {
     const mockCreate = vi.fn().mockResolvedValue({ id: 'sr-1' })
     vi.mocked(db.$transaction).mockImplementation(async (fn: any) =>
       fn({
-        serviceRecord: { create: mockCreate },
+        serviceRecord: { create: mockCreate, findFirst: async () => ({ inventoryAccountingMode: 'LEGACY' }) },
         servicePart: { createMany: vi.fn() },
         serviceLabor: { createMany: vi.fn() },
         serviceAttachment: { createMany: vi.fn() },
@@ -170,7 +170,7 @@ describe('createServiceRecord — invoice number', () => {
     const mockCreate = vi.fn().mockResolvedValue({ id: 'sr-2' })
     vi.mocked(db.$transaction).mockImplementation(async (fn: any) =>
       fn({
-        serviceRecord: { create: mockCreate },
+        serviceRecord: { create: mockCreate, findFirst: async () => ({ inventoryAccountingMode: 'LEGACY' }) },
         servicePart: { createMany: vi.fn() },
         serviceLabor: { createMany: vi.fn() },
         serviceAttachment: { createMany: vi.fn() },
@@ -199,7 +199,7 @@ describe('createServiceRecord — invoice number', () => {
     const mockCreate = vi.fn().mockResolvedValue({ id: 'sr-3' })
     vi.mocked(db.$transaction).mockImplementation(async (fn: any) =>
       fn({
-        serviceRecord: { create: mockCreate },
+        serviceRecord: { create: mockCreate, findFirst: async () => ({ inventoryAccountingMode: 'LEGACY' }) },
         servicePart: { createMany: vi.fn() },
         serviceLabor: { createMany: vi.fn() },
         serviceAttachment: { createMany: vi.fn() },
@@ -228,7 +228,7 @@ describe('createServiceRecord — invoice number', () => {
     const mockCreate = vi.fn().mockResolvedValue({ id: 'sr-4' })
     vi.mocked(db.$transaction).mockImplementation(async (fn: any) =>
       fn({
-        serviceRecord: { create: mockCreate },
+        serviceRecord: { create: mockCreate, findFirst: async () => ({ inventoryAccountingMode: 'LEGACY' }) },
         servicePart: { createMany: vi.fn() },
         serviceLabor: { createMany: vi.fn() },
         serviceAttachment: { createMany: vi.fn() },
@@ -261,7 +261,7 @@ describe('createServiceRecord — parts and inventory', () => {
     const mockPartCreateMany = vi.fn()
     vi.mocked(db.$transaction).mockImplementation(async (fn: any) =>
       fn({
-        serviceRecord: { create: mockCreate },
+        serviceRecord: { create: mockCreate, findFirst: async () => ({ inventoryAccountingMode: 'LEGACY' }) },
         servicePart: { createMany: mockPartCreateMany },
         serviceLabor: { createMany: vi.fn() },
         serviceAttachment: { createMany: vi.fn() },
@@ -306,12 +306,12 @@ describe('createServiceRecord — parts and inventory', () => {
     const mockMovementCreateMany = vi.fn().mockResolvedValue({ count: 1 })
     vi.mocked(db.$transaction).mockImplementation(async (fn: any) =>
       fn({
-        serviceRecord: { create: mockCreate },
+        serviceRecord: { create: mockCreate, findFirst: async () => ({ inventoryAccountingMode: 'LEGACY' }) },
         servicePart: { createMany: vi.fn() },
         serviceLabor: { createMany: vi.fn() },
         serviceAttachment: { createMany: vi.fn() },
         inventoryPart: { findFirst: mockInvFind },
-        stockMovement: { createMany: mockMovementCreateMany },
+        appSetting: { findUnique: async () => null }, stockMovement: { createMany: mockMovementCreateMany },
         $queryRaw: mockQueryRaw,
       })
     )
@@ -361,12 +361,12 @@ describe('createServiceRecord — parts and inventory', () => {
     const mockMovementCreateMany = vi.fn().mockResolvedValue({ count: 1 })
     vi.mocked(db.$transaction).mockImplementation(async (fn: any) =>
       fn({
-        serviceRecord: { create: mockCreate },
+        serviceRecord: { create: mockCreate, findFirst: async () => ({ inventoryAccountingMode: 'LEGACY' }) },
         servicePart: { createMany: vi.fn() },
         serviceLabor: { createMany: vi.fn() },
         serviceAttachment: { createMany: vi.fn() },
         inventoryPart: { findFirst: mockInvFind },
-        stockMovement: { createMany: mockMovementCreateMany },
+        appSetting: { findUnique: async () => null }, stockMovement: { createMany: mockMovementCreateMany },
         $queryRaw: mockQueryRaw,
       })
     )
@@ -407,7 +407,7 @@ describe('createServiceRecord — vehicle mileage', () => {
     const mockCreate = vi.fn().mockResolvedValue({ id: 'sr-mile' })
     vi.mocked(db.$transaction).mockImplementation(async (fn: any) =>
       fn({
-        serviceRecord: { create: mockCreate },
+        serviceRecord: { create: mockCreate, findFirst: async () => ({ inventoryAccountingMode: 'LEGACY' }) },
         servicePart: { createMany: vi.fn() },
         serviceLabor: { createMany: vi.fn() },
         serviceAttachment: { createMany: vi.fn() },
@@ -435,7 +435,7 @@ describe('createServiceRecord — vehicle mileage', () => {
     const mockCreate = vi.fn().mockResolvedValue({ id: 'sr-low' })
     vi.mocked(db.$transaction).mockImplementation(async (fn: any) =>
       fn({
-        serviceRecord: { create: mockCreate },
+        serviceRecord: { create: mockCreate, findFirst: async () => ({ inventoryAccountingMode: 'LEGACY' }) },
         servicePart: { createMany: vi.fn() },
         serviceLabor: { createMany: vi.fn() },
         serviceAttachment: { createMany: vi.fn() },
@@ -471,7 +471,7 @@ describe('createServiceRecord — labor items', () => {
     const mockLaborCreateMany = vi.fn()
     vi.mocked(db.$transaction).mockImplementation(async (fn: any) =>
       fn({
-        serviceRecord: { create: mockCreate },
+        serviceRecord: { create: mockCreate, findFirst: async () => ({ inventoryAccountingMode: 'LEGACY' }) },
         servicePart: { createMany: vi.fn() },
         serviceLabor: { createMany: mockLaborCreateMany },
         serviceAttachment: { createMany: vi.fn() },
@@ -773,7 +773,7 @@ describe('createServiceRecord — tax injection', () => {
     const mockCreate = vi.fn().mockResolvedValue({ id: 'sr-incl' })
     vi.mocked(db.$transaction).mockImplementation(async (fn: any) =>
       fn({
-        serviceRecord: { create: mockCreate },
+        serviceRecord: { create: mockCreate, findFirst: async () => ({ inventoryAccountingMode: 'LEGACY' }) },
         servicePart: { createMany: vi.fn() },
         serviceLabor: { createMany: vi.fn() },
         serviceAttachment: { createMany: vi.fn() },
@@ -804,7 +804,7 @@ describe('createServiceRecord — tax injection', () => {
     const mockCreate = vi.fn().mockResolvedValue({ id: 'sr-explicit' })
     vi.mocked(db.$transaction).mockImplementation(async (fn: any) =>
       fn({
-        serviceRecord: { create: mockCreate },
+        serviceRecord: { create: mockCreate, findFirst: async () => ({ inventoryAccountingMode: 'LEGACY' }) },
         servicePart: { createMany: vi.fn() },
         serviceLabor: { createMany: vi.fn() },
         serviceAttachment: { createMany: vi.fn() },
@@ -833,7 +833,7 @@ describe('createServiceRecord — tax injection', () => {
     const mockCreate = vi.fn().mockResolvedValue({ id: 'sr-exempt' })
     vi.mocked(db.$transaction).mockImplementation(async (fn: any) =>
       fn({
-        serviceRecord: { create: mockCreate },
+        serviceRecord: { create: mockCreate, findFirst: async () => ({ inventoryAccountingMode: 'LEGACY' }) },
         servicePart: { createMany: vi.fn() },
         serviceLabor: { createMany: vi.fn() },
         serviceAttachment: { createMany: vi.fn() },
@@ -996,3 +996,10 @@ describe('createDraftServiceRecord — shop fee', () => {
     expect(data.laborItems).toBeUndefined()
   })
 })
+
+// These fixtures exercise legacy accounting. Ledger cutover is covered separately.
+vi.mock('@/features/stock-ledger/Lib/cutover', async (original) => ({
+  ...(await original<typeof import('@/features/stock-ledger/Lib/cutover')>()),
+  newRecordStockMode: async () => 'LEGACY',
+  newRecordFinanceMode: async () => 'LEGACY',
+}))

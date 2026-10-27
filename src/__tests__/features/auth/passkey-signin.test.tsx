@@ -122,6 +122,19 @@ describe('SignInForm — Passkey', () => {
     })
   })
 
+  it.each([
+    'AUTH_CANCELLED',
+    'ERROR_CEREMONY_ABORTED',
+  ])('allows retry after %s without displaying an error', async (code) => {
+    mockSignInPasskey.mockResolvedValue({ error: { code, message: 'Cancelled ceremony' } })
+    render(<SignInForm registrationDisabled={false} />)
+    const button = screen.getByRole('button', { name: /sign in with passkey/i })
+    await userEvent.click(button)
+    await waitFor(() => expect(button).toBeEnabled())
+    expect(screen.queryByText('Cancelled ceremony')).not.toBeInTheDocument()
+    expect(mockPush).not.toHaveBeenCalled()
+  })
+
   it('shows error when passkey sign-in returns an error', async () => {
     mockSignInPasskey.mockResolvedValue({
       error: { message: 'Credential not found' },

@@ -1,0 +1,37 @@
+# Isolated local validation only. Supply throwaway secrets through --env-file.
+services:
+  app:
+    image: crm-local-staging:security
+    build: .
+    ports:
+      - '127.0.0.1:55440:3000'
+    environment:
+      DATABASE_URL: postgresql://crm_staging:${STAGING_DB_PASSWORD:?required}@db:5432/crm_auth_staging
+      BETTER_AUTH_SECRET: ${STAGING_AUTH_SECRET:?required}
+      NEXT_PUBLIC_APP_URL: http://localhost:55440
+      DISABLE_BACKGROUND_JOBS: '1'
+      TORQVOICE_MODE: self-hosted
+      DEMO_MODE: 'false'
+    volumes:
+      - uploads:/app/data/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: crm_staging
+      POSTGRES_PASSWORD: ${STAGING_DB_PASSWORD:?required}
+      POSTGRES_DB: crm_auth_staging
+    ports:
+      - '127.0.0.1:55441:5432'
+    volumes:
+      - database:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U crm_staging -d crm_auth_staging']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+volumes:
+  database:
+  uploads:

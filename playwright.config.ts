@@ -170,7 +170,7 @@ export default defineConfig({
       dependencies: ['setup'],
       // The cloud specs need the app in cloud mode, and the rest need it
       // self-hosted, so each run takes only its own.
-      ...(cloud ? { testMatch: /specs\/cloud\/.*\.spec\.ts$/ } : { testIgnore: /specs\/cloud\// }),
+      ...(cloud ? { testMatch: /specs\/cloud\/.*\.spec\.ts$/ } : { testIgnore: [/specs\/cloud\//, /staging\//] }),
     },
   ],
 

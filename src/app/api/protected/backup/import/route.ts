@@ -1,3 +1,4 @@
+import { requiresFullBackup, FULL_BACKUP_REQUIRED } from '@/lib/backup/ledger-policy'
 import { isStage } from '@/features/work-order-statuses/Lib/stages'
 import { NextRequest, NextResponse } from 'next/server'
 import { assertContentLength, assertZipWithinLimits } from '@/lib/backup/zip-guard'
@@ -192,6 +193,9 @@ async function importServiceRecordTree(
   if (partItems?.length) {
     await tx.servicePart.createMany({
       data: partItems.map((p, index) => ({
+        stockOwnership: (p.stockOwnership as string) || 'OWN',
+        customerPartInstalled: p.customerPartInstalled === true,
+        organizationId: opts.organizationId,
         brand: (p.brand as string) || '---',
         discountType: (p.discountType as string) || 'none',
         discountValue: (p.discountValue as number) ?? 0,
@@ -447,6 +451,7 @@ export async function POST(request: NextRequest) {
   try {
     await db.$transaction(async (tx) => {
       const organizationId = ctx.organizationId
+      if (await requiresFullBackup(tx, organizationId, data)) throw new Error(FULL_BACKUP_REQUIRED)
 
       // 1. Clear what this backup can put back, and nothing else.
       //
@@ -1897,7 +1902,7 @@ export async function POST(request: NextRequest) {
     console.error('[backup/import] Error:', error)
     // The detail stays in the log; a Prisma or parser message is not for the browser.
     console.error('[backup import]', error)
-    const message = 'Import failed'
-    return NextResponse.json({ error: message }, { status: 500 })
+    const message = error instanceof Error && error.message === FULL_BACKUP_REQUIRED ? FULL_BACKUP_REQUIRED : 'Import failed'
+    return NextResponse.json({ error: message }, { status: message === FULL_BACKUP_REQUIRED ? 409 : 500 })
   }
 }
