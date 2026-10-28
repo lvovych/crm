@@ -256,9 +256,11 @@ test.describe('the technician app', () => {
     await saveWorkOrder(page)
 
     await openSchedule(page)
-    await page.getByRole('button', { name: 'Select technician...', exact: true }).click()
-    await page.getByRole('option', { name: TECHNICIAN, exact: true }).click()
-    await expect(page.getByRole('button', { name: TECHNICIAN, exact: true })).toBeVisible()
+    const technician = page
+      .getByRole('radiogroup', { name: 'Technician' })
+      .getByRole('radio', { name: TECHNICIAN })
+    await technician.click()
+    await expect(technician).toBeChecked()
     await expect.poll(async () => (await jobAssignment(jobId)).technicianId).toBeTruthy()
 
     const jobs = await phone(device).get('/api/v1/tech/jobs')

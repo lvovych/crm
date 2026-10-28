@@ -398,17 +398,15 @@ test.describe('the overhauled work order page', () => {
       await deleteTechnicians([technicianId])
     })
 
-    test('assigns a technician through the schedule picker', async ({ page }) => {
+    test('assigns a technician through the schedule list', async ({ page }) => {
       await openModern(page, scheduleJob)
 
       await openSchedule(page)
-      const picker = page
-        .getByText('Technician', { exact: true })
-        .locator('../..')
-        .getByRole('button')
-      await picker.click()
-      await page.getByRole('option', { name: technicianName, exact: true }).click()
-      await expect(picker).toHaveText(technicianName)
+      const technician = page
+        .getByRole('radiogroup', { name: 'Technician' })
+        .getByRole('radio', { name: technicianName })
+      await technician.click()
+      await expect(technician).toBeChecked()
       await expect
         .poll(async () => (await jobAssignment(jobIdOf(scheduleJob))).technicianId)
         .toBe(technicianId)
@@ -416,7 +414,7 @@ test.describe('the overhauled work order page', () => {
       await page.reload()
       await settle(page)
       await openSchedule(page)
-      await expect(page.getByRole('button', { name: technicianName, exact: true })).toBeVisible()
+      await expect(technician).toBeChecked()
       // The way to the workshop's defaults is here, as on the classic picker.
       await expect(page.getByRole('link', { name: 'Set Defaults' })).toHaveAttribute(
         'href',

@@ -172,9 +172,11 @@ test.describe('the work order page', () => {
     expect(overflow, 'sideways overflow in pixels').toBeLessThanOrEqual(1)
 
     const main = await page.getByTestId('service-main').boundingBox()
-    const sidebar = await page.getByTestId('service-sidebar').boundingBox()
-    expect(sidebar?.y ?? 0, 'the sidebar sits under the job').toBeGreaterThan(
-      (main?.y ?? 0) + (main?.height ?? 0) - 1
+    const secondary = await page.getByTestId('service-secondary').boundingBox()
+    expect(main, 'the job section is visible').not.toBeNull()
+    expect(secondary, 'the secondary section is visible').not.toBeNull()
+    expect(secondary!.y, 'the secondary section sits under the job').toBeGreaterThan(
+      main!.y + main!.height - 1
     )
   })
 })
