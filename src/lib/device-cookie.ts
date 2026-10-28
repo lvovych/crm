@@ -40,7 +40,19 @@ export function withDeviceCookie(request: Request): { request: Request; issued: 
     'cookie',
     existing ? `${existing}; ${DEVICE_COOKIE}=${issued}` : `${DEVICE_COOKIE}=${issued}`
   )
-  return { request: new Request(request, { headers }), issued }
+  // Next can wrap incoming requests in a Proxy. Node's Request copy
+  // constructor accesses private fields that a Proxy does not own.
+  // Transfer the public request fields instead, including its streaming body.
+  const init: RequestInit & { duplex?: 'half' } = {
+    method: request.method,
+    headers,
+    signal: request.signal,
+  }
+  if (request.method !== 'GET' && request.method !== 'HEAD') {
+    init.body = request.body
+    init.duplex = 'half'
+  }
+  return { request: new Request(request.url, init), issued }
 }
 
 /** Sets the freshly issued id on the response, leaving other cookies alone. */

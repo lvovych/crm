@@ -13,6 +13,31 @@ import {
  * hand it out.
  */
 describe('device cookie', () => {
+  it('forwards a proxied auth request with its body, headers and cancellation', async () => {
+    const controller = new AbortController()
+    const incoming = new Request('http://app.test/api/public/auth/sign-in/email', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: 'other=1' },
+      body: JSON.stringify({ email: 'test@example.test', password: 'test-only' }),
+      signal: controller.signal,
+    })
+    const proxied = new Proxy(incoming, {
+      get(target, property) {
+        const value = Reflect.get(target, property, target)
+        return typeof value === 'function' ? value.bind(target) : value
+      },
+    })
+    const { request, issued } = withDeviceCookie(proxied)
+    expect(request.url).toBe(incoming.url)
+    expect(request.method).toBe('POST')
+    expect(request.headers.get('content-type')).toBe('application/json')
+    expect(readDeviceCookie(request.headers)).toBe(issued)
+    expect(request.headers.get('cookie')).toContain('other=1')
+    expect(await request.json()).toEqual({ email: 'test@example.test', password: 'test-only' })
+    controller.abort()
+    expect(request.signal.aborted).toBe(true)
+  })
+
   it('mints one for a browser that has none, on the request and the response', () => {
     const incoming = new Request('http://app.test/api/public/auth/sign-in/email', {
       method: 'POST',

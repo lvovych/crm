@@ -5,7 +5,8 @@ import { hashPassword, symmetricDecrypt } from 'better-auth/crypto'
 import { createOTP } from '@better-auth/utils/otp'
 
 const databaseUrl = process.env.STAGING_DATABASE_URL ?? ''
-if (!/^postgresql:\/\/[^@]+@127\.0\.0\.1:55441\/crm_auth_staging$/.test(databaseUrl)) {
+// Explicit local stacks only: auth staging or the ledger acceptance database.
+if (!/^postgresql:\/\/[^@]+@127\.0\.0\.1:(?:55441\/crm_auth_staging|55440\/crm_ledger_test)$/.test(databaseUrl)) {
   throw new Error('Refusing to seed anything except the isolated local auth staging database')
 }
 const password = `Staging-${randomUUID()}!`
