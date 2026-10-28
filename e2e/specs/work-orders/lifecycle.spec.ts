@@ -5,7 +5,10 @@ import {
   addPart,
   laborRows,
   newWorkOrder,
-  partRowOf,
+  editPart,
+  editLabor,
+  applyLine,
+  deletePart,
   partRows,
   saveWorkOrder,
   seededVehicleUrl,
@@ -79,16 +82,12 @@ test.describe('a work order from intake to completion', () => {
   test('a price is corrected and the totals follow it', async ({ page }) => {
     await page.goto(jobUrl)
 
-    const quantity = partRowOf(partRows(page).first()).locator('input[type="number"]').first()
+    const dialog = await editPart(page)
+    const quantity = dialog.getByLabel('Qty', { exact: true })
     await expect(quantity).toHaveValue('2')
-
-    // A field can carry the typed value while React's state is still empty,
-    // and the editor saves its state, not the DOM. The totals moving is the
-    // only proof the change was taken.
-    await expect(async () => {
-      await quantity.fill('3')
-      await expect(totalsRow(page, 'Parts')).toContainText('$360.00', { timeout: 2_000 })
-    }).toPass({ timeout: 30_000 })
+    await quantity.fill('3')
+    await applyLine(dialog)
+    await expect(totalsRow(page, 'Parts')).toContainText('$360.00')
     await saveWorkOrder(page)
 
     await page.reload()
@@ -103,12 +102,7 @@ test.describe('a work order from intake to completion', () => {
     await expect(totalsRow(page, 'Parts')).toContainText('$450.00')
 
     await page.reload()
-    await expect(async () => {
-      await partRowOf(partRows(page).first())
-        .getByRole('button', { name: 'Delete row', exact: true })
-        .click()
-      await expect(partRows(page)).toHaveCount(1, { timeout: 2_000 })
-    }).toPass({ timeout: 30_000 })
+    await deletePart(page, (await partRows(page).count()) - 1)
     await saveWorkOrder(page)
 
     await page.reload()
@@ -127,8 +121,16 @@ test.describe('a work order from intake to completion', () => {
     await saveWorkOrder(page)
 
     await page.reload()
-    await expect(partRows(page).first()).toHaveValue(MULTILINE_PART)
-    await expect(laborRows(page).first()).toHaveValue(MULTILINE_LABOR)
+    const partDialog = await editPart(page, (await partRows(page).count()) - 1)
+    await expect(partDialog.getByRole('textbox', { name: 'Name', exact: true })).toHaveValue(
+      MULTILINE_PART
+    )
+    await partDialog.getByRole('button', { name: 'Cancel', exact: true }).click()
+    const laborDialog = await editLabor(page, (await laborRows(page).count()) - 1)
+    await expect(
+      laborDialog.getByRole('textbox', { name: 'Description', exact: true })
+    ).toHaveValue(MULTILINE_LABOR)
+    await laborDialog.getByRole('button', { name: 'Cancel', exact: true }).click()
   })
 
   test('the customer copy prints every line of it', async ({ page }) => {

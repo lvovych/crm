@@ -252,6 +252,7 @@ export function PartsEditor({
         <tbody>
           {partItems.map((p, i) => (
             <tr
+              data-testid="part-row"
               key={p.id ?? i}
               className="border-b align-top hover:bg-muted/40"
               onDoubleClick={() => !locked && open(i, p)}
@@ -260,6 +261,7 @@ export function PartsEditor({
               <td className="break-words p-2">{p.brand || '---'}</td>
               <td className="p-2">
                 <button
+                  data-testid="part-name"
                   type="button"
                   disabled={locked}
                   className="min-h-11 w-full break-words text-left font-medium"
@@ -281,8 +283,9 @@ export function PartsEditor({
       </table>
       <div className="space-y-3 @[1000px]:hidden">
         {partItems.map((p, i) => (
-          <article key={p.id ?? i} className="rounded-lg border p-3">
+          <article data-testid="part-row" key={p.id ?? i} className="rounded-lg border p-3">
             <button
+              data-testid="part-name"
               type="button"
               className="min-h-11 w-full break-words text-left"
               onClick={() => open(i, p)}

@@ -8,7 +8,7 @@ import {
   seededTenantFixtures,
 } from '../../support/db'
 import { settle } from '../../support/hydration'
-import { laborRows, saveWorkOrder, setTitle } from '../../support/work-order'
+import { openSchedule, laborRows, saveWorkOrder, setTitle } from '../../support/work-order'
 
 /**
  * The contract the technician app is built against.
@@ -255,14 +255,10 @@ test.describe('the technician app', () => {
     await setTitle(page, `E2E tech job ${stamp}`)
     await saveWorkOrder(page)
 
-    // The technician list puts them on the job with one click.
-    const technician = page
-      .getByRole('radiogroup', { name: 'Technician' })
-      .getByRole('radio', { name: new RegExp(TECHNICIAN) })
-    await expect(async () => {
-      await technician.click()
-      await expect(technician).toHaveAttribute('aria-checked', 'true', { timeout: 2_000 })
-    }).toPass({ timeout: 30_000 })
+    await openSchedule(page)
+    await page.getByRole('button', { name: 'Select technician...', exact: true }).click()
+    await page.getByRole('option', { name: TECHNICIAN, exact: true }).click()
+    await expect(page.getByRole('button', { name: TECHNICIAN, exact: true })).toBeVisible()
     await expect.poll(async () => (await jobAssignment(jobId)).technicianId).toBeTruthy()
 
     const jobs = await phone(device).get('/api/v1/tech/jobs')
@@ -325,7 +321,7 @@ test.describe('the technician app', () => {
 
     // No reload anywhere in this test: the page is told.
     await expect(laborRows(page)).toHaveCount(1, { timeout: 30_000 })
-    await expect(laborRows(page).first()).toHaveValue(description)
+    await expect(laborRows(page).first()).toHaveText(description)
     expect(page.url(), 'the page never navigated').toContain(jobId)
   })
 

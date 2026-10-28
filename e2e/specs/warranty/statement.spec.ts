@@ -1,3 +1,4 @@
+import { partRows } from '../../support/work-order'
 import { expect, type Page, test } from '@playwright/test'
 import { forgetWorkshopSetting, ownerOrganizationId, workshopSetting } from '../../support/db'
 import { settle } from '../../support/hydration'
@@ -76,7 +77,7 @@ async function convertToWorkOrder(page: Page): Promise<string> {
   await confirm.click()
   await page.waitForURL(/\/vehicles\/[^/]+\/service\/[^/]+$/, { timeout: 60_000 })
   await settle(page)
-  await expect(page.getByPlaceholder('Name *').first()).toHaveValue(PART)
+  await expect(partRows(page).first()).toContainText(PART)
   return page.url()
 }
 

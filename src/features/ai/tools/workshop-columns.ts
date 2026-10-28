@@ -120,6 +120,10 @@ export const TABLE_COLUMNS: Readonly<Record<string, readonly string[]>> = {
     'importBatchId',
   ],
   service_parts: [
+    'brand',
+    'discountType',
+    'discountValue',
+    'sortOrder',
     'id',
     'partNumber',
     'name',
@@ -132,7 +136,20 @@ export const TABLE_COLUMNS: Readonly<Record<string, readonly string[]>> = {
     'inventoryPartId',
     'serviceRecordId',
   ],
-  service_labor: ['id', 'description', 'hours', 'rate', 'total', 'pricingType', 'serviceRecordId'],
+  service_labor: [
+    'technicianId',
+    'executorName',
+    'executorFrozen',
+    'executorLegacy',
+    'sortOrder',
+    'id',
+    'description',
+    'hours',
+    'rate',
+    'total',
+    'pricingType',
+    'serviceRecordId',
+  ],
   service_attachments: [
     'id',
     'fileName',
@@ -232,6 +249,7 @@ export const TABLE_COLUMNS: Readonly<Record<string, readonly string[]>> = {
     'inspectionId',
   ],
   quote_parts: [
+    'brand',
     'id',
     'partNumber',
     'name',
@@ -268,6 +286,7 @@ export const TABLE_COLUMNS: Readonly<Record<string, readonly string[]>> = {
     'quoteId',
   ],
   inventory_parts: [
+    'brandId',
     'id',
     'partNumber',
     'barcode',

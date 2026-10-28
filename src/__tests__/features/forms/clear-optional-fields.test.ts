@@ -252,7 +252,11 @@ describe('updateServiceRecord', () => {
   function runTransaction() {
     const update = vi.fn().mockResolvedValue({ ...existing })
     vi.mocked(db.$transaction).mockImplementation(async (fn: any) =>
-      fn({ serviceRecord: { update } })
+      fn({
+        servicePart: { findMany: vi.fn().mockResolvedValue([]) },
+        serviceLabor: { findMany: vi.fn().mockResolvedValue([]) },
+        serviceRecord: { update },
+      })
     )
     return update
   }

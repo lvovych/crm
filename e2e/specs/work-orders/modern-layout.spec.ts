@@ -1,6 +1,13 @@
 import { expect, test } from '@playwright/test'
 import { settle } from '../../support/hydration'
-import { addPart, newWorkOrder, saveWorkOrder, seededVehicleUrl } from '../../support/work-order'
+import {
+  partRows,
+  editPart,
+  addPart,
+  newWorkOrder,
+  saveWorkOrder,
+  seededVehicleUrl,
+} from '../../support/work-order'
 
 /**
  * The work order page every browser opens. It is one form, so what these
@@ -51,10 +58,14 @@ test.describe('the work order page', () => {
       '#mileage',
       'input[name="techName"]',
       'input[name="serviceDate"]',
-      'textarea[placeholder="Name *"]',
     ]) {
       await expect(page.locator(selector), `${selector} appears once`).toHaveCount(1)
     }
+
+    await expect(partRows(page)).toHaveCount(1)
+    const partDialog = await editPart(page)
+    await expect(partDialog.getByRole('textbox', { name: 'Name', exact: true })).toHaveCount(1)
+    await partDialog.getByRole('button', { name: 'Cancel', exact: true }).click()
 
     const duplicates = await page.evaluate(() => {
       const form = document.querySelector('form')
@@ -95,7 +106,7 @@ test.describe('the work order page', () => {
     await expect(page.getByTestId('service-layout-modern')).toBeVisible()
 
     // The part saved when the job was made is here, with its figures.
-    await expect(page.locator('textarea[placeholder="Name *"]')).toHaveValue(partName)
+    await expect(partRows(page)).toContainText(partName)
 
     // The stepper is the status control: walk the job on and save.
     const stepper = page.getByTestId('status-stepper')
@@ -120,7 +131,7 @@ test.describe('the work order page', () => {
     await expect(
       page.getByTestId('status-stepper').getByRole('button', { name: /In Progress/i })
     ).toHaveAttribute('aria-current', 'step')
-    await expect(page.locator('textarea[placeholder="Name *"]')).toHaveValue(partName)
+    await expect(partRows(page)).toContainText(partName)
   })
 
   test('stacks into one column on a phone without overflowing sideways', async ({ page }) => {

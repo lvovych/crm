@@ -3,7 +3,7 @@ import { calculateTotals, discountAmountFor } from '@/lib/tax'
 import { normalizeWarranty, type WarrantyFields } from '@/lib/warranty'
 import { useDeferredCommit } from '@/hooks/use-deferred-commit'
 import { discountedPartTotal } from '../../Lib/lineDiscount'
-import { lineTotal, repricePartRow } from '@/features/inventory/Lib/partPricing'
+import { repricePartRow } from '@/features/inventory/Lib/partPricing'
 import { reconcileConcernRows } from '@/features/vehicles/Lib/concernStory'
 import { addedLaborLines } from '@/features/vehicles/Lib/laborLines'
 import {

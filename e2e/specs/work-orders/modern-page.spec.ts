@@ -14,6 +14,7 @@ import {
   jobIdOf,
   newWorkOrder,
   partRows,
+  openSchedule,
   saveWorkOrder,
   seededVehicleUrl,
   shareLink,
@@ -397,26 +398,25 @@ test.describe('the overhauled work order page', () => {
       await deleteTechnicians([technicianId])
     })
 
-    test('puts a technician on the job with one click', async ({ page }) => {
+    test('assigns a technician through the schedule picker', async ({ page }) => {
       await openModern(page, scheduleJob)
 
-      const list = page.getByRole('radiogroup', { name: 'Technician' })
-      const technician = list.getByRole('radio', { name: new RegExp(technicianName) })
-      await expect(async () => {
-        await technician.click()
-        await expect(technician).toHaveAttribute('aria-checked', 'true', { timeout: 2_000 })
-      }).toPass({ timeout: 30_000 })
+      await openSchedule(page)
+      const picker = page
+        .getByText('Technician', { exact: true })
+        .locator('../..')
+        .getByRole('button')
+      await picker.click()
+      await page.getByRole('option', { name: technicianName, exact: true }).click()
+      await expect(picker).toHaveText(technicianName)
       await expect
         .poll(async () => (await jobAssignment(jobIdOf(scheduleJob))).technicianId)
         .toBe(technicianId)
 
       await page.reload()
       await settle(page)
-      await expect(
-        page
-          .getByRole('radiogroup', { name: 'Technician' })
-          .getByRole('radio', { name: new RegExp(technicianName) })
-      ).toHaveAttribute('aria-checked', 'true')
+      await openSchedule(page)
+      await expect(page.getByRole('button', { name: technicianName, exact: true })).toBeVisible()
       // The way to the workshop's defaults is here, as on the classic picker.
       await expect(page.getByRole('link', { name: 'Set Defaults' })).toHaveAttribute(
         'href',
