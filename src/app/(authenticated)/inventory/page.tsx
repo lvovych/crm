@@ -71,7 +71,20 @@ export default async function InventoryPage({
     <>
       <PageHeader />
       <ListPage>
-        {process.env.STOCK_LEDGER_ENABLED === 'true' && <Link href="/stock-ledger" className="mb-4 inline-flex min-h-11 items-center rounded-md border px-4">Склад і постачальники</Link>}
+        {process.env.STOCK_LEDGER_ENABLED === 'true' && (
+          <Link
+            href="/stock-ledger"
+            className="mb-4 inline-flex min-h-11 items-center rounded-md border px-4"
+          >
+            Склад і постачальники
+          </Link>
+        )}
+        {result.data.ledgerControlled && (
+          <p className="mb-4 text-sm text-muted-foreground">
+            Каталог товарів. Кількість показана сумарно за складами; змінюється через надходження,
+            видачу та інвентаризацію. Ціни в картці є довідковими.
+          </p>
+        )}
         <InventoryClient
           data={result.data}
           search={params.search || ''}

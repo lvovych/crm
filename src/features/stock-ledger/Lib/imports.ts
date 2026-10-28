@@ -1,11 +1,13 @@
 import { createHash } from 'node:crypto'
 import Papa from 'papaparse'
 import { z } from 'zod'
-import { lineSchema, calculateLine } from './amounts'
+import { D, decimalText, lineSchema, calculateLine } from './amounts'
 export const importMappingSchema = z.object({
   article: z.string().min(1),
   brand: z.string().min(1),
   name: z.string().optional(),
+  unit: z.string().optional(),
+  lineTotal: z.string().optional(),
   quantity: z.string().min(1),
   unitPrice: z.string().min(1),
   discount: z.string().optional(),
@@ -16,6 +18,8 @@ export type PreviewRow = {
   article: string
   brand: string
   name: string
+  unit?: string
+  sourceTotal?: string
   quantity: string
   unitPrice: string
   discountValue: string
@@ -99,6 +103,8 @@ export async function parsePurchaseFile(
       article: read(map.article),
       brand: read(map.brand),
       name: read(map.name),
+      unit: read(map.unit),
+      sourceTotal: read(map.lineTotal).replace(',', '.'),
       quantity: read(map.quantity).replace(',', '.'),
       unitPrice: read(map.unitPrice).replace(',', '.'),
       discountValue: read(map.discount).replace(',', '.') || '0',
@@ -116,7 +122,13 @@ export async function parsePurchaseFile(
     if (!parsed.success) errors.push('Перевірте кількість, ціну та знижку')
     else {
       try {
-        calculateLine(parsed.data)
+        const calculated = calculateLine(parsed.data)
+        if (
+          map.lineTotal &&
+          (!decimalText.safeParse(row.sourceTotal).success ||
+            !D(row.sourceTotal).eq(calculated.totalAmount))
+        )
+          errors.push('Сума рядка не збігається з кількістю, ціною та знижкою')
       } catch (e) {
         errors.push((e as Error).message)
       }

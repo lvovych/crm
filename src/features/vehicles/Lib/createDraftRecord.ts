@@ -1,4 +1,4 @@
-import { newRecordStockMode } from '@/features/stock-ledger/Lib/cutover'
+import { newRecordStockMode, newRecordFinanceMode } from '@/features/stock-ledger/Lib/cutover'
 import { db, type TxClient } from '@/lib/db'
 import {
   documentTotals,
@@ -263,6 +263,7 @@ export async function createDraftRecord(
   return writer.serviceRecord.create({
     data: {
       inventoryAccountingMode: await newRecordStockMode(writer, organizationId),
+      financeAccountingMode: await newRecordFinanceMode(writer, organizationId),
       organizationId,
       createdById: userId,
       title,

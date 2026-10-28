@@ -40,6 +40,12 @@ export default async function PortalInvoicesPage({
   const invoices = result.data
 
   function getPaymentStatus(inv: (typeof invoices)[number]) {
+    if (inv.ledgerBalance)
+      return Number(inv.ledgerBalance.debt) <= 0
+        ? ('paid' as const)
+        : Number(inv.ledgerBalance.paid) > 0
+          ? ('partial' as const)
+          : ('unpaid' as const)
     if (inv.manuallyPaid) return 'paid' as const
     const paid = inv.payments.reduce((sum, p) => sum + p.amount, 0)
     if (paid >= inv.totalAmount) return 'paid' as const

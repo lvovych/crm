@@ -1,7 +1,10 @@
 model ServiceRecord {
+  customerAdjustments CustomerAdjustment[]
   supplierServiceLine_serviceRecord SupplierServiceLine[] @relation("SupplierServiceLine_serviceRecord")
   settlementEntry_serviceRecord SettlementEntry[] @relation("SettlementEntry_serviceRecord")
   ledgerFinancialSnapshot Json?
+  billedPartyId String?
+  billedParty SettlementParty? @relation("LedgerBilledParty",fields:[organizationId,billedPartyId],references:[organizationId,id],onDelete:Restrict,onUpdate:Restrict)
 
   stockDemand_serviceRecord StockDemand[] @relation("StockDemand_serviceRecord")
   inventoryAccountingMode String @default("LEGACY")
@@ -329,6 +332,7 @@ model ServicePart {
 }
 
 model ServiceLabor {
+  supplierServiceLines SupplierServiceLine[]
   executionType String @default("INTERNAL")
 
   @@index([technicianId], map: "service_labor_technician_idx")

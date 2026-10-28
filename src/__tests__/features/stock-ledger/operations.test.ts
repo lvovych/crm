@@ -8,9 +8,10 @@ import { createStockOperations } from '@/features/stock-ledger/Lib/stock'
 import { createProcurement } from '@/features/stock-ledger/Lib/procurement'
 import { directoryOperations } from '@/features/stock-ledger/Lib/directories'
 import { stockSummary, stockHistory } from '@/features/stock-ledger/Lib/stockReports'
+import { partyStatement } from '@/features/stock-ledger/Lib/statement'
 import { financialReport } from '@/features/stock-ledger/Lib/financialReport'
 import { createSettlementOperations } from '@/features/stock-ledger/Lib/settlements'
-import { closeLedgerPeriod } from '@/features/stock-ledger/Lib/administration'
+import { closeLedgerPeriod, reopenLedgerPeriod } from '@/features/stock-ledger/Lib/administration'
 import { createFinance } from '@/features/stock-ledger/Lib/finance'
 const url = process.env.LEDGER_TEST_DATABASE_URL
 if (
@@ -194,6 +195,116 @@ if (
       servicePartId: part.id,
     })
   }
+  it('shows zero-stock minimums, expected purchases, normalized articles and server filters', async () => {
+    const warehouseId = (
+      await db.warehouse.findFirstOrThrow({ where: { organizationId: org, isDefault: true } })
+    ).id
+    const p = await db.inventoryPart.create({
+      data: {
+        organizationId: org,
+        userId: user,
+        name: 'Blue filter deficit',
+        partNumber: 'AB-12 / C',
+        unit: 'pcs',
+        minQuantity: 5,
+        category: 'Filters',
+      },
+    })
+    const query = (input = {}) =>
+      db.$transaction((tx) => stockSummary(tx, ctx, { search: 'AB12C', pageSize: 50, ...input }))
+    let report = await query({ onlyDeficit: true })
+    expect(report.rows[0]).toMatchObject({
+      productId: p.id,
+      onHand: '0.000',
+      expected: '0.000',
+      minimum: '5.000',
+      deficit: '5.000',
+    })
+    const procurement = createProcurement(db, ctx),
+      po = await procurement.saveDraft({
+        idempotencyKey: key(),
+        supplierId,
+        warehouseId,
+        lines: [{ inventoryPartId: p.id, quantity: '3', unitPrice: '1' }],
+      })
+    await procurement.confirm({ idempotencyKey: key(), documentId: po.id, expectedVersion: 1 })
+    report = await query()
+    expect(report.rows[0]).toMatchObject({
+      available: '0.000',
+      expected: '3.000',
+      deficit: '2.000',
+    })
+    expect(
+      (await query({ search: 'filter Blue', category: 'Filters', brand: '---' })).rows.some(
+        (r) => r.productId === p.id
+      )
+    ).toBe(true)
+    expect((await query({ category: 'wrong' })).total).toBe(0)
+    expect((await query({ onlyAvailable: true })).total).toBe(0)
+    await db.inventoryPart.update({ where: { id: p.id }, data: { isArchived: true } })
+    expect((await query()).total).toBe(0)
+    expect((await query({ includeArchived: true })).total).toBe(1)
+  })
+  it('amends confirmed purchase quantity with version, received/draft floor and audit', async () => {
+    const productId = (
+      await db.inventoryPart.create({
+        data: { organizationId: org, userId: user, name: 'Amend isolated', unit: 'pcs' },
+      })
+    ).id
+    const procurement = createProcurement(db, ctx)
+    const po = await procurement.saveDraft({
+      idempotencyKey: key(),
+      supplierId,
+      warehouseId,
+      lines: [{ inventoryPartId: productId, quantity: '2', unitPrice: '10' }],
+    })
+    await procurement.confirm({ idempotencyKey: key(), documentId: po.id, expectedVersion: 1 })
+    const line = await db.purchaseOrderLine.findFirstOrThrow({ where: { orderId: po.id } })
+    const input = {
+      idempotencyKey: key(),
+      documentId: po.id,
+      expectedVersion: 2,
+      lineId: line.id,
+      quantity: '3',
+      reason: 'Supplier confirmed additional item',
+    }
+    const result = await procurement.amendQuantity(input)
+    expect(result.before).toBe('2')
+    expect(result.after).toBe('3')
+    expect(await procurement.amendQuantity(input)).toEqual(result)
+    await expect(
+      procurement.amendQuantity({ ...input, idempotencyKey: key(), quantity: '4' })
+    ).rejects.toThrow('змінено')
+    const receipt = await service.saveReceiptDraft({
+      idempotencyKey: key(),
+      supplierId,
+      warehouseId,
+      effectiveAt: date,
+      externalDate: date,
+      externalNumber: key(),
+      dueDate: date,
+      lines: [
+        {
+          inventoryPartId: productId,
+          purchaseOrderLineId: line.id,
+          quantity: '3',
+          unitPrice: '10',
+        },
+      ],
+    })
+    await expect(
+      procurement.amendQuantity({
+        ...input,
+        idempotencyKey: key(),
+        expectedVersion: 3,
+        quantity: '2',
+      })
+    ).rejects.toThrow('менша')
+    await service.postReceipt({ idempotencyKey: key(), documentId: receipt.id, expectedVersion: 1 })
+    expect((await db.purchaseOrder.findUniqueOrThrow({ where: { id: po.id } })).status).toBe(
+      'RECEIVED'
+    )
+  })
   it('partial purchase receipts allocate remaining needs once across drafts, reserve on posting, leave surplus free', async () => {
     const a = await demand(2),
       b = await demand(3),
@@ -364,12 +475,35 @@ if (
       debt: '80.00',
       advance: '0.00',
       balance: '80.00',
+      overdue: '80.00',
+      notDue: '0.00',
+      nearestDue: '2026-10-18',
     })
     expect((await at('2026-10-20')).parties.find((p) => p.id === supplier.partyId)).toMatchObject({
       debt: '100.00',
       advance: '0.00',
       balance: '100.00',
     })
+    const statement = await db.$transaction((tx) =>
+      partyStatement(tx, ctx, {
+        partyId: supplier.partyId,
+        from: '2026-10-19',
+        through: '2026-10-19',
+      })
+    )
+    expect(statement.opening).toBe('100.00')
+    expect(statement.closing).toBe('80.00')
+    expect(statement.credit).toBe('20.00')
+    expect(statement.rows).toHaveLength(1)
+    await expect(
+      db.$transaction((tx) =>
+        partyStatement(
+          tx,
+          { ...ctx, organizationId: key() },
+          { partyId: supplier.partyId, from: '2026-10-19', through: '2026-10-19' }
+        )
+      )
+    ).rejects.toThrow()
     expect((await at('2026-10-19')).cash.find((c) => c.id === accountId)?.balance).toBe('-20.00')
     expect((await at('2026-10-20')).cash.find((c) => c.id === accountId)?.balance).toBe('0.01')
     expect((await at('2026-10-20')).errors).toEqual([])
@@ -408,5 +542,25 @@ if (
         batchKey: key(),
       })
     ).rejects.toThrow('закритий')
+  })
+  it('explicit audited reopening moves only selected boundary and leaves historical entries intact', async () => {
+    const before = await db.inventoryLedgerEntry.count({ where: { organizationId: org } })
+    const input = {
+      idempotencyKey: key(),
+      from: '2026-10-20',
+      area: 'FINANCE',
+      reason: 'Approved late invoice',
+      confirmed: true,
+    }
+    const result = await reopenLedgerPeriod(db, ctx, input)
+    expect(result.before.finance).toBe(date)
+    expect(await reopenLedgerPeriod(db, ctx, input)).toEqual(result)
+    const lock = await db.accountingPeriodLock.findUniqueOrThrow({ where: { organizationId: org } })
+    expect(lock.financeClosedThrough?.toISOString().slice(0, 10)).toBe('2026-10-19')
+    expect(lock.inventoryClosedThrough?.toISOString().slice(0, 10)).toBe(date)
+    expect(await db.inventoryLedgerEntry.count({ where: { organizationId: org } })).toBe(before)
+    await expect(reopenLedgerPeriod(db, ctx, { ...input, idempotencyKey: key() })).rejects.toThrow(
+      'вже відкрита'
+    )
   })
 })

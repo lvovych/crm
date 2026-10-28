@@ -1,3 +1,4 @@
+import { assertProductQuantity } from './catalogs'
 import { assertLotDate } from './chronology'
 import { nextDocumentNumber } from './numbers'
 import { outgoingCost } from './valuation'
@@ -25,7 +26,10 @@ async function netIssued(tx: Tx, ctx: LedgerContext, demandId: string) {
     include: { documentLine: { include: { document: true } } },
   })
   return rows.reduce(
-    (sum, r) => sum.plus(r.quantity.mul(r.documentLine.document.kind === 'ISSUE' ? 1 : -1)),
+    (sum, r) =>
+      sum.plus(
+        r.quantity.mul(['ISSUE', 'MIGRATION_ISSUE'].includes(r.documentLine.document.kind) ? 1 : -1)
+      ),
     D(0)
   )
 }
@@ -108,6 +112,11 @@ export function createStockOperations(db: LedgerDB, ctx: LedgerContext) {
           where: { organizationId_servicePartId: { ...org, servicePartId: part.id } },
         })
         if (old) return { id: old.id }
+        const product = await tx.inventoryPart.findFirstOrThrow({
+          where: { ...org, id: part.inventoryPartId, isArchived: false },
+        })
+        await assertProductQuantity(tx, ctx, product, String(part.quantity))
+
         const demand = await tx.stockDemand.create({
           data: {
             ...meta,
@@ -368,7 +377,11 @@ export function createStockOperations(db: LedgerDB, ctx: LedgerContext) {
         const warehouse = await tx.warehouse.findFirst({
           where: { ...org, id: input.warehouseId, archivedAt: null },
         })
-        if (!source || !warehouse || source.documentLine.document.kind !== 'ISSUE')
+        if (
+          !source ||
+          !warehouse ||
+          !['ISSUE', 'MIGRATION_ISSUE'].includes(source.documentLine.document.kind)
+        )
           throw new Error('Вихідна видача або склад не знайдені')
         await assertLotDate(tx, ctx, source.lotId, input.effectiveAt, input.quantity)
         if (input.effectiveAt < source.documentLine.document.effectiveAt)

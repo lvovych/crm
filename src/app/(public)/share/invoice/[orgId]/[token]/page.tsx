@@ -1,3 +1,4 @@
+import { readLedgerCustomerTotals } from '@/features/stock-ledger/Lib/customerReadModel'
 import { resolveCurrencyCode, resolveCurrencyFormat } from '@/lib/currencies'
 import { db } from '@/lib/db'
 import { notFound } from 'next/navigation'
@@ -91,7 +92,18 @@ export default async function PublicInvoicePage({
   // in the customer-facing payload, attachment URLs go through the public
   // file route, and the customer, vehicle and technician are the ones the
   // sheet prints, frozen at issue or live for a draft.
+  const ledgerBalance =
+    record.financeAccountingMode === 'LEDGER'
+      ? (
+          await readLedgerCustomerTotals(
+            db as unknown as import('@/features/stock-ledger/Lib/transaction').LedgerDB,
+            orgId,
+            [record.id]
+          )
+        ).get(record.id)
+      : undefined
   const publicRecord = {
+    ledgerBalance,
     ...record,
     techName: assembly.data.techName,
     customer: assembly.data.customer,

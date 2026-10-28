@@ -269,7 +269,7 @@ export const TABLE_COLUMNS: Readonly<Record<string, readonly string[]>> = {
     'createdAt',
     'quoteId',
   ],
-  inventory_parts: ['brandId',
+  inventory_parts: ['ledgerArticleKey', 'ledgerSearchText', 'unitId', 'locationId', 'trackingMode', 'brandId',
     'id',
     'partNumber',
     'barcode',

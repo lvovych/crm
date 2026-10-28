@@ -1,4 +1,6 @@
 'use server'
+import { newRecordStockMode } from '@/features/stock-ledger/Lib/cutover'
+import { catalogQuantities } from '@/features/stock-ledger/Lib/catalogReadModel'
 
 import { db } from '@/lib/db'
 import { withAuth } from '@/lib/with-auth'
@@ -35,11 +37,22 @@ export async function lookupPartByBarcode(barcode: string) {
           category: true,
         },
       })
+      if (part && (await newRecordStockMode(db, organizationId)) === 'LEDGER') {
+        const quantities = await catalogQuantities(
+          db as unknown as import('@/features/stock-ledger/Lib/transaction').LedgerDB,
+          organizationId,
+          [part.id]
+        )
+        return { ...part, quantity: quantities.get(part.id) ?? 0 }
+      }
       return part
     },
     {
       requiredPermissions: [
         { action: PermissionAction.READ, subject: PermissionSubject.INVENTORY },
+        ...(process.env.STOCK_LEDGER_ENABLED === 'true'
+          ? [{ action: PermissionAction.READ, subject: PermissionSubject.STOCK_COST }]
+          : []),
       ],
     }
   )

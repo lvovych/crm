@@ -1,9 +1,21 @@
 // @vitest-environment node
+import { allocateBatch, suggestAllocation } from '@/features/stock-ledger/Lib/allocationBatch'
+import {
+  ensureCustomerInvoice,
+  allocateCustomerAdvance,
+  customerBalance,
+  postCustomerAdjustment,
+  postCustomerMoney,
+} from '@/features/stock-ledger/Lib/customerFinance'
+import { ledgerVendorPayment, vendorAccountKey } from '@/features/stock-ledger/Lib/vendorPayments'
 import { randomUUID } from 'node:crypto'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { PrismaClient } from '@/generated/prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
+import { readFinancialSnapshot } from '@/features/stock-ledger/Lib/financialSnapshot'
+import { paymentDraftOperations } from '@/features/stock-ledger/Lib/paymentDrafts'
 import { createFinance } from '@/features/stock-ledger/Lib/finance'
+import { fullReconciliation } from '@/features/stock-ledger/Lib/reconciliation'
 import { D } from '@/features/stock-ledger/Lib/amounts'
 import { createStockLedger } from '@/features/stock-ledger/Lib/service'
 import { createStockOperations } from '@/features/stock-ledger/Lib/stock'
@@ -62,6 +74,363 @@ const key = randomUUID,
     })
     return { doc, lot, part, supplier }
   }
+  it('completion and invoice delivery converge on one charge, while drafts and foreign jobs cannot be charged', async () => {
+    const customer = await db.customer.create({
+      data: { organizationId: org, userId: user, name: 'Invoice recipient' },
+    })
+    const job = await db.serviceRecord.create({
+      data: {
+        organizationId: org,
+        title: 'Final invoice',
+        customerId: customer.id,
+        financeAccountingMode: 'LEDGER',
+        totalAmount: 3.33,
+      },
+    })
+    await Promise.all([
+      ensureCustomerInvoice(db, ctx, job.id, date),
+      ensureCustomerInvoice(db, ctx, job.id, date),
+    ])
+    expect(await db.settlementEntry.count({ where: { serviceRecordId: job.id } })).toBe(1)
+    expect(await ensureCustomerInvoice(db, ctx, job.id, date)).toBeNull()
+    await expect(
+      ensureCustomerInvoice(db, { ...ctx, organizationId: key() }, job.id, date)
+    ).rejects.toThrow()
+    const missing = await db.serviceRecord.create({
+      data: {
+        organizationId: org,
+        title: 'No payer',
+        financeAccountingMode: 'LEDGER',
+        totalAmount: 1,
+      },
+    })
+    await expect(ensureCustomerInvoice(db, ctx, missing.id, date)).rejects.toThrow('платника')
+    const legacy = await db.serviceRecord.create({
+      data: { organizationId: org, title: 'Legacy issue', totalAmount: 1 },
+    })
+    expect(await ensureCustomerInvoice(db, ctx, legacy.id, date)).toBeNull()
+  })
+  it('takes advance before issue without freezing the draft; explicit allocation cannot exceed current debt', async () => {
+    const customer = await db.customer.create({
+      data: { organizationId: org, userId: user, name: 'Advance payer' },
+    })
+    const job = await db.serviceRecord.create({
+      data: {
+        organizationId: org,
+        title: 'Advance draft',
+        customerId: customer.id,
+        financeAccountingMode: 'LEDGER',
+        totalAmount: 1,
+      },
+    })
+    const payment = await postCustomerMoney(db, ctx, {
+      idempotencyKey: key(),
+      serviceRecordId: job.id,
+      accountId,
+      amount: '1.01',
+      direction: 'IN',
+      effectiveAt: date,
+      method: 'cash',
+      confirmed: true,
+    })
+    expect(payment.unallocated).toBe('1.01')
+    const draft = await db.$transaction((tx) => customerBalance(tx, ctx, job.id))
+    expect(draft).toMatchObject({ issued: false, debt: '0.00', advance: '1.01' })
+    expect(
+      (await db.serviceRecord.findUniqueOrThrow({ where: { id: job.id } })).billedPartyId
+    ).toBeNull()
+    await db.serviceRecord.update({ where: { id: job.id }, data: { totalAmount: 1.02 } })
+    await createFinance(db, ctx).issueCustomerCharge({
+      idempotencyKey: key(),
+      serviceRecordId: job.id,
+      customerId: customer.id,
+      effectiveAt: date,
+      dueDate: date,
+    })
+    expect((await db.$transaction((tx) => customerBalance(tx, ctx, job.id))).debt).toBe('1.02')
+    const input = {
+      idempotencyKey: key(),
+      serviceRecordId: job.id,
+      creditEntryId: payment.entryId,
+      amount: '1.01',
+      effectiveAt: date,
+      confirmed: true,
+    }
+    await allocateCustomerAdvance(db, ctx, input)
+    await allocateCustomerAdvance(db, ctx, input)
+    expect(await db.$transaction((tx) => customerBalance(tx, ctx, job.id))).toMatchObject({
+      debt: '0.01',
+      advance: '0.00',
+    })
+    await expect(
+      allocateCustomerAdvance(db, ctx, { ...input, idempotencyKey: key(), amount: '0.01' })
+    ).rejects.toThrow('Залишки змінилися')
+  })
+  it('provider callbacks use the ledger exactly once, need an explicit account and never create legacy cash', async () => {
+    const before = process.env.STOCK_LEDGER_ENABLED
+    process.env.STOCK_LEDGER_ENABLED = 'true'
+    try {
+      const customer = await db.customer.create({
+        data: { organizationId: org, userId: user, name: 'Provider payer' },
+      })
+      const job = await db.serviceRecord.create({
+        data: {
+          organizationId: org,
+          title: 'Provider invoice',
+          customerId: customer.id,
+          financeAccountingMode: 'LEDGER',
+          totalAmount: 1,
+        },
+      })
+      const input = {
+        serviceRecordId: job.id,
+        provider: 'stripe',
+        externalId: key(),
+        amount: 1.01,
+        method: 'card',
+        date: new Date(date),
+      }
+      await expect(ledgerVendorPayment(db, input)).rejects.toThrow('налаштуйте рахунок')
+      expect(await db.settlementEntry.count({ where: { serviceRecordId: job.id } })).toBe(0)
+      await db.appSetting.upsert({
+        where: { organizationId_key: { organizationId: org, key: vendorAccountKey('stripe') } },
+        create: {
+          organizationId: org,
+          userId: user,
+          key: vendorAccountKey('stripe'),
+          value: accountId,
+        },
+        update: { value: accountId },
+      })
+      const results = await Promise.all([
+        ledgerVendorPayment(db, input),
+        ledgerVendorPayment(db, input),
+      ])
+      expect(results.map((r) => r?.created).sort()).toEqual([false, true])
+      expect(results[0]?.id).toBe(results[1]?.id)
+      expect(await db.payment.count({ where: { serviceRecordId: job.id } })).toBe(0)
+      expect((await db.$transaction((tx) => customerBalance(tx, ctx, job.id))).debt).toBe('0.00')
+      await expect(ledgerVendorPayment(db, { ...input, amount: 1.02 })).rejects.toThrow(
+        'amount differs'
+      )
+      const legacy = await db.serviceRecord.create({
+        data: { organizationId: org, title: 'Legacy' },
+      })
+      expect(await ledgerVendorPayment(db, { ...input, serviceRecordId: legacy.id })).toBeNull()
+      process.env.STOCK_LEDGER_ENABLED = 'false'
+      await expect(ledgerVendorPayment(db, { ...input, externalId: key() })).rejects.toThrow(
+        'disabled'
+      )
+    } finally {
+      if (before === undefined) delete process.env.STOCK_LEDGER_ENABLED
+      else process.env.STOCK_LEDGER_ENABLED = before
+    }
+  })
+  it('AC10: credit notes reduce receivables independently of cash; refunds consume only available credit', async () => {
+    const customer = await db.customer.create({
+      data: { organizationId: org, userId: user, name: 'Credit customer' },
+    })
+    const job = await db.serviceRecord.create({
+      data: {
+        organizationId: org,
+        title: 'Credit test',
+        type: 'repair',
+        serviceDate: new Date(date),
+        cost: 0,
+        totalAmount: 10,
+        customerId: customer.id,
+        financeAccountingMode: 'LEDGER',
+      },
+    })
+    await createFinance(db, ctx).issueCustomerCharge({
+      idempotencyKey: key(),
+      serviceRecordId: job.id,
+      customerId: customer.id,
+      effectiveAt: date,
+      dueDate: date,
+    })
+    const payment = {
+      idempotencyKey: key(),
+      serviceRecordId: job.id,
+      accountId,
+      amount: '10.01',
+      direction: 'IN',
+      effectiveAt: date,
+      method: 'cash',
+      confirmed: true,
+    }
+    expect((await postCustomerMoney(db, ctx, payment)).unallocated).toBe('0.01')
+    await postCustomerMoney(db, ctx, payment)
+    const cashBefore = await db.cashLedgerEntry.count({ where: { organizationId: org } })
+    const credit = {
+      idempotencyKey: key(),
+      serviceRecordId: job.id,
+      kind: 'CREDIT',
+      amount: '3.33',
+      effectiveAt: date,
+      reason: 'Return price correction',
+      confirmed: true,
+    }
+    const result = await postCustomerAdjustment(db, ctx, credit)
+    expect(await postCustomerAdjustment(db, ctx, credit)).toEqual(result)
+    expect(await db.cashLedgerEntry.count({ where: { organizationId: org } })).toBe(cashBefore)
+    const state = await db.$transaction((tx) => customerBalance(tx, ctx, job.id))
+    expect(state).toMatchObject({ total: '6.67', debt: '0.00', credit: '3.33' })
+    await expect(
+      postCustomerAdjustment(db, ctx, { ...credit, idempotencyKey: key(), amount: '6.68' })
+    ).rejects.toThrow('перевищує')
+    const refund = { ...payment, idempotencyKey: key(), direction: 'OUT', amount: '3.34' }
+    await postCustomerMoney(db, ctx, refund)
+    await postCustomerMoney(db, ctx, refund)
+    await expect(
+      postCustomerMoney(db, ctx, { ...refund, idempotencyKey: key(), amount: '0.01' })
+    ).rejects.toThrow('перевищує')
+    expect((await db.$transaction((tx) => customerBalance(tx, ctx, job.id))).credit).toBe('0.00')
+    const debit = await postCustomerAdjustment(db, ctx, {
+      ...credit,
+      idempotencyKey: key(),
+      kind: 'DEBIT',
+      amount: '0.03',
+      reason: 'Additional agreed service',
+    })
+    expect((await db.$transaction((tx) => customerBalance(tx, ctx, job.id))).debt).toBe('0.03')
+    await postCustomerAdjustment(db, ctx, { ...credit, idempotencyKey: key(), amount: '0.02' })
+    expect((await db.$transaction((tx) => customerBalance(tx, ctx, job.id))).debt).toBe('0.01')
+    const projection = await db.$queryRaw<
+      { total: string; debt: string }[]
+    >`SELECT total::text,debt::text FROM ledger_customer_balances WHERE "organizationId"=${org} AND "serviceRecordId"=${job.id}`
+    expect(projection[0]).toEqual({ total: '6.68', debt: '0.01' })
+    await expect(
+      db.payment.create({ data: { serviceRecordId: job.id, amount: 1, method: 'cash' } })
+    ).rejects.toThrow()
+
+    await expect(
+      db.customerAdjustment.update({ where: { id: debit.id }, data: { amount: '0.04' } })
+    ).rejects.toThrow()
+    await expect(
+      postCustomerAdjustment(
+        db,
+        { ...ctx, organizationId: key() },
+        { ...credit, idempotencyKey: key() }
+      )
+    ).rejects.toThrow()
+    expect((await db.serviceRecord.findUniqueOrThrow({ where: { id: job.id } })).totalAmount).toBe(
+      10
+    )
+  })
+  it('batch allocation suggests due order, applies atomically and rejects stale overspend', async () => {
+    const { supplier } = await receipt('1', '1')
+    const party = await db.settlementParty.findFirstOrThrow({ where: { supplierId: supplier.id } })
+    const finance = createFinance(db, ctx)
+    await finance.openingBalance({
+      idempotencyKey: key(),
+      partyId: party.id,
+      side: 'AP',
+      polarity: 'DEBIT',
+      amount: '0.02',
+      effectiveAt: date,
+      sourceNote: 'Verified test opening',
+      batchKey: key(),
+    })
+    const payment = await service.postMoneyTransaction({
+      idempotencyKey: key(),
+      partyId: party.id,
+      accountId,
+      direction: 'OUT',
+      amount: '1.03',
+      effectiveAt: date,
+      method: 'bank',
+    })
+    const credit = await db.settlementEntry.findFirstOrThrow({
+      where: { moneyTransactionId: payment.id },
+    })
+    const plan = await db.$transaction((tx) => suggestAllocation(tx, ctx, credit.id))
+    expect(plan.lines.map((l) => l.amount)).toEqual(['1.00', '0.02'])
+    expect(plan.unallocated).toBe('0.01')
+    const input = {
+      idempotencyKey: key(),
+      creditEntryId: credit.id,
+      effectiveAt: date,
+      lines: plan.lines.map(({ debitEntryId, amount }) => ({ debitEntryId, amount })),
+    }
+    const before = await db.settlementAllocation.count({ where: { organizationId: org } })
+    await expect(
+      allocateBatch(db, ctx, {
+        ...input,
+        idempotencyKey: key(),
+        lines: [input.lines[0], { ...input.lines[1], amount: '0.03' }],
+      })
+    ).rejects.toThrow('залишок')
+    expect(await db.settlementAllocation.count({ where: { organizationId: org } })).toBe(before)
+    const result = await allocateBatch(db, ctx, input)
+    expect(result.total).toBe('1.02')
+    expect(await allocateBatch(db, ctx, input)).toEqual(result)
+    await expect(allocateBatch(db, ctx, { ...input, idempotencyKey: key() })).rejects.toThrow(
+      'залишок'
+    )
+    await expect(
+      db.$transaction((tx) => suggestAllocation(tx, { ...ctx, organizationId: key() }, credit.id))
+    ).rejects.toThrow()
+  })
+  it('capitalizes extra receipt cost, preserves AP and reverses the exact carrying value', async () => {
+    const supplier = await service.createSupplier({ idempotencyKey: key(), name: key() })
+    const products = await Promise.all(
+      [1, 2, 3].map((i) =>
+        db.inventoryPart.create({
+          data: { organizationId: org, userId: user, name: 'Cost ' + i, unit: 'pcs' },
+        })
+      )
+    )
+    const input = {
+      idempotencyKey: key(),
+      supplierId: supplier.id,
+      warehouseId,
+      effectiveAt: date,
+      externalDate: date,
+      externalNumber: key(),
+      dueDate: date,
+      additionalCost: '0.02',
+      roundingAdjustment: '-0.01',
+      roundingReason: 'Supplier rounding difference',
+      sourceTotal: '3.01',
+      lines: products.map((p) => ({ inventoryPartId: p.id, quantity: '1', unitPrice: '1' })),
+    }
+    const draft = await service.saveReceiptDraft(input)
+    await service.postReceipt({ idempotencyKey: key(), documentId: draft.id, expectedVersion: 1 })
+    const lines = await db.inventoryDocumentLine.findMany({
+      where: { documentId: draft.id },
+      orderBy: { sortOrder: 'asc' },
+    })
+    expect(lines.map((l) => l.additionalCostAmount.toFixed(2))).toEqual(['0.01', '0.01', '0.00'])
+    const movements = await db.inventoryLedgerEntry.aggregate({
+      where: { documentLine: { documentId: draft.id } },
+      _sum: { costAmountDelta: true },
+    })
+    expect(movements._sum.costAmountDelta?.toFixed(2)).toBe('3.02')
+    const entry = await db.settlementEntry.findFirstOrThrow({
+      where: { inventoryDocumentId: draft.id },
+    })
+    expect(entry.amount.toFixed(2)).toBe('3.01')
+    await reverseReceipt(db, ctx, {
+      idempotencyKey: key(),
+      id: draft.id,
+      effectiveAt: date,
+      reason: 'Reverse receipt with capitalized delivery',
+    })
+    const sum = await db.inventoryLedgerEntry.aggregate({
+      where: { lot: { sourceLine: { documentId: draft.id } } },
+      _sum: { costAmountDelta: true },
+    })
+    expect(sum._sum.costAmountDelta?.toFixed(2)).toBe('0.00')
+    await expect(
+      service.saveReceiptDraft({
+        ...input,
+        idempotencyKey: key(),
+        externalNumber: key(),
+        sourceTotal: '4',
+      })
+    ).rejects.toThrow('не збігається')
+  })
   async function totals(lotId: string, warehouse?: string) {
     const value = await db.inventoryLedgerEntry.aggregate({
       where: { organizationId: org, lotId, ...(warehouse ? { warehouseId: warehouse } : {}) },
@@ -359,7 +728,6 @@ const key = randomUUID,
       ).rejects.toThrow()
   })
   it.each([
-    0,
     -1,
     1.005,
     0.1 + 0.2,
@@ -386,6 +754,73 @@ const key = randomUUID,
       })
     ).rejects.toThrow()
     expect(await db.settlementEntry.count({ where: { serviceRecordId: job.id } })).toBe(0)
+  })
+  it('freezes billed party and sale amounts while preserving historical descriptions and mechanic edits', async () => {
+    const customer = await db.customer.create({
+        data: { organizationId: org, userId: user, name: 'Original payer' },
+      }),
+      other = await db.customer.create({
+        data: { organizationId: org, userId: user, name: 'New car owner' },
+      })
+    const job = await db.serviceRecord.create({
+      data: {
+        organizationId: org,
+        customerId: customer.id,
+        title: 'Frozen invoice',
+        financeAccountingMode: 'LEDGER',
+        totalAmount: 10,
+        subtotal: 10,
+        partItems: { create: [{ name: 'Original part', quantity: 1, unitPrice: 10, total: 10 }] },
+        laborItems: { create: [{ description: 'Original labor', hours: 0, rate: 0, total: 0 }] },
+      },
+    })
+    const charge = await createFinance(db, ctx).issueCustomerCharge({
+      idempotencyKey: key(),
+      serviceRecordId: job.id,
+      customerId: customer.id,
+      effectiveAt: date,
+      dueDate: date,
+    })
+    const saved = await db.serviceRecord.findUniqueOrThrow({ where: { id: job.id } }),
+      snapshot = readFinancialSnapshot(saved.ledgerFinancialSnapshot)!
+    expect(snapshot.total).toBe('10.00')
+    expect(saved.billedPartyId).toBe(charge.partyId)
+    await db.serviceRecord.update({
+      where: { id: job.id },
+      data: { customerId: other.id, description: 'Nonfinancial note' },
+    })
+    await expect(
+      db.serviceRecord.update({ where: { id: job.id }, data: { totalAmount: 11 } })
+    ).rejects.toThrow('незмінний')
+    await expect(
+      db.serviceRecord.update({ where: { id: job.id }, data: { manuallyPaid: true } })
+    ).rejects.toThrow('незмінний')
+    await expect(
+      db.serviceRecord.update({ where: { id: job.id }, data: { billedPartyId: null } })
+    ).rejects.toThrow('незмінний')
+    await db.servicePart.update({
+      where: { id: snapshot.parts[0].id },
+      data: { name: 'Later catalog name' },
+    })
+    await db.serviceLabor.update({
+      where: { id: snapshot.labor[0].id },
+      data: { executorName: 'Assigned later', executorFrozen: true },
+    })
+    await expect(
+      db.servicePart.update({ where: { id: snapshot.parts[0].id }, data: { unitPrice: 11 } })
+    ).rejects.toThrow('незмінні')
+    await expect(db.servicePart.delete({ where: { id: snapshot.parts[0].id } })).rejects.toThrow(
+      'незмінні'
+    )
+    expect(
+      readFinancialSnapshot(
+        (await db.serviceRecord.findUniqueOrThrow({ where: { id: job.id } }))
+          .ledgerFinancialSnapshot
+      )?.parts[0].name
+    ).toBe('Original part')
+    expect(readFinancialSnapshot(null)).toBeNull()
+    expect(readFinancialSnapshot({ version: 1 })).toBeNull()
+    expect(() => readFinancialSnapshot({ version: 2 })).toThrow('пошкоджено')
   })
   it('customer charge, payment and allocation preserve snapshot cents and reject duplication', async () => {
     const customer = await db.customer.create({
@@ -559,5 +994,118 @@ const key = randomUUID,
       amount: '1',
       effectiveAt: date,
     })
+  })
+  it('AC11 links subcontract to one work, freezes identity and leaves client price and stock intact', async () => {
+    const supplier = await service.createSupplier({
+      idempotencyKey: key(),
+      name: 'Contractor',
+      kind: 'SERVICES',
+    })
+    const job = await db.serviceRecord.create({
+      data: { organizationId: org, title: 'Linked subcontract' },
+    })
+    const work = await db.serviceLabor.create({
+      data: {
+        serviceRecordId: job.id,
+        description: 'External repair',
+        executionType: 'SUBCONTRACT',
+        total: 3800,
+      },
+    })
+    const before = await db.inventoryLedgerEntry.count({ where: { organizationId: org } })
+    const input = {
+      idempotencyKey: key(),
+      supplierId: supplier.id,
+      externalNumber: key(),
+      effectiveAt: date,
+      dueDate: date,
+      lines: [
+        {
+          serviceRecordId: job.id,
+          serviceLaborId: work.id,
+          description: 'External repair',
+          quantity: '1',
+          unitCost: '3000',
+        },
+      ],
+    }
+    const posted = await createFinance(db, ctx).postSubcontract(input)
+    expect(posted.total).toBe('3000.00')
+    expect(await db.inventoryLedgerEntry.count({ where: { organizationId: org } })).toBe(before)
+    expect((await db.serviceLabor.findUniqueOrThrow({ where: { id: work.id } })).total).toBe(3800)
+    expect(
+      (
+        await db.settlementEntry.findFirstOrThrow({
+          where: { supplierServiceDocumentId: posted.id },
+        })
+      ).amount.toString()
+    ).toBe('3000')
+    await db.serviceLabor.update({
+      where: { id: work.id },
+      data: { description: 'Updated description' },
+    })
+    await expect(
+      db.serviceLabor.update({ where: { id: work.id }, data: { executionType: 'INTERNAL' } })
+    ).rejects.toThrow()
+    await expect(db.serviceLabor.delete({ where: { id: work.id } })).rejects.toThrow()
+    await expect(
+      createFinance(db, ctx).postSubcontract({
+        ...input,
+        idempotencyKey: key(),
+        lines: [{ ...input.lines[0], serviceLaborId: key() }],
+      })
+    ).rejects.toThrow()
+  })
+
+  it('payment drafts have no effect until posting, use revisions and remain idempotent', async () => {
+    const supplier = await service.createSupplier({ idempotencyKey: key(), name: 'Draft payee' }),
+      ops = paymentDraftOperations(db, ctx)
+    const input = {
+      idempotencyKey: key(),
+      partyId: supplier.partyId,
+      accountId,
+      direction: 'OUT',
+      amount: '0.01',
+      effectiveAt: date,
+      method: 'bank',
+      note: 'Draft only',
+    }
+    const draft = await ops.save(input)
+    expect(await ops.save(input)).toEqual(draft)
+    expect(await db.cashLedgerEntry.count({ where: { moneyTransactionId: draft.id } })).toBe(0)
+    expect(await db.settlementEntry.count({ where: { moneyTransactionId: draft.id } })).toBe(0)
+    await expect(
+      ops.save({ ...input, idempotencyKey: key(), documentId: draft.id, expectedVersion: 99 })
+    ).rejects.toThrow('змінено')
+    const changed = await ops.save({
+      ...input,
+      idempotencyKey: key(),
+      documentId: draft.id,
+      expectedVersion: 1,
+      amount: '0.03',
+    })
+    const command = { idempotencyKey: key(), documentId: changed.id, expectedVersion: 2 },
+      posted = await ops.post(command)
+    expect(await ops.post(command)).toEqual(posted)
+    expect(posted.id).toBe(draft.id)
+    expect(
+      (
+        await db.cashLedgerEntry.findFirstOrThrow({ where: { moneyTransactionId: draft.id } })
+      ).amountDelta.toString()
+    ).toBe('-0.03')
+    await expect(
+      db.moneyTransaction.update({ where: { id: draft.id }, data: { amount: 99 } })
+    ).rejects.toThrow()
+    const cancelled = await ops.save({ ...input, idempotencyKey: key() })
+    await ops.cancel({ idempotencyKey: key(), documentId: cancelled.id, expectedVersion: 1 })
+    await expect(
+      ops.post({ idempotencyKey: key(), documentId: cancelled.id, expectedVersion: 2 })
+    ).rejects.toThrow()
+    expect(await db.cashLedgerEntry.count({ where: { moneyTransactionId: cancelled.id } })).toBe(0)
+  })
+  it('full diagnostic reconciles source documents, cash, reserves and empty-lot values without writes', async () => {
+    const before = await db.ledgerAuditEvent.count({ where: { organizationId: org } })
+    expect(await db.$transaction((tx) => fullReconciliation(tx, ctx))).toEqual([])
+    expect(await db.ledgerAuditEvent.count({ where: { organizationId: org } })).toBe(before)
   })
 })

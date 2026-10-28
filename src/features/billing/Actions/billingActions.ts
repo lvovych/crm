@@ -33,14 +33,15 @@ async function getBillingSummary(organizationId: string): Promise<BillingSummary
       COUNT(*) FILTER (WHERE sub."manuallyPaid" = false AND sub.paid = 0) AS unpaid_count
     FROM (
       SELECT
-        sr."totalAmount" AS total,
-        sr.cost,
+        CASE WHEN sr."financeAccountingMode"='LEDGER' THEN COALESCE(lb.total,sr."totalAmount") ELSE sr."totalAmount" END AS total,
+        CASE WHEN sr."financeAccountingMode"='LEDGER' THEN 0 ELSE sr.cost END AS cost,
         sr."manuallyPaid",
-        CASE WHEN sr."manuallyPaid" = true
+        CASE WHEN sr."financeAccountingMode"='LEDGER' THEN GREATEST(COALESCE(lb.total-lb.debt,0),0) WHEN sr."manuallyPaid" = true
           THEN CASE WHEN sr."totalAmount" > 0 THEN sr."totalAmount" ELSE sr.cost END
           ELSE COALESCE((SELECT SUM(p.amount) FROM "public"."payments" p WHERE p."serviceRecordId" = sr.id), 0)
         END AS paid
       FROM "public"."service_records" sr
+      LEFT JOIN "public"."ledger_customer_balances" lb ON lb."serviceRecordId"=sr.id AND lb."organizationId"=sr."organizationId"
       WHERE sr."organizationId" = ${organizationId}
     ) sub
   `)
@@ -120,14 +121,15 @@ export async function getBillingHistory(params: {
           SELECT
             sr.id,
             sr."manuallyPaid" AS manually_paid,
-            CASE WHEN sr."totalAmount" > 0 THEN sr."totalAmount" ELSE sr.cost END AS effective_total,
-            CASE WHEN sr."manuallyPaid" = true
+            CASE WHEN sr."financeAccountingMode"='LEDGER' THEN COALESCE(lb.total,sr."totalAmount") ELSE CASE WHEN sr."totalAmount" > 0 THEN sr."totalAmount" ELSE sr.cost END END AS effective_total,
+            CASE WHEN sr."financeAccountingMode"='LEDGER' THEN GREATEST(COALESCE(lb.total-lb.debt,0),0) WHEN sr."manuallyPaid" = true
               THEN CASE WHEN sr."totalAmount" > 0 THEN sr."totalAmount" ELSE sr.cost END
               ELSE COALESCE((SELECT SUM(p.amount) FROM "public"."payments" p WHERE p."serviceRecordId" = sr.id), 0)
             END AS paid_amount,
             sr."sentAt" AS sent_at,
             sr."viewCount" AS view_count
           FROM "public"."service_records" sr
+      LEFT JOIN "public"."ledger_customer_balances" lb ON lb."serviceRecordId"=sr.id AND lb."organizationId"=sr."organizationId"
           LEFT JOIN "public"."vehicles" v ON v.id = sr."vehicleId"
           WHERE sr."organizationId" = ${organizationId}
           ${searchCondition}
@@ -190,8 +192,8 @@ export async function getBillingHistory(params: {
             sr."startDateTime",
             sr."invoiceDate",
             sr."manuallyPaid" AS manually_paid,
-            CASE WHEN sr."totalAmount" > 0 THEN sr."totalAmount" ELSE sr.cost END AS effective_total,
-            CASE WHEN sr."manuallyPaid" = true
+            CASE WHEN sr."financeAccountingMode"='LEDGER' THEN COALESCE(lb.total,sr."totalAmount") ELSE CASE WHEN sr."totalAmount" > 0 THEN sr."totalAmount" ELSE sr.cost END END AS effective_total,
+            CASE WHEN sr."financeAccountingMode"='LEDGER' THEN GREATEST(COALESCE(lb.total-lb.debt,0),0) WHEN sr."manuallyPaid" = true
               THEN CASE WHEN sr."totalAmount" > 0 THEN sr."totalAmount" ELSE sr.cost END
               ELSE COALESCE((SELECT SUM(p.amount) FROM "public"."payments" p WHERE p."serviceRecordId" = sr.id), 0)
             END AS paid_amount,
@@ -206,6 +208,7 @@ export async function getBillingHistory(params: {
             sr."viewCount" AS view_count,
             sr."lastViewedAt" AS last_viewed_at
           FROM "public"."service_records" sr
+      LEFT JOIN "public"."ledger_customer_balances" lb ON lb."serviceRecordId"=sr.id AND lb."organizationId"=sr."organizationId"
           LEFT JOIN "public"."vehicles" v ON v.id = sr."vehicleId"
           LEFT JOIN "public"."customers" c ON c.id = COALESCE(sr."customerId", v."customerId")
           WHERE sr."organizationId" = ${organizationId}

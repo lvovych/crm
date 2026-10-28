@@ -27,6 +27,7 @@ export const servicePartSchema = z.object({
 })
 
 export const serviceLaborSchema = z.object({
+  executionType: z.enum(['INTERNAL', 'SUBCONTRACT']).optional(),
   id: z.string().optional(),
   technicianId: z.string().nullable().optional(),
   executorName: z.string().nullable().optional(),

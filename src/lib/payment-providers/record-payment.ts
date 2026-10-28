@@ -1,4 +1,6 @@
 import { db } from '@/lib/db'
+import { ledgerVendorPayment } from '@/features/stock-ledger/Lib/vendorPayments'
+import type { PrismaClient } from '@/generated/prisma/client'
 
 export interface VendorPaymentInput {
   serviceRecordId: string
@@ -34,6 +36,11 @@ export interface VendorPaymentInput {
 export async function recordVendorPayment(
   input: VendorPaymentInput
 ): Promise<{ id: string; created: boolean }> {
+  const ledger = await ledgerVendorPayment(
+    db as unknown as Pick<PrismaClient, '$transaction'>,
+    input
+  )
+  if (ledger) return ledger
   const [row] = await db.payment.createManyAndReturn({
     data: [
       {

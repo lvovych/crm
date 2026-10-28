@@ -1,8 +1,9 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, after } from 'next/server'
 import { withAuth } from '@/lib/with-auth'
 import { PermissionAction as A, PermissionSubject as S } from '@/lib/permissions'
 import { db } from '@/lib/db'
-import { previewImport } from '@/features/stock-ledger/Lib/importService'
+import { enqueueImport, runImportTasks } from '@/features/stock-ledger/Lib/importQueue'
+import type { PrismaClient } from '@/generated/prisma/client'
 import type { LedgerDB } from '@/features/stock-ledger/Lib/transaction'
 import { importMappingSchema } from '@/features/stock-ledger/Lib/imports'
 export async function POST(request: Request) {
@@ -47,13 +48,15 @@ export async function POST(request: Request) {
           : null
       if (!format) throw new Error('Підтримуються CSV і XLSX')
       const mapping = importMappingSchema.parse(JSON.parse(String(form.get('mapping'))))
-      return previewImport(db as unknown as LedgerDB, ctx, {
+      const task = await enqueueImport(db as unknown as LedgerDB, ctx, {
         supplierId: String(form.get('supplierId')),
         name: file.name,
         format,
         bytes: Buffer.from(await file.arrayBuffer()),
         mapping,
       })
+      after(() => runImportTasks(db as unknown as PrismaClient, task.id))
+      return task
     },
     {
       requiredPermissions: [
@@ -62,5 +65,5 @@ export async function POST(request: Request) {
       ],
     }
   )
-  return NextResponse.json(result, { status: result.success ? 200 : result.forbidden ? 403 : 422 })
+  return NextResponse.json(result, { status: result.success ? 202 : result.forbidden ? 403 : 422 })
 }

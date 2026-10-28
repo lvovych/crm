@@ -109,3 +109,18 @@ describe('import numerical validation and XLSX', () => {
     ).rejects.toThrow('об’єктів')
   })
 })
+
+describe('source totals', () => {
+  it.each([
+    ['3.01', false],
+    ['3.02', true],
+    ['oops', true],
+  ])('checks source total %s without silently changing it', async (total, bad) => {
+    const p = await parsePurchaseFile(
+      Buffer.from(`Артикул;Бренд;Кількість;Ціна;Сума\nA;---;3;1.003333;${total}`),
+      'csv',
+      { ...mapping, lineTotal: 'Сума' }
+    )
+    expect(p.rows[0].errors.length > 0).toBe(bad)
+  })
+})

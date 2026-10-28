@@ -339,6 +339,14 @@ export async function removePulledPayment(
   paymentId: string,
   provider: string
 ): Promise<boolean> {
+  const historical = await db.payment.findFirst({
+    where: { id: paymentId, provider, serviceRecord: { organizationId } },
+    select: { serviceRecord: { select: { financeAccountingMode: true } } },
+  })
+  if (historical?.serviceRecord.financeAccountingMode === 'LEDGER')
+    throw new Error(
+      'Історичний платіж мігрованого наряду не видаляється. Створіть явний документ коригування у CRM.'
+    )
   const r = await db.payment.deleteMany({
     where: { id: paymentId, provider, serviceRecord: { organizationId } },
   })

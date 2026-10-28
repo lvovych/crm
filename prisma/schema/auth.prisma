@@ -1,4 +1,11 @@
 model User {
+ ledgerMigrationBatches LedgerMigrationBatch[] @relation("LedgerMigrationActor")
+ ledgerAttachments LedgerAttachment[] @relation("LedgerAttachmentActor")
+  ledgerUnits UnitOfMeasure[]
+  ledgerLocations WarehouseLocation[]
+  supplierProducts SupplierProduct[]
+  customerAdjustments CustomerAdjustment[]
+  ledgerImportTasks LedgerImportTask[]
   ledgerDocumentSequence DocumentSequence[] @relation("LedgerActorDocumentSequence")
   ledgerAllocationEvent AllocationEvent[] @relation("LedgerActorAllocationEvent")
   ledgerSupplierServiceDocument SupplierServiceDocument[] @relation("LedgerActorSupplierServiceDocument")

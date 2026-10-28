@@ -1,5 +1,5 @@
 'use server'
-import { newRecordStockMode } from '@/features/stock-ledger/Lib/cutover'
+import { newRecordStockMode, newRecordFinanceMode } from '@/features/stock-ledger/Lib/cutover'
 
 import { prepareParts, prepareLabor } from '../Lib/saveServiceLines'
 import { calculateTotals, discountAmountFor } from '@/lib/tax'
@@ -42,6 +42,22 @@ import { reconcileInventoryForParts } from '@/features/inventory/Lib/reconcileSt
 import { assertInvoiceEditable, getDocumentLockSettings } from '@/lib/document-lock.server'
 import { DocumentLockedError, invoiceLockState } from '@/lib/document-lock'
 import { typeKeySearch } from '@/features/vehicles/Lib/typeKeySetting'
+
+async function issueOnCompletion(
+  tx: import('@/features/stock-ledger/Lib/transaction').Tx,
+  ctx: { organizationId: string; userId: string },
+  record: { id: string; status: string; financeAccountingMode: string }
+) {
+  if (record.financeAccountingMode !== 'LEDGER' || record.status !== 'completed') return
+  const { ensureCustomerInvoice } = await import('@/features/stock-ledger/Lib/customerFinance')
+  const nested = {
+    $transaction: async (
+      fn: (tx: import('@/features/stock-ledger/Lib/transaction').Tx) => Promise<unknown>
+    ) => fn(tx),
+  } as unknown as import('@/features/stock-ledger/Lib/transaction').LedgerDB
+  const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Kyiv' }).format(new Date())
+  await ensureCustomerInvoice(nested, ctx, record.id, day)
+}
 
 export async function getServiceRecords(vehicleId: string) {
   return withAuth(
@@ -340,6 +356,12 @@ export async function getServiceRecord(recordId: string) {
         },
       })
 
+      if (record?.financeAccountingMode === 'LEDGER') {
+        const balances = await db.$queryRaw<
+          { total: string; debt: string }[]
+        >`SELECT total::text, debt::text FROM "public"."ledger_customer_balances" WHERE "organizationId"=${organizationId} AND "serviceRecordId"=${record.id}`
+        return { ...record, ledgerBalance: balances[0] ?? null }
+      }
       return record
     },
     {
@@ -522,6 +544,7 @@ export async function createServiceRecord(input: unknown) {
         const created = await tx.serviceRecord.create({
           data: {
             inventoryAccountingMode: await newRecordStockMode(tx, organizationId),
+            financeAccountingMode: await newRecordFinanceMode(tx, organizationId),
             ...recordData,
             organizationId,
             createdById: userId,
@@ -627,6 +650,11 @@ export async function createServiceRecord(input: unknown) {
           })
         }
 
+        await issueOnCompletion(
+          tx as unknown as import('@/features/stock-ledger/Lib/transaction').Tx,
+          { organizationId, userId },
+          created
+        )
         return created
       })
 
@@ -795,6 +823,9 @@ export async function updateServiceRecord(input: unknown) {
       }
 
       const record = await db.$transaction(async (tx) => {
+        if (existing.financeAccountingMode === 'LEDGER')
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${organizationId},613))`
+
         const previousPartsForTotals = await tx.servicePart.findMany({
           where: { serviceRecordId: id },
         })
@@ -916,35 +947,50 @@ export async function updateServiceRecord(input: unknown) {
               })
             : []
           const brandByStock = new Map(stockBrands.map((p) => [p.id, p.brand.name]))
-          const retainedPartIds = normalizedParts.flatMap(p => p.id ? [p.id] : [])
-          if (existing.inventoryAccountingMode === 'LEDGER' && await tx.stockDemand.count({where:{organizationId,serviceRecordId:id,state:'ACTIVE',servicePartId:{notIn:retainedPartIds}}})) throw new Error('Спочатку скасуйте складську потребу позиції; історія видач і повернень збережеться')
-          await tx.servicePart.deleteMany({ where: { serviceRecordId: id, id: { notIn: retainedPartIds } } })
+          const retainedPartIds = normalizedParts.flatMap((p) => (p.id ? [p.id] : []))
+          if (
+            existing.inventoryAccountingMode === 'LEDGER' &&
+            (await tx.stockDemand.count({
+              where: {
+                organizationId,
+                serviceRecordId: id,
+                state: 'ACTIVE',
+                servicePartId: { notIn: retainedPartIds },
+              },
+            }))
+          )
+            throw new Error(
+              'Спочатку скасуйте складську потребу позиції; історія видач і повернень збережеться'
+            )
+          await tx.servicePart.deleteMany({
+            where: { serviceRecordId: id, id: { notIn: retainedPartIds } },
+          })
           if (partItems.length > 0) {
             const replacementParts = normalizedParts.map((p) => ({
-                id: p.id,
-                discountType: p.discountType,
-                discountValue: p.discountValue,
-                sortOrder: p.sortOrder,
-                brand: resolveBrandSnapshot(
-                  p,
-                  previousParts,
-                  brandByStock.get(p.inventoryPartId || '')
-                ),
-                partNumber: p.partNumber,
-                name: p.name,
-                quantity: p.quantity,
-                unit: p.unit ?? null,
-                unitPrice: p.unitPrice,
-                total: p.total,
-                unitCost: p.unitCost ?? 0,
-                markupPercent: p.markupPercent ?? 0,
-                inventoryPartId: p.inventoryPartId || null,
-                stockOwnership: p.stockOwnership ?? 'OWN',
-                customerPartInstalled: p.customerPartInstalled ?? false,
-                serviceRecordId: id,
-              }))
+              id: p.id,
+              discountType: p.discountType,
+              discountValue: p.discountValue,
+              sortOrder: p.sortOrder,
+              brand: resolveBrandSnapshot(
+                p,
+                previousParts,
+                brandByStock.get(p.inventoryPartId || '')
+              ),
+              partNumber: p.partNumber,
+              name: p.name,
+              quantity: p.quantity,
+              unit: p.unit ?? null,
+              unitPrice: p.unitPrice,
+              total: p.total,
+              unitCost: p.unitCost ?? 0,
+              markupPercent: p.markupPercent ?? 0,
+              inventoryPartId: p.inventoryPartId || null,
+              stockOwnership: p.stockOwnership ?? 'OWN',
+              customerPartInstalled: p.customerPartInstalled ?? false,
+              serviceRecordId: id,
+            }))
             for (const part of replacementParts) {
-              const current = part.id ? previousParts.find(p => p.id === part.id) : undefined
+              const current = part.id ? previousParts.find((p) => p.id === part.id) : undefined
               if (current) await tx.servicePart.update({ where: { id: current.id }, data: part })
               else await tx.servicePart.create({ data: part })
             }
@@ -1015,14 +1061,17 @@ export async function updateServiceRecord(input: unknown) {
         // Replace labor if provided
         if (laborItems !== undefined) {
           const normalizedLabor = await prepareLabor(tx, organizationId, id, laborItems)
-          await tx.serviceLabor.deleteMany({ where: { serviceRecordId: id } })
-          if (laborItems.length > 0) {
-            await tx.serviceLabor.createMany({
-              data: normalizedLabor.map((l) => ({
-                ...l,
-                serviceRecordId: id,
-              })),
-            })
+          // Preserve stable work IDs referenced by posted subcontract documents.
+          await tx.serviceLabor.deleteMany({
+            where: {
+              serviceRecordId: id,
+              id: { notIn: normalizedLabor.flatMap((l) => (l.id ? [l.id] : [])) },
+            },
+          })
+          for (const line of normalizedLabor) {
+            const { id: lineId, ...data } = line
+            if (lineId) await tx.serviceLabor.update({ where: { id: lineId }, data })
+            else await tx.serviceLabor.create({ data: { ...data, serviceRecordId: id } })
           }
         }
 
@@ -1043,6 +1092,11 @@ export async function updateServiceRecord(input: unknown) {
           }
         }
 
+        await issueOnCompletion(
+          tx as unknown as import('@/features/stock-ledger/Lib/transaction').Tx,
+          { organizationId, userId },
+          updated
+        )
         return updated
       })
 
@@ -1122,7 +1176,7 @@ export async function updateServiceStatus(
   customStatusId: string | null = null
 ) {
   return withAuth(
-    async ({ organizationId }) => {
+    async ({ organizationId, userId }) => {
       // Written as it arrived until now; every screen that reads it keeps a
       // closed list, so a stray value made the job vanish from half of them.
       if (!isSystemStatus(status)) throw new Error('Unknown status')
@@ -1147,9 +1201,18 @@ export async function updateServiceStatus(
       })
       if (!record) throw new Error('Record not found')
 
-      await db.serviceRecord.update({
-        where: { id: recordId },
-        data: statusColumns(status, custom),
+      await db.$transaction(async (tx) => {
+        if (record.financeAccountingMode === 'LEDGER')
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${organizationId},613))`
+        const updated = await tx.serviceRecord.update({
+          where: { id: recordId },
+          data: statusColumns(status, custom),
+        })
+        await issueOnCompletion(
+          tx as unknown as import('@/features/stock-ledger/Lib/transaction').Tx,
+          { organizationId, userId },
+          updated
+        )
       })
 
       notificationBus.emit('workboard', {
@@ -1287,6 +1350,8 @@ export async function toggleManuallyPaid(recordId: string) {
         include: { payments: { select: { amount: true } } },
       })
       if (!record) throw new Error('Record not found')
+      if (record.financeAccountingMode === 'LEDGER')
+        throw new Error('Для нового обліку внесіть оплату в розділі «Розрахунки за нарядом».')
 
       // Marking paid is always allowed — it only ever locks the document
       // further. But a flip that would *release* the lock is the admin-only
@@ -1484,14 +1549,15 @@ export async function deleteServiceRecord(recordId: string) {
           where: { serviceRecordId: recordId },
           select: { inventoryPartId: true, quantity: true },
         })
-        if (record.inventoryAccountingMode !== 'LEDGER') await reconcileInventoryForParts(tx, organizationId, parts, [], {
-          reason: 'service_record_deleted',
-          userId,
-          // Deliberately no serviceRecordId: the record is deleted in this same
-          // transaction, so the FK would immediately null out. The label is what
-          // preserves "this stock came back from job X".
-          serviceRecordLabel: record.invoiceNumber || record.title,
-        })
+        if (record.inventoryAccountingMode !== 'LEDGER')
+          await reconcileInventoryForParts(tx, organizationId, parts, [], {
+            reason: 'service_record_deleted',
+            userId,
+            // Deliberately no serviceRecordId: the record is deleted in this same
+            // transaction, so the FK would immediately null out. The label is what
+            // preserves "this stock came back from job X".
+            serviceRecordLabel: record.invoiceNumber || record.title,
+          })
         await tx.serviceRecord.delete({ where: { id: recordId } })
       })
       await releaseFiles(files, { organizationId, reason: 'work order deleted' })

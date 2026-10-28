@@ -3,11 +3,11 @@ import { reverseReceipt } from '../Lib/reverseReceipt'
 import { commitImport, importPage } from '../Lib/importService'
 import { createStockAdjustments } from '../Lib/adjustments'
 import { createFinance } from '../Lib/finance'
-import { reconciliation, csvCell } from '../Lib/reconciliation'
+import { fullReconciliation, csvCell } from '../Lib/reconciliation'
 import { createProcurement } from '../Lib/procurement'
 import { z } from 'zod'
 import { db } from '@/lib/db'
-import { withAuth } from '@/lib/with-auth'
+import { withLedgerAuth as withAuth } from '../Lib/auth.server'
 import { PermissionAction as A, PermissionSubject as S } from '@/lib/permissions'
 import { createStockOperations } from '../Lib/stock'
 import { createSettlementOperations } from '../Lib/settlements'
@@ -61,7 +61,7 @@ export async function postReceipt(input: unknown) {
       enabled()
       return createStockLedger(ledgerDB, ctx).postReceipt(input)
     },
-    { requiredPermissions: [...stockRead, permission(A.MANAGE, S.STOCK_LEDGER)] }
+    { requiredPermissions: [...stockRead, permission(A.POST, S.STOCK_LEDGER)] }
   )
 }
 export async function postSupplierPayment(input: unknown) {
@@ -70,7 +70,7 @@ export async function postSupplierPayment(input: unknown) {
       enabled()
       return createStockLedger(ledgerDB, ctx).postMoneyTransaction(input)
     },
-    { requiredPermissions: [permission(A.CREATE, S.SUPPLIER_FINANCE)] }
+    { requiredPermissions: [permission(A.POST, S.SUPPLIER_FINANCE)] }
   )
 }
 export async function allocateSupplierPayment(input: unknown) {
@@ -79,7 +79,7 @@ export async function allocateSupplierPayment(input: unknown) {
       enabled()
       return createStockLedger(ledgerDB, ctx).allocateSettlement(input)
     },
-    { requiredPermissions: [permission(A.MANAGE, S.SUPPLIER_FINANCE)] }
+    { requiredPermissions: [permission(A.ALLOCATE, S.SUPPLIER_FINANCE)] }
   )
 }
 export async function getLedgerDirectory() {
@@ -93,7 +93,7 @@ export async function getLedgerDirectory() {
       ])
       return { suppliers, warehouses, isAdmin: ctx.isAdmin }
     },
-    { requiredPermissions: stockRead }
+    { requiredPermissions: [permission(A.READ, S.STOCK_LEDGER)] }
   )
 }
 export async function searchLedgerProducts(search: string) {
@@ -121,7 +121,7 @@ export async function searchLedgerProducts(search: string) {
         orderBy: [{ name: 'asc' }, { id: 'asc' }],
       })
     },
-    { requiredPermissions: stockRead }
+    { requiredPermissions: [permission(A.READ, S.STOCK_LEDGER)] }
   )
 }
 export async function listLedgerDocuments(raw: { page?: number; search?: string }) {
@@ -161,6 +161,9 @@ export async function listLedgerDocuments(raw: { page?: number; search?: string 
       return {
         rows: rows.map((r) => ({
           ...r,
+          additionalCost: r.additionalCost.toFixed(2),
+          roundingAdjustment: r.roundingAdjustment.toFixed(2),
+          sourceTotal: r.sourceTotal?.toFixed(2) ?? null,
           subtotal: r.subtotal.toFixed(2),
           taxAmount: r.taxAmount.toFixed(2),
           totalAmount: r.totalAmount.toFixed(2),
@@ -185,7 +188,17 @@ export async function getLedgerDocument(id: string) {
         },
       })
       if (!doc) throw new Error('Документ не знайдений')
-      return JSON.parse(JSON.stringify(doc)) as {
+      const original = await db.ledgerImportTask.findFirst({
+        where: {
+          organizationId: ctx.organizationId,
+          status: 'READY',
+          previewJob: { documentId: doc.id },
+        },
+        select: { id: true },
+        orderBy: { createdAt: 'asc' },
+      })
+      return JSON.parse(JSON.stringify({ ...doc, originalImportId: original?.id ?? null })) as {
+        originalImportId: string | null
         id: string
         number: string
         status: string
@@ -198,6 +211,11 @@ export async function getLedgerDocument(id: string) {
         dueDate: string
         note: string
         totalAmount: string
+        additionalCost: string
+        roundingAdjustment: string
+        roundingReason: string
+        sourceTotal: string | null
+        costAllocationMethod: string
         inventoryDocumentLine_document: Array<{
           id: string
           purchaseOrderLineId: string | null
@@ -208,6 +226,7 @@ export async function getLedgerDocument(id: string) {
             purchaseAllocationId: string | null
           }>
           inventoryPartId: string
+          additionalCostAmount: string
           snapshotName: string
           snapshotBrand: string
           snapshotArticle: string | null
@@ -344,7 +363,7 @@ export async function getSupplierFinances(partyId?: string) {
 
 export async function listLedgerDemands(
   search = '',
-  filter: { serviceRecordId?: string; servicePartId?: string } = {}
+  filter: { serviceRecordId?: string; servicePartId?: string; page?: number } = {}
 ) {
   return withAuth(
     async (ctx) => {
@@ -354,6 +373,7 @@ export async function listLedgerDemands(
         .object({
           serviceRecordId: z.string().min(1).optional(),
           servicePartId: z.string().min(1).optional(),
+          page: z.number().int().min(1).max(100000).default(1),
         })
         .parse(filter)
       const rows = await db.servicePart.findMany({
@@ -367,6 +387,10 @@ export async function listLedgerDemands(
                   OR: [
                     { invoiceNumber: { contains: search, mode: 'insensitive' as const } },
                     { title: { contains: search, mode: 'insensitive' as const } },
+                    { customer: { name: { contains: search, mode: 'insensitive' as const } } },
+                    {
+                      vehicle: { licensePlate: { contains: search, mode: 'insensitive' as const } },
+                    },
                   ],
                 }
               : {}),
@@ -375,7 +399,14 @@ export async function listLedgerDemands(
           ...(scope.servicePartId ? { id: scope.servicePartId } : {}),
         },
         include: {
-          serviceRecord: { select: { invoiceNumber: true, title: true } },
+          serviceRecord: {
+            select: {
+              invoiceNumber: true,
+              title: true,
+              customer: { select: { name: true } },
+              vehicle: { select: { licensePlate: true } },
+            },
+          },
           stockDemand_servicePart: {
             include: {
               stockReservation_demand: true,
@@ -390,14 +421,36 @@ export async function listLedgerDemands(
             },
           },
         },
-        take: scope.serviceRecordId ? 500 : 50,
+        skip: (scope.page - 1) * 50,
+        take: 50,
         orderBy: { id: 'asc' },
       })
+      const products = await db.inventoryPart.findMany({
+        where: {
+          organizationId: ctx.organizationId,
+          id: { in: rows.map((p) => p.inventoryPartId!) },
+        },
+        select: {
+          id: true,
+          trackingMode: true,
+          supplierProducts: {
+            where: { preferred: true, archivedAt: null, supplier: { archivedAt: null } },
+            take: 1,
+            select: { supplierId: true, leadTimeDays: true, supplier: { select: { name: true } } },
+          },
+        },
+      })
+      const trackingModes = new Map(products.map((p) => [p.id, p.trackingMode]))
       return rows.map((p) => {
         const d = p.stockDemand_servicePart[0]
         const issued =
           d?.documentLotAllocation_demand.reduce(
-            (s, a) => s.plus(a.quantity.mul(a.documentLine.document.kind === 'ISSUE' ? 1 : -1)),
+            (s, a) =>
+              s.plus(
+                a.quantity.mul(
+                  ['ISSUE', 'MIGRATION_ISSUE'].includes(a.documentLine.document.kind) ? 1 : -1
+                )
+              ),
             D(0)
           ) ?? D(0)
         return {
@@ -406,6 +459,12 @@ export async function listLedgerDemands(
           demandId: d?.id,
           name: p.name,
           job: p.serviceRecord.invoiceNumber ?? p.serviceRecord.title,
+          customerName: p.serviceRecord.customer?.name ?? '',
+          licensePlate: p.serviceRecord.vehicle?.licensePlate ?? '',
+          trackingMode: trackingModes.get(p.inventoryPartId!) ?? 'STOCK',
+          preferredSupplier:
+            products.find((product) => product.id === p.inventoryPartId)?.supplierProducts[0] ??
+            null,
           stockOwnership: p.stockOwnership,
           customerPartInstalled: p.customerPartInstalled,
           quantity: String(p.quantity),
@@ -427,7 +486,7 @@ export async function listLedgerDemands(
               .map((r) => ({ id: r.id, quantity: r.remainingQuantity.toString() })) ?? [],
           issues:
             d?.documentLotAllocation_demand
-              .filter((a) => a.documentLine.document.kind === 'ISSUE')
+              .filter((a) => ['ISSUE', 'MIGRATION_ISSUE'].includes(a.documentLine.document.kind))
               .map((a) => ({ id: a.id, quantity: a.quantity.toString() })) ?? [],
         }
       })
@@ -461,8 +520,10 @@ export async function stockOperation(
           return service.reserve(input)
         case 'release':
           return service.release(input)
-        case 'issue':
-          return service.issue(input)
+        case 'issue': {
+          const result = await service.issue(input)
+          return { id: result.id, quantity: result.quantity }
+        }
         case 'return':
           return service.returnFromWorkOrder(input)
         case 'transfer':
@@ -474,16 +535,34 @@ export async function stockOperation(
       }
     },
     {
-      requiredPermissions: [permission(A.MANAGE, S.STOCK_LEDGER), permission(A.READ, S.STOCK_COST)],
+      requiredPermissions: [
+        permission(
+          ['demand', 'cancelDemand'].includes(operation)
+            ? A.CREATE
+            : ['reserve', 'release'].includes(operation)
+              ? A.RESERVE
+              : A.ISSUE,
+          S.STOCK_LEDGER
+        ),
+        permission(A.READ, S.STOCK_LEDGER),
+        ...(operation === 'supplierReturn' ? [permission(A.READ, S.STOCK_COST)] : []),
+      ],
     }
   )
 }
 export async function reverseLedgerPayment(input: unknown) {
-  return withAuth(async (ctx) => {
-    enabled()
-    if (!ctx.isAdmin) throw new Error('Сторно доступне адміністратору')
-    return createSettlementOperations(ledgerDB, ctx).reversePayment(input)
-  })
+  return withAuth(
+    async (ctx) => {
+      enabled()
+      return createSettlementOperations(ledgerDB, ctx).reversePayment(input)
+    },
+    {
+      requiredPermissions: [
+        permission(A.REVERSE, S.SUPPLIER_FINANCE),
+        permission(A.READ, S.SUPPLIER_FINANCE),
+      ],
+    }
+  )
 }
 export async function reverseLedgerAllocation(input: unknown) {
   return withAuth(
@@ -491,12 +570,12 @@ export async function reverseLedgerAllocation(input: unknown) {
       enabled()
       return createSettlementOperations(ledgerDB, ctx).reverseAllocation(input)
     },
-    { requiredPermissions: [permission(A.MANAGE, S.SUPPLIER_FINANCE)] }
+    { requiredPermissions: [permission(A.ALLOCATE, S.SUPPLIER_FINANCE)] }
   )
 }
 
 export async function purchaseOperation(
-  operation: 'save' | 'confirm' | 'cancel' | 'allocateReceipt',
+  operation: 'save' | 'confirm' | 'cancel' | 'allocateReceipt' | 'amend',
   input: unknown
 ) {
   return withAuth(
@@ -508,6 +587,8 @@ export async function purchaseOperation(
           return service.saveDraft(input)
         case 'confirm':
           return service.confirm(input)
+        case 'amend':
+          return service.amendQuantity(input)
         case 'cancel':
           return service.cancelRemainder(input)
         case 'allocateReceipt':
@@ -590,7 +671,7 @@ export async function postSubcontract(input: unknown) {
       enabled()
       return createFinance(ledgerDB, ctx).postSubcontract(input)
     },
-    { requiredPermissions: [permission(A.CREATE, S.SUPPLIER_FINANCE)] }
+    { requiredPermissions: [permission(A.POST, S.SUPPLIER_FINANCE)] }
   )
 }
 export async function postOpeningBalance(input: unknown) {
@@ -605,7 +686,7 @@ export async function getLedgerReconciliation() {
     enabled()
     if (!ctx.isAdmin) throw new Error('Звірку виконує адміністратор')
     return db.$transaction(
-      (tx) => reconciliation(tx as unknown as import('../Lib/transaction').Tx, ctx),
+      (tx) => fullReconciliation(tx as unknown as import('../Lib/transaction').Tx, ctx),
       { isolationLevel: 'RepeatableRead' }
     )
   })
@@ -705,6 +786,7 @@ export async function commitImportDraft(input: unknown) {
   return withAuth(
     async (ctx) => {
       enabled()
+      z.object({ expectedRevision: z.string().regex(/^[a-f0-9]{64}$/) }).parse(input)
       return commitImport(ledgerDB, ctx, input)
     },
     { requiredPermissions: draft }
@@ -712,11 +794,18 @@ export async function commitImportDraft(input: unknown) {
 }
 
 export async function reverseLedgerReceipt(input: unknown) {
-  return withAuth(async (ctx) => {
-    enabled()
-    if (!ctx.isAdmin) throw new Error('Сторно приходу доступне адміністратору')
-    return reverseReceipt(ledgerDB, ctx, input)
-  })
+  return withAuth(
+    async (ctx) => {
+      enabled()
+      return reverseReceipt(ledgerDB, ctx, input)
+    },
+    {
+      requiredPermissions: [
+        permission(A.REVERSE, S.STOCK_LEDGER),
+        permission(A.READ, S.STOCK_COST),
+      ],
+    }
+  )
 }
 
 export async function listManagedDirectories() {
@@ -826,7 +915,26 @@ export async function getLedgerAdministration(page = 1) {
       }),
       db.ledgerAuditEvent.count({ where }),
     ])
-    return { parties, accounts, warehouses, period, audit, total }
+    const diagnostic = await db.appSetting.findUnique({
+      where: {
+        organizationId_key: {
+          organizationId: ctx.organizationId,
+          key: 'stockLedger.lastDiagnostic.v1',
+        },
+      },
+      select: { value: true },
+    })
+    return {
+      parties,
+      accounts,
+      warehouses,
+      period,
+      audit,
+      total,
+      diagnostic: diagnostic
+        ? (JSON.parse(diagnostic.value) as { checkedAt: string; count: number })
+        : null,
+    }
   })
 }
 export async function getFinancialReport(input: unknown) {
@@ -844,5 +952,698 @@ export async function getFinancialReport(input: unknown) {
         permission(A.READ, S.STOCK_COST),
       ],
     }
+  )
+}
+export async function stockCountCommand(
+  operation: 'start' | 'save' | 'post' | 'cancel',
+  input: unknown
+) {
+  return withAuth(
+    async (ctx) => {
+      enabled()
+      const { stockCountOperations } = await import('../Lib/stockCount')
+      return stockCountOperations(ledgerDB, ctx)[
+        z.enum(['start', 'save', 'post', 'cancel']).parse(operation)
+      ](input)
+    },
+    {
+      requiredPermissions: [permission(A.ADJUST, S.STOCK_LEDGER), permission(A.READ, S.STOCK_COST)],
+    }
+  )
+}
+export async function listStockCounts(page = 1) {
+  return withAuth(
+    async (ctx) => {
+      enabled()
+      const p = z.number().int().positive().parse(page),
+        where = { organizationId: ctx.organizationId }
+      return {
+        rows: await db.ledgerStockCount.findMany({
+          where,
+          include: { warehouse: { select: { name: true } } },
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          skip: (p - 1) * 25,
+          take: 25,
+        }),
+        total: await db.ledgerStockCount.count({ where }),
+      }
+    },
+    { requiredPermissions: stockRead }
+  )
+}
+export async function getStockCount(id: string) {
+  return withAuth(
+    async (ctx) => {
+      enabled()
+      const row = await db.ledgerStockCount.findFirstOrThrow({
+        where: { organizationId: ctx.organizationId, id },
+        include: {
+          warehouse: { select: { name: true } },
+          lines: {
+            include: {
+              inventoryPart: {
+                select: {
+                  name: true,
+                  partNumber: true,
+                  brand: { select: { name: true } },
+                  unit: true,
+                },
+              },
+            },
+          },
+          adjustmentDocument: { select: { number: true } },
+        },
+      })
+      return {
+        ...row,
+        lines: row.lines.map((l) => ({
+          ...l,
+          expectedQty: l.expectedQty.toString(),
+          countedQty: l.countedQty?.toString() ?? null,
+          confirmedUnitCost: l.confirmedUnitCost?.toString() ?? null,
+        })),
+      }
+    },
+    { requiredPermissions: stockRead }
+  )
+}
+
+export async function resolveLedgerImportRow(input: unknown) {
+  return withAuth(
+    async (ctx) => {
+      enabled()
+      const { resolveImportRow } = await import('../Lib/importService')
+      return resolveImportRow(ledgerDB, ctx, input)
+    },
+    { requiredPermissions: draft }
+  )
+}
+
+export async function getWorkSubcontracts(serviceRecordId: string, serviceLaborId: string) {
+  return withAuth(
+    async (ctx) => {
+      enabled()
+      await db.serviceRecord.findFirstOrThrow({
+        where: { id: serviceRecordId, organizationId: ctx.organizationId },
+      })
+      const work = await db.serviceLabor.findFirstOrThrow({
+        where: {
+          id: serviceLaborId,
+          serviceRecordId,
+          serviceRecord: { organizationId: ctx.organizationId },
+        },
+        select: { executionType: true },
+      })
+      const lines = await db.supplierServiceLine.findMany({
+        where: { organizationId: ctx.organizationId, serviceRecordId, serviceLaborId },
+        include: {
+          document: {
+            include: {
+              supplier: { select: { name: true } },
+              reversals: { select: { id: true } },
+              _count: { select: { supplierServiceLine_document: true } },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      })
+      const suppliers = await db.supplier.findMany({
+        where: {
+          organizationId: ctx.organizationId,
+          archivedAt: null,
+          kind: { in: ['SERVICES', 'BOTH'] },
+        },
+        select: { id: true, name: true },
+        orderBy: { name: 'asc' },
+      })
+      const { getCachedMembership } = await import('@/lib/cached-session')
+      const { ledgerCapabilities } = await import('../Lib/capabilities')
+      const member = await getCachedMembership(ctx.userId)
+      const caps = ledgerCapabilities(ctx.isAdmin, member?.customRole?.permissions ?? [])
+      return {
+        canDraft: caps.financeDraft,
+        canPost: caps.financePost,
+        canReverse: caps.financeReverse,
+        executionType: work.executionType,
+        suppliers,
+        lines: lines.map((l) => ({
+          id: l.id,
+          lineCount: l.document._count.supplierServiceLine_document,
+          supplierId: l.document.supplierId,
+          externalNumber: l.document.externalNumber ?? '',
+          dueDate: l.document.dueDate.toISOString().slice(0, 10),
+          unitCost: l.unitCost.toString(),
+          quantity: l.quantity.toString(),
+          taxMode: l.taxMode,
+          taxRate: l.taxRate.toString(),
+          documentId: l.document.id,
+          version: l.document.version,
+          status: l.document.status,
+          reversed: l.document.reversals.length > 0,
+          reversal: Boolean(l.document.reversalOfId),
+          tax: l.taxAmount.toString(),
+          net: l.netAmount.toString(),
+          number: l.document.number,
+          supplier: l.document.supplier.name,
+          total: l.totalAmount.toString(),
+          date: l.document.effectiveAt.toISOString().slice(0, 10),
+        })),
+      }
+    },
+    {
+      requiredPermissions: [
+        permission(A.READ, S.STOCK_COST),
+        permission(A.READ, S.SUPPLIER_FINANCE),
+      ],
+    }
+  )
+}
+export async function postWorkSubcontract(input: unknown) {
+  return withAuth(
+    async (ctx) => {
+      enabled()
+      const { createFinance } = await import('../Lib/finance')
+      return createFinance(ledgerDB, ctx).postSubcontract(input)
+    },
+    {
+      requiredPermissions: [
+        permission(A.POST, S.SUPPLIER_FINANCE),
+        permission(A.READ, S.STOCK_COST),
+      ],
+    }
+  )
+}
+
+export async function bulkFulfillment(input: unknown, preview: boolean) {
+  return withAuth(
+    async (ctx) => {
+      enabled()
+      z.boolean().parse(preview)
+      const { bulkStockOperation, previewBulkStock } = await import('../Lib/bulk')
+      return preview
+        ? previewBulkStock(ledgerDB, ctx, input)
+        : bulkStockOperation(ledgerDB, ctx, input)
+    },
+    {
+      requiredPermissions: [
+        permission(
+          (input as { operation?: string })?.operation === 'reserve'
+            ? A.RESERVE
+            : (input as { operation?: string })?.operation === 'purchase'
+              ? A.CREATE
+              : A.ISSUE,
+          S.STOCK_LEDGER
+        ),
+        permission(A.READ, S.STOCK_LEDGER),
+        ...((input as { operation?: string })?.operation === 'purchase'
+          ? [permission(A.READ, S.STOCK_COST)]
+          : []),
+      ],
+    }
+  )
+}
+
+export async function reopenAccountingPeriod(input: unknown) {
+  return withAuth(async (ctx) => {
+    enabled()
+    if (!ctx.isAdmin) throw new Error('Період відкриває адміністратор')
+    const { reopenLedgerPeriod } = await import('../Lib/administration')
+    return reopenLedgerPeriod(ledgerDB, ctx, input)
+  })
+}
+
+export async function getPartyPeriodStatement(input: unknown) {
+  return withAuth(
+    async (ctx) => {
+      enabled()
+      const { partyStatement } = await import('../Lib/statement')
+      return ledgerDB.$transaction((tx) => partyStatement(tx, ctx, input), {
+        isolationLevel: 'RepeatableRead',
+      })
+    },
+    { requiredPermissions: [permission(A.READ, S.SUPPLIER_FINANCE)] }
+  )
+}
+
+export async function paymentDraftCommand(operation: 'save' | 'post' | 'cancel', input: unknown) {
+  return withAuth(
+    async (ctx) => {
+      enabled()
+      const { paymentDraftOperations } = await import('../Lib/paymentDrafts')
+      return paymentDraftOperations(ledgerDB, ctx)[
+        z.enum(['save', 'post', 'cancel']).parse(operation)
+      ](input)
+    },
+    {
+      requiredPermissions: [
+        permission(operation === 'post' ? A.POST : A.CREATE, S.SUPPLIER_FINANCE),
+      ],
+    }
+  )
+}
+export async function listPaymentDrafts(partyId: string, page = 1) {
+  return withAuth(
+    async (ctx) => {
+      enabled()
+      z.number().int().positive().parse(page)
+      const where = { organizationId: ctx.organizationId, partyId, status: 'DRAFT' }
+      const rows = await db.moneyTransaction.findMany({
+        where,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: 25,
+        skip: (page - 1) * 25,
+      })
+      return {
+        rows: rows.map((r) => ({
+          ...r,
+          amount: r.amount.toString(),
+          effectiveAt: r.effectiveAt.toISOString().slice(0, 10),
+        })),
+        total: await db.moneyTransaction.count({ where }),
+      }
+    },
+    { requiredPermissions: [permission(A.READ, S.SUPPLIER_FINANCE)] }
+  )
+}
+
+export async function getAllocationSuggestion(creditId: string) {
+  return withAuth(
+    async (ctx) => {
+      enabled()
+      const { suggestAllocation } = await import('../Lib/allocationBatch')
+      return ledgerDB.$transaction((tx) =>
+        suggestAllocation(tx, ctx, z.string().min(1).parse(creditId))
+      )
+    },
+    {
+      requiredPermissions: [
+        permission(A.READ, S.SUPPLIER_FINANCE),
+        permission(A.ALLOCATE, S.SUPPLIER_FINANCE),
+      ],
+    }
+  )
+}
+export async function allocatePaymentBatch(input: unknown) {
+  return withAuth(
+    async (ctx) => {
+      enabled()
+      const { allocateBatch } = await import('../Lib/allocationBatch')
+      return allocateBatch(ledgerDB, ctx, input)
+    },
+    { requiredPermissions: [permission(A.ALLOCATE, S.SUPPLIER_FINANCE)] }
+  )
+}
+
+export async function getLedgerImportTask(id: string) {
+  return withAuth(
+    async (ctx) => {
+      enabled()
+      return db.ledgerImportTask.findFirstOrThrow({
+        where: { organizationId: ctx.organizationId, id },
+        select: {
+          id: true,
+          status: true,
+          error: true,
+          sourceName: true,
+          previewJobId: true,
+          attempts: true,
+        },
+      })
+    },
+    { requiredPermissions: draft }
+  )
+}
+export async function retryLedgerImportTask(id: string) {
+  return withAuth(
+    async (ctx) => {
+      enabled()
+      const task = await db.ledgerImportTask.findFirstOrThrow({
+        where: { organizationId: ctx.organizationId, id, status: 'FAILED' },
+      })
+      await db.ledgerImportTask.updateMany({
+        where: { organizationId: ctx.organizationId, id, status: 'FAILED' },
+        data: { status: 'QUEUED', attempts: 0, error: null },
+      })
+      const { after } = await import('next/server'),
+        { runImportTasks } = await import('../Lib/importQueue')
+      after(() =>
+        runImportTasks(db as unknown as import('@/generated/prisma/client').PrismaClient, task.id)
+      )
+      return { id: task.id }
+    },
+    { requiredPermissions: draft }
+  )
+}
+export async function listRecentLedgerImports() {
+  return withAuth(
+    async (ctx) => {
+      enabled()
+      return db.ledgerImportTask.findMany({
+        where: { organizationId: ctx.organizationId },
+        select: { id: true, sourceName: true, status: true, createdAt: true },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: 25,
+      })
+    },
+    { requiredPermissions: draft }
+  )
+}
+export async function getLedgerCapabilities() {
+  return withAuth(async (ctx) => {
+    enabled()
+    const { getCachedMembership } = await import('@/lib/cached-session'),
+      { ledgerCapabilities } = await import('../Lib/capabilities')
+    const member = await getCachedMembership(ctx.userId)
+    return ledgerCapabilities(ctx.isAdmin, member?.customRole?.permissions ?? [])
+  })
+}
+
+export async function getCustomerLedger(recordId: string) {
+  return withAuth(
+    async (ctx) => {
+      enabled()
+      const { customerBalance } = await import('../Lib/customerFinance')
+      const [balance, accounts] = await Promise.all([
+        ledgerDB.$transaction((tx) => customerBalance(tx, ctx, recordId)),
+        db.cashAccount.findMany({
+          where: { organizationId: ctx.organizationId, archivedAt: null },
+          orderBy: { name: 'asc' },
+          select: { id: true, name: true },
+        }),
+      ])
+      const { getCachedMembership } = await import('@/lib/cached-session')
+      const { hasPermission } = await import('@/lib/permissions')
+      const member = await getCachedMembership(ctx.userId),
+        permissions = member?.customRole?.permissions ?? []
+      return {
+        ...balance,
+        accounts,
+        canPay: ctx.isAdmin || hasPermission(permissions, permission(A.CREATE, S.BILLING)),
+        canAdjust: ctx.isAdmin || hasPermission(permissions, permission(A.REVERSE, S.BILLING)),
+      }
+    },
+    { requiredPermissions: [permission(A.READ, S.BILLING)] }
+  )
+}
+export async function issueLedgerCustomerInvoice(input: unknown) {
+  return withAuth(
+    async (ctx) => {
+      enabled()
+      const { chargeSchema } = await import('../Lib/contracts')
+      const parsed = chargeSchema.parse(input)
+      const result = await createFinance(ledgerDB, ctx).issueCustomerCharge(input)
+      const { issueInvoice } = await import('@/features/invoices/Lib/issueInvoice')
+      await issueInvoice(parsed.serviceRecordId, ctx.organizationId, 'sent')
+      return result
+    },
+    { requiredPermissions: [permission(A.CREATE, S.BILLING)] }
+  )
+}
+export async function customerLedgerAdjustment(input: unknown) {
+  return withAuth(
+    async (ctx) => {
+      enabled()
+      const { postCustomerAdjustment } = await import('../Lib/customerFinance')
+      return postCustomerAdjustment(ledgerDB, ctx, input)
+    },
+    { requiredPermissions: [permission(A.REVERSE, S.BILLING)] }
+  )
+}
+export async function customerLedgerPayment(input: unknown) {
+  return withAuth(
+    async (ctx) => {
+      enabled()
+      const { postCustomerMoney } = await import('../Lib/customerFinance')
+      return postCustomerMoney(ledgerDB, ctx, input)
+    },
+    { requiredPermissions: [permission(A.CREATE, S.BILLING)] }
+  )
+}
+
+export async function getLedgerProviderAccounts() {
+  return withAuth(async (ctx) => {
+    enabled()
+    if (!ctx.isAdmin) throw new Error('Налаштування змінює адміністратор')
+    const [accounts, settings] = await Promise.all([
+      db.cashAccount.findMany({
+        where: { organizationId: ctx.organizationId, archivedAt: null },
+        select: { id: true, name: true },
+        orderBy: { name: 'asc' },
+      }),
+      db.appSetting.findMany({
+        where: {
+          organizationId: ctx.organizationId,
+          key: { startsWith: 'stockLedger.vendorAccount.' },
+        },
+        select: { key: true, value: true },
+      }),
+    ])
+    return { accounts, settings }
+  })
+}
+export async function setLedgerProviderAccount(raw: unknown) {
+  return withAuth(async (ctx) => {
+    enabled()
+    if (!ctx.isAdmin) throw new Error('Налаштування змінює адміністратор')
+    const { commandSchema } = await import('../Lib/contracts'),
+      { ledgerCommand } = await import('../Lib/transaction'),
+      { vendorAccountKey } = await import('../Lib/vendorPayments')
+    const input = commandSchema
+      .extend({ provider: z.string().regex(/^[a-z0-9_-]{1,40}$/), accountId: z.string().min(1) })
+      .parse(raw)
+    return ledgerCommand(ledgerDB, ctx, 'provider.account', input, async (tx) => {
+      await tx.cashAccount.findFirstOrThrow({
+        where: { organizationId: ctx.organizationId, id: input.accountId, archivedAt: null },
+      })
+      const key = { organizationId: ctx.organizationId, key: vendorAccountKey(input.provider) }
+      const before = await tx.appSetting.findUnique({ where: { organizationId_key: key } })
+      await tx.appSetting.upsert({
+        where: { organizationId_key: key },
+        create: { ...key, userId: ctx.userId, value: input.accountId },
+        update: { value: input.accountId },
+      })
+      return { id: input.provider, before: before?.value ?? null, accountId: input.accountId }
+    })
+  })
+}
+
+export async function customerLedgerAdvance(input: unknown) {
+  return withAuth(
+    async (ctx) => {
+      enabled()
+      const { allocateCustomerAdvance } = await import('../Lib/customerFinance')
+      return allocateCustomerAdvance(ledgerDB, ctx, input)
+    },
+    { requiredPermissions: [permission(A.CREATE, S.BILLING)] }
+  )
+}
+
+export async function getStockCatalogs() {
+  return withAuth(async (ctx) => {
+    enabled()
+    if (!ctx.isAdmin) throw new Error('Довідники налаштовує адміністратор')
+    const where = { organizationId: ctx.organizationId }
+    const [units, locations, warehouses] = await Promise.all([
+      db.unitOfMeasure.findMany({ where, orderBy: { code: 'asc' }, take: 500 }),
+      db.warehouseLocation.findMany({
+        where,
+        include: { warehouse: { select: { name: true } } },
+        orderBy: [{ warehouseId: 'asc' }, { code: 'asc' }],
+        take: 1000,
+      }),
+      db.warehouse.findMany({
+        where: { ...where, archivedAt: null },
+        orderBy: { name: 'asc' },
+        select: { id: true, name: true },
+      }),
+    ])
+    return { units, locations, warehouses }
+  })
+}
+export async function saveStockCatalog(
+  kind: 'unit' | 'location' | 'product' | 'supplierProduct',
+  input: unknown
+) {
+  return withAuth(async (ctx) => {
+    enabled()
+    if (!ctx.isAdmin) throw new Error('Довідники налаштовує адміністратор')
+    const { catalogOperations } = await import('../Lib/catalogs')
+    const operation = z.enum(['unit', 'location', 'product', 'supplierProduct']).parse(kind)
+    return catalogOperations(ledgerDB, ctx)[operation](input)
+  })
+}
+export async function getProductCatalog(productId: string) {
+  return withAuth(
+    async (ctx) => {
+      enabled()
+      const where = { organizationId: ctx.organizationId }
+      const product = await db.inventoryPart.findFirstOrThrow({
+        where: { ...where, id: productId },
+        select: {
+          id: true,
+          name: true,
+          unit: true,
+          unitId: true,
+          locationId: true,
+          trackingMode: true,
+          updatedAt: true,
+        },
+      })
+      const [units, locations, suppliers, mappings] = await Promise.all([
+        db.unitOfMeasure.findMany({
+          where: { ...where, archivedAt: null },
+          orderBy: { code: 'asc' },
+        }),
+        db.warehouseLocation.findMany({
+          where: { ...where, archivedAt: null },
+          include: { warehouse: { select: { name: true } } },
+          orderBy: { code: 'asc' },
+        }),
+        db.supplier.findMany({
+          where: { ...where, archivedAt: null, kind: { in: ['GOODS', 'BOTH'] } },
+          orderBy: { name: 'asc' },
+          select: { id: true, name: true },
+        }),
+        db.supplierProduct.findMany({
+          where: { ...where, inventoryPartId: product.id },
+          include: { supplier: { select: { name: true } } },
+          orderBy: [{ preferred: 'desc' }, { supplierId: 'asc' }],
+        }),
+      ])
+      return {
+        product: { ...product, updatedAt: product.updatedAt.toISOString() },
+        units,
+        locations,
+        suppliers,
+        isAdmin: ctx.isAdmin,
+        mappings: mappings.map((m) => ({
+          ...m,
+          lastQuotedPrice: m.lastQuotedPrice?.toFixed(6) ?? null,
+        })),
+      }
+    },
+    { requiredPermissions: stockRead }
+  )
+}
+
+export async function saveWorkSubcontractDraft(input: unknown) {
+  return withAuth(
+    async (ctx) => {
+      enabled()
+      const { subcontractOperations } = await import('../Lib/subcontracts')
+      return subcontractOperations(ledgerDB, ctx).save(input)
+    },
+    {
+      requiredPermissions: [
+        permission(A.CREATE, S.SUPPLIER_FINANCE),
+        permission(A.READ, S.STOCK_COST),
+      ],
+    }
+  )
+}
+export async function transitionWorkSubcontract(input: unknown, cancel: boolean) {
+  return withAuth(
+    async (ctx) => {
+      enabled()
+      z.boolean().parse(cancel)
+      const { subcontractOperations } = await import('../Lib/subcontracts')
+      return subcontractOperations(ledgerDB, ctx).transition(input, cancel)
+    },
+    {
+      requiredPermissions: [
+        permission(A.POST, S.SUPPLIER_FINANCE),
+        permission(A.READ, S.STOCK_COST),
+      ],
+    }
+  )
+}
+export async function reverseWorkSubcontract(input: unknown) {
+  return withAuth(
+    async (ctx) => {
+      enabled()
+      const { subcontractOperations } = await import('../Lib/subcontracts')
+      return subcontractOperations(ledgerDB, ctx).reverse(input)
+    },
+    {
+      requiredPermissions: [
+        permission(A.REVERSE, S.SUPPLIER_FINANCE),
+        permission(A.READ, S.STOCK_COST),
+      ],
+    }
+  )
+}
+
+export async function previewLedgerMigration(manifest: unknown) {
+  return withAuth(async (ctx) => {
+    enabled()
+    if (!ctx.isAdmin) throw new Error('Перехід виконує адміністратор')
+    const { migrationChecksum, applyMigrationBatch } = await import('../Lib/migrationBatch')
+    const checksum = migrationChecksum(manifest)
+    const result = await applyMigrationBatch(
+      ledgerDB,
+      ctx,
+      { manifest, checksum, confirmed: true, idempotencyKey: 'preview:' + checksum },
+      true
+    )
+    return { checksum, result }
+  })
+}
+export async function commitLedgerMigration(input: unknown) {
+  return withAuth(async (ctx) => {
+    enabled()
+    if (!ctx.isAdmin) throw new Error('Перехід виконує адміністратор')
+    const { applyMigrationBatch } = await import('../Lib/migrationBatch')
+    return applyMigrationBatch(ledgerDB, ctx, input)
+  })
+}
+
+export async function getProductStockDetails(input: unknown) {
+  return withAuth(
+    async (ctx) => {
+      enabled()
+      const { productDetails } = await import('../Lib/productDetails')
+      return ledgerDB.$transaction((tx) => productDetails(tx, ctx, input), {
+        isolationLevel: 'RepeatableRead',
+      })
+    },
+    { requiredPermissions: [permission(A.READ, S.STOCK_LEDGER)] }
+  )
+}
+export async function getSupplierCard(input: unknown) {
+  return withAuth(
+    async (ctx) => {
+      enabled()
+      const { supplierCard } = await import('../Lib/supplierCard')
+      return ledgerDB.$transaction((tx) => supplierCard(tx, ctx, input), {
+        isolationLevel: 'RepeatableRead',
+      })
+    },
+    { requiredPermissions: [...stockRead, permission(A.READ, S.SUPPLIER_FINANCE)] }
+  )
+}
+
+export async function getPurchaseSuggestion(productId: string) {
+  return withAuth(
+    async (ctx) => {
+      enabled()
+      const row = await db.supplierProduct.findFirst({
+        where: {
+          organizationId: ctx.organizationId,
+          inventoryPartId: z.string().min(1).parse(productId),
+          preferred: true,
+          archivedAt: null,
+          supplier: { archivedAt: null },
+        },
+        select: { supplierId: true, lastQuotedPrice: true, leadTimeDays: true },
+      })
+      return row
+        ? {
+            supplierId: row.supplierId,
+            price: row.lastQuotedPrice?.toFixed(6) ?? '0',
+            leadTimeDays: row.leadTimeDays,
+          }
+        : null
+    },
+    { requiredPermissions: stockRead }
   )
 }

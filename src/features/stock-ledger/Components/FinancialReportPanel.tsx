@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PartyStatement } from './PartyStatement'
 import { getFinancialReport } from '../Actions/ledgerActions'
 type Report = NonNullable<Awaited<ReturnType<typeof getFinancialReport>>['data']>
 export function FinancialReportPanel() {
@@ -28,8 +29,28 @@ export function FinancialReportPanel() {
     const cell = (s: string) =>
       '"' + (/^[=+\-@\t\r]/.test(s) ? "'" + s : s).replaceAll('"', '""') + '"'
     const rows = [
-      ['Дата', 'Облік', 'Назва', 'Борг', 'Аванс', 'Баланс / вартість'],
-      ...data.parties.map((p) => [data.through, p.side, p.name, p.debt, p.advance, p.balance]),
+      [
+        'Дата',
+        'Облік',
+        'Назва',
+        'Борг',
+        'Аванс',
+        'Баланс / вартість',
+        'Прострочено',
+        'Не прострочено',
+        'Найближчий строк',
+      ],
+      ...data.parties.map((p) => [
+        data.through,
+        p.side,
+        p.name,
+        p.debt,
+        p.advance,
+        p.balance,
+        p.overdue,
+        p.notDue,
+        p.nearestDue ?? '',
+      ]),
       ...data.cash.map((c) => [data.through, 'Каса / рахунок', c.name, '', '', c.balance]),
       ...data.stock.map((s) => [data.through, 'Склад', s.name, '', '', s.cost]),
     ]
@@ -69,9 +90,16 @@ export function FinancialReportPanel() {
             <br />
             {p.side === 'AP' ? 'Постачальник' : 'Клієнт'}
           </strong>
-          <span>Борг: {p.debt} грн</span>
+          <div>
+            Борг: {p.debt} грн<p className="text-destructive">Прострочено: {p.overdue} грн</p>
+            <p>Не прострочено: {p.notDue} грн</p>
+            <p>Найближчий строк: {p.nearestDue ?? 'не вказано'}</p>
+          </div>
           <span>Аванс: {p.advance} грн</span>
-          <span>Сальдо: {p.balance} грн</span>
+          <div>
+            Сальдо: {p.balance} грн
+            <PartyStatement partyId={p.id} name={p.name} through={through} />
+          </div>
         </article>
       ))}
       <h3 className="text-lg">Каси та рахунки</h3>

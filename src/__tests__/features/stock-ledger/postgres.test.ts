@@ -1,6 +1,11 @@
 import { approveStockCutover, newRecordStockMode } from '@/features/stock-ledger/Lib/cutover'
 import { reverseReceipt } from '@/features/stock-ledger/Lib/reverseReceipt'
-import { previewImport, commitImport } from '@/features/stock-ledger/Lib/importService'
+import {
+  previewImport,
+  commitImport,
+  resolveImportRow,
+  importRevision,
+} from '@/features/stock-ledger/Lib/importService'
 import { createFinance } from '@/features/stock-ledger/Lib/finance'
 import { createStockAdjustments } from '@/features/stock-ledger/Lib/adjustments'
 import { reconciliation } from '@/features/stock-ledger/Lib/reconciliation'
@@ -764,5 +769,51 @@ suite('PostgreSQL supplier ledger', () => {
     await expect(
       db.serviceRecord.update({ where: { id: job.id }, data: { status: 'completed' } })
     ).rejects.toThrow()
+  })
+  it('manual import mapping is scoped, versioned, audited and cannot hide invalid amounts', async () => {
+    const preview = await previewImport(db, ctx, {
+      supplierId,
+      name: 'manual.csv',
+      format: 'csv',
+      bytes: Buffer.from('Артикул;Бренд;Кількість;Ціна\nUNKNOWN;---;2;50\nBAD;---;-1;50'),
+      mapping: { article: 'Артикул', brand: 'Бренд', quantity: 'Кількість', unitPrice: 'Ціна' },
+    })
+    const job = await db.ledgerImportJob.findUniqueOrThrow({ where: { id: preview.id } })
+    const command = {
+      idempotencyKey: key(),
+      jobId: job.id,
+      row: 2,
+      inventoryPartId: productId,
+      expectedRevision: importRevision(job.mapping),
+    }
+    await expect(
+      resolveImportRow(db, { ...ctx, organizationId: otherOrg }, command)
+    ).rejects.toThrow()
+    await resolveImportRow(db, ctx, command)
+    await expect(
+      resolveImportRow(db, ctx, { ...command, idempotencyKey: key(), row: 3 })
+    ).rejects.toThrow('змінено')
+    const changed = await db.ledgerImportJob.findUniqueOrThrow({ where: { id: job.id } })
+    await resolveImportRow(db, ctx, {
+      ...command,
+      idempotencyKey: key(),
+      row: 3,
+      expectedRevision: importRevision(changed.mapping),
+    })
+    await expect(
+      commitImport(db, ctx, {
+        jobId: job.id,
+        warehouseId,
+        effectiveAt: '2026-10-21',
+        externalDate: '2026-10-21',
+        dueDate: '2026-10-30',
+        externalNumber: 'BAD-IMPORT',
+      })
+    ).rejects.toThrow('Виправте')
+    expect(
+      await db.inventoryDocument.count({
+        where: { organizationId: org, externalNumber: 'BAD-IMPORT' },
+      })
+    ).toBe(0)
   })
 })

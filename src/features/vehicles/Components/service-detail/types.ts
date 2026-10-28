@@ -36,6 +36,8 @@ export const paymentStatusLabels: Record<string, string> = {
 
 export interface ServiceDetail {
   stockLedgerEnabled?: boolean
+  financeAccountingMode?: string
+  ledgerBalance?: { total: string; debt: string } | null
   updatedAt?: Date | string
   id: string
   /** Set when the job came out of the tire hotel, so the job sheet can say
@@ -108,6 +110,7 @@ export interface PartItem {
 }
 
 export interface LaborItem {
+  executionType?: string
   id: string
   description: string
   hours: number

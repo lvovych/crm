@@ -50,6 +50,7 @@ function makeTx(balanceFor: (partId: string) => number | null = () => 100) {
   const tx = {
     $queryRaw,
     stockMovement: { createMany },
+    appSetting: { findUnique: vi.fn().mockResolvedValue(null) },
     serviceRecord: { findFirst: vi.fn().mockResolvedValue({ inventoryAccountingMode: 'LEGACY' }) },
   } as any
   return { tx, updates, createMany, $queryRaw }

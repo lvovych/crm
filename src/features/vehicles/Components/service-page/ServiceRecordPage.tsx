@@ -293,6 +293,7 @@ export async function ServiceRecordPage({
       inventoryPartId: p.inventoryPartId ?? undefined,
     })),
     laborItems: shopFeeLinesLast(record.laborItems).map((l) => ({
+      executionType: l.executionType as 'INTERNAL' | 'SUBCONTRACT' | undefined,
       id: l.id,
       technicianId: l.technicianId,
       executorName: l.executorName,

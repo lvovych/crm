@@ -1,3 +1,4 @@
+import { readLedgerCustomerTotals } from '@/features/stock-ledger/Lib/customerReadModel'
 import { resolveCurrencyCode, resolveCurrencyFormat } from '@/lib/currencies'
 import { CronJob } from 'cron'
 import { db } from '@/lib/db'
@@ -117,6 +118,7 @@ async function fetchRevenue(orgId: string, start: Date, end: Date, timeZone: str
   const records = await db.serviceRecord.findMany({
     where: { organizationId: orgId, startDateTime: { gte: start, lte: end } },
     select: {
+      id: true,
       serviceDate: true,
       startDateTime: true,
       totalAmount: true,
@@ -125,6 +127,7 @@ async function fetchRevenue(orgId: string, start: Date, end: Date, timeZone: str
       taxRate: true,
       taxInclusive: true,
       manuallyPaid: true,
+      financeAccountingMode: true,
       payments: { select: { amount: true } },
       partItems: { select: { unitCost: true, quantity: true, total: true } },
       laborItems: { select: { total: true } },
@@ -151,9 +154,24 @@ async function fetchRevenue(orgId: string, start: Date, end: Date, timeZone: str
     totalPartsRevenue = 0,
     totalLaborRevenue = 0
 
+  const ledgerTotals = await readLedgerCustomerTotals(
+    db as unknown as import('@/features/stock-ledger/Lib/transaction').LedgerDB,
+    orgId,
+    records.filter((r) => r.financeAccountingMode === 'LEDGER').map((r) => r.id)
+  )
+
   for (const r of records) {
-    const total = r.totalAmount > 0 ? r.totalAmount : r.cost
-    const paid = r.manuallyPaid ? total : r.payments.reduce((s, p) => s + p.amount, 0)
+    const balance = ledgerTotals.get(r.id)
+
+    const total = balance ? Number(balance.total) : r.totalAmount > 0 ? r.totalAmount : r.cost
+
+    const paid = balance
+      ? Number(balance.paid)
+      : r.financeAccountingMode === 'LEDGER'
+        ? 0
+        : r.manuallyPaid
+          ? total
+          : r.payments.reduce((s, p) => s + p.amount, 0)
     const partsCost = r.partItems.reduce((s, p) => s + p.unitCost * p.quantity, 0)
     // Net (pre-tax) parts/labor so profit math works in both tax modes.
     const partsRevenue = r.partItems.reduce(
@@ -537,6 +555,7 @@ async function fetchPastDue(orgId: string, timeZone: string) {
       totalAmount: true,
       cost: true,
       manuallyPaid: true,
+      financeAccountingMode: true,
       payments: { select: { amount: true } },
       customer: { select: { name: true, company: true } },
       vehicle: {
@@ -566,9 +585,21 @@ async function fetchPastDue(orgId: string, timeZone: string) {
     over30 = 0,
     over60 = 0,
     over90 = 0
+  const ledgerTotals = await readLedgerCustomerTotals(
+    db as unknown as import('@/features/stock-ledger/Lib/transaction').LedgerDB,
+    orgId,
+    records.filter((r) => r.financeAccountingMode === 'LEDGER').map((r) => r.id)
+  )
   for (const r of records) {
-    const total = r.totalAmount > 0 ? r.totalAmount : r.cost
-    const paid = r.manuallyPaid ? total : r.payments.reduce((s, p) => s + p.amount, 0)
+    const balance = ledgerTotals.get(r.id)
+    const total = balance ? Number(balance.total) : r.totalAmount > 0 ? r.totalAmount : r.cost
+    const paid = balance
+      ? Number(balance.paid)
+      : r.financeAccountingMode === 'LEDGER'
+        ? 0
+        : r.manuallyPaid
+          ? total
+          : r.payments.reduce((s, p) => s + p.amount, 0)
     const amountDue = total - paid
     if (amountDue <= 0) continue
     const dueDate = r.invoiceDueDate!

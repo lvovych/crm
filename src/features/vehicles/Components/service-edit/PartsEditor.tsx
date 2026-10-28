@@ -370,7 +370,7 @@ export function PartsEditor({
                   name: picked.name,
                   partNumber: picked.partNumber ?? '',
                   brand: picked.brand?.name ?? '---',
-                  unit: picked.unit,
+                  unit: picked.unit?.trim() || 'шт.',
                   unitCost: picked.unitCost,
                   inventoryPartId: picked.id,
                 }

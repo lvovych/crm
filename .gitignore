@@ -55,3 +55,10 @@ next-env.d.ts
 /playwright-report
 /blob-report
 /playwright/.cache
+
+# Private production migration rehearsal; never commit client or financial data.
+/tmp/ledger-production-rehearsal/
+
+# Local generated artifacts and private import/rehearsal data.
+/tmp/
+/output/

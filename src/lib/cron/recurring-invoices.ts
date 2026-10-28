@@ -1,4 +1,4 @@
-import { newRecordStockMode } from '@/features/stock-ledger/Lib/cutover'
+import { newRecordStockMode, newRecordFinanceMode } from '@/features/stock-ledger/Lib/cutover'
 import { CronJob } from 'cron'
 import { db } from '@/lib/db'
 import { resolveInvoicePrefix } from '@/lib/invoice-utils'
@@ -104,13 +104,14 @@ export function processRecurringInvoices() {
 
           await db.$transaction(async (tx) => {
             const stockMode = await newRecordStockMode(tx, organizationId)
-            await tx.serviceRecord.create({
+            const created = await tx.serviceRecord.create({
               data: {
                 organizationId,
                 title: ri.title,
                 description: ri.description,
                 type: ri.type,
                 inventoryAccountingMode: stockMode,
+                financeAccountingMode: await newRecordFinanceMode(tx, organizationId),
                 status: stockMode === 'LEDGER' && ri.templateParts.length ? 'pending' : 'completed',
                 cost: ri.cost,
                 serviceDate: now,
@@ -145,6 +146,8 @@ export function processRecurringInvoices() {
               },
             })
 
+            const {chargeCompletedRecord}=await import('@/features/stock-ledger/Lib/customerFinance')
+            await chargeCompletedRecord(tx as unknown as import('@/features/stock-ledger/Lib/transaction').Tx,organizationId,created)
             const nextRunDate = calculateNextRunDate(ri.nextRunDate, ri.frequency, timeZone)
             const shouldDeactivate = ri.endDate && nextRunDate > ri.endDate
 

@@ -1,4 +1,6 @@
 model Supplier {
+  products SupplierProduct[]
+  ledgerImportTasks LedgerImportTask[]
   supplierServiceDocument_supplier SupplierServiceDocument[] @relation("SupplierServiceDocument_supplier")
 
   purchaseOrder_supplier   PurchaseOrder[]   @relation("PurchaseOrder_supplier")
@@ -31,6 +33,8 @@ model Supplier {
 }
 
 model Warehouse {
+  locations WarehouseLocation[]
+  stockCounts LedgerStockCount[]
   purchaseOrder_warehouse PurchaseOrder[] @relation("PurchaseOrder_warehouse")
 
   stockReservation_warehouse      StockReservation[]      @relation("StockReservation_warehouse")
@@ -59,6 +63,8 @@ model Warehouse {
 }
 
 model InventoryDocument {
+ attachments LedgerAttachment[]
+  stockCounts LedgerStockCount[]
   ledgerImportJob_document LedgerImportJob[] @relation("LedgerImportJob_document")
 
   id                                String                  @id @default(cuid())
@@ -77,6 +83,11 @@ model InventoryDocument {
   subtotal                          Decimal                 @default(0) @db.Decimal(20, 2)
   taxAmount                         Decimal                 @default(0) @db.Decimal(20, 2)
   totalAmount                       Decimal                 @default(0) @db.Decimal(20, 2)
+  additionalCost Decimal @default(0) @db.Decimal(20, 2)
+  roundingAdjustment Decimal @default(0) @db.Decimal(20, 2)
+  roundingReason String @default("")
+  sourceTotal Decimal? @db.Decimal(20, 2)
+  costAllocationMethod String @default("PROPORTIONAL")
   note                              String?
   version                           Int                     @default(1)
   supplierId                        String?
@@ -96,6 +107,7 @@ model InventoryDocument {
   @@unique([organizationId, number])
   @@unique([organizationId, id])
   @@index([organizationId, effectiveAt, id])
+  @@index([organizationId, supplierId, createdAt(sort: Desc), id(sort: Desc)], map: "ledger_supplier_documents_page")
   @@map("inventory_documents")
 }
 
@@ -121,6 +133,7 @@ model InventoryDocumentLine {
   netAmount                         Decimal                @db.Decimal(20, 2)
   taxAmount                         Decimal                @db.Decimal(20, 2)
   totalAmount                       Decimal                @db.Decimal(20, 2)
+  additionalCostAmount Decimal @default(0) @db.Decimal(20, 2)
   snapshotName                      String
   snapshotBrand                     String
   snapshotArticle                   String?
@@ -141,6 +154,7 @@ model InventoryDocumentLine {
 }
 
 model StockLot {
+  countLines LedgerStockCountLine[]
   stockReservation_lot      StockReservation[]      @relation("StockReservation_lot")
   documentLotAllocation_lot DocumentLotAllocation[] @relation("DocumentLotAllocation_lot")
 
@@ -162,6 +176,7 @@ model StockLot {
 
   @@unique([organizationId, sourceLineId])
   @@unique([organizationId, id])
+  @@index([organizationId, inventoryPartId, id], map: "ledger_lot_product")
   @@map("stock_lots")
 }
 
@@ -206,10 +221,12 @@ model InventoryLedgerEntry {
   @@unique([organizationId, operationKey])
   @@unique([organizationId, id])
   @@index([organizationId, lotId, warehouseId, effectiveAt])
+  @@index([organizationId, lotId, warehouseId, effectiveAt(sort: Desc), createdAt(sort: Desc), id(sort: Desc)], map: "ledger_history_page")
   @@map("inventory_ledger_entries")
 }
 
 model SettlementParty {
+  billedWorkOrders ServiceRecord[] @relation("LedgerBilledParty")
   openingBalance_party OpeningBalance[] @relation("OpeningBalance_party")
 
   id                     String             @id @default(cuid())
@@ -255,6 +272,7 @@ model CashAccount {
 }
 
 model MoneyTransaction {
+ attachments LedgerAttachment[]
   reversalOfId                String?
   reversalOf                  MoneyTransaction?  @relation("MoneyTransaction_reversalOf", fields: [organizationId, reversalOfId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
   moneyTransaction_reversalOf MoneyTransaction[] @relation("MoneyTransaction_reversalOf")
@@ -282,6 +300,7 @@ model MoneyTransaction {
 
   @@unique([organizationId, id])
   @@index([organizationId, effectiveAt, id])
+  @@index([organizationId, partyId, createdAt(sort: Desc), id(sort: Desc)], map: "ledger_party_payments_page")
   @@map("money_transactions")
 }
 
@@ -309,6 +328,8 @@ model CashLedgerEntry {
 }
 
 model SettlementEntry {
+  customerAdjustmentId String?
+  customerAdjustment CustomerAdjustment? @relation(fields: [organizationId, customerAdjustmentId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
   openingBalanceId           String?
   openingBalance             OpeningBalance?          @relation("SettlementEntry_openingBalance", fields: [organizationId, openingBalanceId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
   supplierServiceDocumentId  String?
@@ -610,6 +631,7 @@ model ReceiptDemandAllocation {
 }
 
 model LedgerImportJob {
+  ledgerImportTasks LedgerImportTask[]
   id             String             @id @default(cuid())
   organizationId String
   createdAt      DateTime           @default(now()) @db.Timestamptz(3)
@@ -664,6 +686,11 @@ model AllocationEvent {
 }
 
 model SupplierServiceDocument {
+ attachments LedgerAttachment[]
+  reversalOfId String?
+  reversalOf SupplierServiceDocument? @relation("SubcontractReversal", fields: [organizationId, reversalOfId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  reversals SupplierServiceDocument[] @relation("SubcontractReversal")
+  reason String?
   id                                      String                @id @default(cuid())
   organizationId                          String
   createdAt                               DateTime              @default(now()) @db.Timestamptz(3)
@@ -685,10 +712,17 @@ model SupplierServiceDocument {
 
   @@unique([organizationId, number])
   @@unique([organizationId, id])
+  @@index([organizationId, supplierId, createdAt(sort: Desc), id(sort: Desc)], map: "ledger_supplier_services_page")
   @@map("supplier_service_documents")
 }
 
 model SupplierServiceLine {
+  serviceLaborId String?
+  serviceLabor ServiceLabor? @relation(fields: [serviceLaborId], references: [id], onDelete: Restrict)
+  taxMode String @default("NONE")
+  taxRate Decimal @default(0) @db.Decimal(7, 3)
+  netAmount Decimal @default(0) @db.Decimal(20, 2)
+  taxAmount Decimal @default(0) @db.Decimal(20, 2)
   id                  String                  @id @default(cuid())
   organizationId      String
   createdAt           DateTime                @default(now()) @db.Timestamptz(3)
@@ -704,6 +738,7 @@ model SupplierServiceLine {
   organization        Organization            @relation("LedgerOrgSupplierServiceLine", fields: [organizationId], references: [id], onDelete: Restrict)
   createdBy           User?                   @relation("LedgerActorSupplierServiceLine", fields: [createdById], references: [id], onDelete: SetNull)
 
+  @@index([organizationId, serviceLaborId], map: "supplier_service_lines_labor_idx")
   @@unique([organizationId, id])
   @@map("supplier_service_lines")
 }
@@ -731,4 +766,189 @@ model OpeningBalance {
   @@unique([organizationId, batchKey])
   @@unique([organizationId, id])
   @@map("opening_balances")
+}
+
+model LedgerStockCount {
+  id String @id @default(cuid())
+  organizationId String
+  createdById String
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  snapshotAt DateTime @default(now()) @db.Timestamptz(3)
+  effectiveAt DateTime @db.Date
+  status String @default("COUNTING")
+  version Int @default(1)
+  warehouseId String
+  warehouse Warehouse @relation(fields:[organizationId, warehouseId], references:[organizationId,id],onDelete:Restrict,onUpdate:Restrict)
+  reason String
+  adjustmentDocumentId String?
+  adjustmentDocument InventoryDocument? @relation(fields:[organizationId,adjustmentDocumentId],references:[organizationId,id],onDelete:Restrict,onUpdate:Restrict)
+  lines LedgerStockCountLine[]
+  @@unique([organizationId,id])
+  @@index([organizationId,createdAt])
+  @@map("ledger_stock_counts")
+}
+model LedgerStockCountLine {
+  id String @id @default(cuid())
+  organizationId String
+  countId String
+  count LedgerStockCount @relation(fields:[organizationId,countId],references:[organizationId,id],onDelete:Restrict,onUpdate:Restrict)
+  inventoryPartId String
+  inventoryPart InventoryPart @relation(fields:[organizationId,inventoryPartId],references:[organizationId,id],onDelete:Restrict,onUpdate:Restrict)
+  lotId String?
+  lot StockLot? @relation(fields:[organizationId,lotId],references:[organizationId,id],onDelete:Restrict,onUpdate:Restrict)
+  expectedQty Decimal @db.Decimal(18,3)
+  countedQty Decimal? @db.Decimal(18,3)
+  snapshotVersion Int?
+  confirmedUnitCost Decimal? @db.Decimal(20,6)
+  reason String @default("")
+  @@unique([organizationId,id])
+  @@index([organizationId,countId])
+  @@map("ledger_stock_count_lines")
+}
+
+model LedgerImportTask {
+  id String @id @default(cuid())
+  organizationId String
+  organization Organization @relation(fields:[organizationId],references:[id],onDelete:Restrict)
+  createdById String?
+  createdBy User? @relation(fields:[createdById],references:[id],onDelete:SetNull)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  supplierId String
+  supplier Supplier @relation(fields:[organizationId,supplierId],references:[organizationId,id],onDelete:Restrict,onUpdate:Restrict)
+  sourceName String
+  format String
+  fileHash String
+  storageKey String
+  size Int
+  mapping Json
+  status String @default("QUEUED")
+  attempts Int @default(0)
+  leaseUntil DateTime? @db.Timestamptz(3)
+  error String?
+  previewJobId String?
+  previewJob LedgerImportJob? @relation(fields:[organizationId,previewJobId],references:[organizationId,id],onDelete:Restrict,onUpdate:Restrict)
+  @@unique([organizationId,id])
+  @@index([status,createdAt])
+  @@map("ledger_import_tasks")
+}
+
+model CustomerAdjustment {
+  id String @id @default(cuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  createdById String?
+  createdBy User? @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  serviceRecordId String
+  serviceRecord ServiceRecord @relation(fields: [organizationId, serviceRecordId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  number String
+  kind String
+  amount Decimal @db.Decimal(20, 2)
+  effectiveAt DateTime @db.Date
+  reason String
+  entries SettlementEntry[]
+  @@unique([organizationId, id])
+  @@unique([organizationId, number])
+  @@index([organizationId, serviceRecordId, effectiveAt])
+  @@map("customer_adjustments")
+}
+
+model UnitOfMeasure {
+ id String @id @default(cuid())
+ organizationId String
+ organization Organization @relation(fields:[organizationId],references:[id],onDelete:Restrict)
+ createdById String?
+ createdBy User? @relation(fields:[createdById],references:[id],onDelete:SetNull)
+ createdAt DateTime @default(now()) @db.Timestamptz(3)
+ code String
+ name String
+ precision Int
+ version Int @default(1)
+ archivedAt DateTime? @db.Timestamptz(3)
+ products InventoryPart[]
+ @@unique([organizationId,id])
+ @@unique([organizationId,code])
+ @@map("units_of_measure")
+}
+model WarehouseLocation {
+ id String @id @default(cuid())
+ organizationId String
+ organization Organization @relation(fields:[organizationId],references:[id],onDelete:Restrict)
+ createdById String?
+ createdBy User? @relation(fields:[createdById],references:[id],onDelete:SetNull)
+ createdAt DateTime @default(now()) @db.Timestamptz(3)
+ warehouseId String
+ warehouse Warehouse @relation(fields:[organizationId,warehouseId],references:[organizationId,id],onDelete:Restrict,onUpdate:Restrict)
+ code String
+ name String
+ version Int @default(1)
+ archivedAt DateTime? @db.Timestamptz(3)
+ products InventoryPart[]
+ @@unique([organizationId,id])
+ @@unique([organizationId,warehouseId,code])
+ @@map("warehouse_locations")
+}
+model SupplierProduct {
+ id String @id @default(cuid())
+ organizationId String
+ organization Organization @relation(fields:[organizationId],references:[id],onDelete:Restrict)
+ createdById String?
+ createdBy User? @relation(fields:[createdById],references:[id],onDelete:SetNull)
+ createdAt DateTime @default(now()) @db.Timestamptz(3)
+ supplierId String
+ supplier Supplier @relation(fields:[organizationId,supplierId],references:[organizationId,id],onDelete:Restrict,onUpdate:Restrict)
+ inventoryPartId String
+ inventoryPart InventoryPart @relation(fields:[organizationId,inventoryPartId],references:[organizationId,id],onDelete:Restrict,onUpdate:Restrict)
+ supplierArticle String?
+ lastQuotedPrice Decimal? @db.Decimal(20,6)
+ currency String @default("UAH") @db.Char(3)
+ leadTimeDays Int?
+ preferred Boolean @default(false)
+ version Int @default(1)
+ archivedAt DateTime? @db.Timestamptz(3)
+ @@unique([organizationId,id])
+ @@unique([organizationId,supplierId,inventoryPartId])
+ @@map("supplier_products")
+}
+
+model LedgerAttachment {
+ id String @id @default(cuid())
+ organizationId String
+ createdById String?
+ createdAt DateTime @default(now()) @db.Timestamptz(3)
+ inventoryDocumentId String?
+ supplierServiceDocumentId String?
+ moneyTransactionId String?
+ name String
+ mimeType String
+ size Int
+ sha256 String
+ storageKey String @unique
+ organization Organization @relation("LedgerAttachmentOrg",fields:[organizationId],references:[id],onDelete:Restrict)
+ createdBy User? @relation("LedgerAttachmentActor",fields:[createdById],references:[id],onDelete:SetNull)
+ inventoryDocument InventoryDocument? @relation(fields:[organizationId,inventoryDocumentId],references:[organizationId,id],onDelete:Restrict,onUpdate:Restrict)
+ supplierServiceDocument SupplierServiceDocument? @relation(fields:[organizationId,supplierServiceDocumentId],references:[organizationId,id],onDelete:Restrict,onUpdate:Restrict)
+ moneyTransaction MoneyTransaction? @relation(fields:[organizationId,moneyTransactionId],references:[organizationId,id],onDelete:Restrict,onUpdate:Restrict)
+ @@unique([organizationId,id])
+ @@index([organizationId,inventoryDocumentId])
+ @@index([organizationId,supplierServiceDocumentId])
+ @@index([organizationId,moneyTransactionId])
+ @@map("ledger_attachments")
+}
+
+model LedgerMigrationBatch {
+ id String @id @default(cuid())
+ organizationId String
+ createdById String?
+ createdAt DateTime @default(now()) @db.Timestamptz(3)
+ effectiveAt DateTime @db.Date
+ checksum String
+ sourceChecksum String
+ manifest Json
+ mapping Json
+ organization Organization @relation("LedgerMigrationOrg",fields:[organizationId],references:[id],onDelete:Restrict)
+ createdBy User? @relation("LedgerMigrationActor",fields:[createdById],references:[id],onDelete:SetNull)
+ @@unique([organizationId,checksum])
+ @@unique([organizationId,id])
+ @@map("ledger_migration_batches")
 }

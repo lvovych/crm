@@ -496,3 +496,19 @@ export async function purgeTrash({
   }
   return purged
 }
+
+/** Roll back a freshly generated ledger upload; retain it if a row committed. */
+export async function discardLedgerUpload(
+  kind: 'attachment' | 'import',
+  key: string,
+  referenced: () => Promise<unknown>
+): Promise<void> {
+  if (!/^[a-f0-9-]{36}$/.test(key)) throw new Error('Invalid ledger storage key')
+  if (await referenced()) return
+  const root = kind === 'attachment'
+    ? process.env.LEDGER_ATTACHMENT_STORAGE ?? path.join(uploadsRoot(), 'ledger-documents')
+    : process.env.LEDGER_IMPORT_STORAGE ?? path.join(uploadsRoot(), 'ledger-imports')
+  await unlink(path.join(root, key)).catch((error: NodeJS.ErrnoException) => {
+    if (error.code !== 'ENOENT') throw error
+  })
+}

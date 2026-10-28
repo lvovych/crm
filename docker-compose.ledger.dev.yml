@@ -1,0 +1,14 @@
+# Interactive local review: use with docker-compose.ledger.yml and --no-build.
+# Existing isolated database and uploads are preserved; production is never connected.
+services:
+  app:
+    environment:
+      NODE_ENV: development
+    command: ["sh", "-c", "npx prisma migrate deploy && npx next dev --hostname 0.0.0.0 --port 3000"]
+    volumes:
+      - ./src:/app/src:ro
+      - ./messages:/app/messages:ro
+      - ./prisma:/app/prisma:ro
+      - ./public:/app/public:ro
+      - ./next.config.ts:/app/next.config.ts:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro

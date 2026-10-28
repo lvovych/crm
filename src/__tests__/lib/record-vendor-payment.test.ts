@@ -10,6 +10,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
  * and never pass off a different failure as a duplicate.
  */
 
+vi.mock('@/features/stock-ledger/Lib/vendorPayments', () => ({
+  ledgerVendorPayment: vi.fn(async () => null),
+}))
 const createManyAndReturn = vi.fn()
 const findFirst = vi.fn()
 vi.mock('@/lib/db', () => ({

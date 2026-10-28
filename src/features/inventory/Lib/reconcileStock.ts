@@ -1,3 +1,4 @@
+import { STOCK_CUTOVER_KEY } from '@/features/stock-ledger/Lib/cutover'
 import type { TxClient } from '@/lib/db'
 import type { Prisma } from '@/generated/prisma/client'
 
@@ -91,6 +92,13 @@ export async function reconcileInventoryForParts(
   next: readonly StockPartLine[],
   context: StockMovementContext
 ): Promise<void> {
+  if (
+    await tx.appSetting.findUnique({
+      where: { organizationId_key: { organizationId, key: STOCK_CUTOVER_KEY } },
+      select: { value: true },
+    })
+  )
+    return
   if (context.serviceRecordId) {
     const record = await tx.serviceRecord.findFirst({
       where: { id: context.serviceRecordId, organizationId },

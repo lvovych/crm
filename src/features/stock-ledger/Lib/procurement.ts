@@ -1,11 +1,75 @@
+import { assertProductQuantity } from './catalogs'
 import { nextDocumentNumber } from './numbers'
 import { purchaseSchema, postSchema, receiptAllocationSchema } from './contracts'
-import { D } from './amounts'
+import { D, quantityText } from './amounts'
+import { z } from 'zod'
 import { ledgerCommand, metadata, type LedgerDB, type LedgerContext, type Tx } from './transaction'
 export function createProcurement(db: LedgerDB, ctx: LedgerContext) {
   const org = { organizationId: ctx.organizationId },
     meta = metadata(ctx)
   return {
+    async amendQuantity(raw: unknown) {
+      const input = postSchema
+        .extend({
+          lineId: z.string().min(1),
+          quantity: quantityText,
+          reason: z.string().trim().min(5).max(2000),
+        })
+        .parse(raw)
+      return ledgerCommand(db, ctx, 'purchase.amend', input, async (tx) => {
+        const order = await tx.purchaseOrder.findFirst({
+          where: {
+            ...org,
+            id: input.documentId,
+            version: input.expectedVersion,
+            status: { in: ['CONFIRMED', 'PARTIALLY_RECEIVED'] },
+          },
+        })
+        if (!order) throw new Error('Замовлення вже змінено або завершене')
+        const line = await tx.purchaseOrderLine.findFirstOrThrow({
+          where: { ...org, id: input.lineId, orderId: order.id },
+          include: { purchaseDemandAllocation_purchaseOrderLine: true },
+        })
+        const product = await tx.inventoryPart.findFirstOrThrow({
+          where: { ...org, id: line.inventoryPartId },
+        })
+        await assertProductQuantity(tx, ctx, product, input.quantity)
+        const received = await receivedQty(tx, ctx, line.id)
+        const drafts = await tx.inventoryDocumentLine.aggregate({
+          where: {
+            ...org,
+            purchaseOrderLineId: line.id,
+            document: { kind: 'RECEIPT', status: 'DRAFT' },
+          },
+          _sum: { quantity: true },
+        })
+        const minimum = received.plus(drafts._sum.quantity ?? 0).plus(line.qtyCancelled)
+        const allocated = line.purchaseDemandAllocation_purchaseOrderLine.reduce(
+          (s, a) => s.plus(a.quantity),
+          D(0)
+        )
+        if (D(input.quantity).lt(minimum) || D(input.quantity).lt(allocated))
+          throw new Error(
+            'Кількість менша за вже отриману, заплановану в приходах або розподілену між нарядами'
+          )
+        await tx.purchaseOrderLine.update({
+          where: { id: line.id },
+          data: { qtyOrdered: input.quantity },
+        })
+        await tx.purchaseOrder.update({
+          where: { id: order.id },
+          data: { version: { increment: 1 } },
+        })
+        return {
+          id: order.id,
+          lineId: line.id,
+          version: order.version + 1,
+          before: line.qtyOrdered.toString(),
+          after: input.quantity,
+          reason: input.reason,
+        }
+      })
+    },
     async saveDraft(raw: unknown) {
       const input = purchaseSchema.parse(raw)
       return ledgerCommand(db, ctx, 'purchase.create', input, async (tx) => {
@@ -33,8 +97,7 @@ export function createProcurement(db: LedgerDB, ctx: LedgerContext) {
             include: { brand: true },
           })
           if (!product) throw new Error('Товар не знайдений')
-          if (['pcs', 'шт', 'шт.'].includes(product.unit ?? 'pcs') && !D(line.quantity).isInteger())
-            throw new Error('Штучний товар потребує цілої кількості')
+          await assertProductQuantity(tx, ctx, product, line.quantity)
           if (line.allocations.reduce((s, a) => s.plus(a.quantity), D(0)).gt(line.quantity))
             throw new Error('Розподіл перевищує кількість замовлення')
           const saved = await tx.purchaseOrderLine.create({
@@ -99,7 +162,12 @@ export function createProcurement(db: LedgerDB, ctx: LedgerContext) {
             },
           })
           const issued = demand.documentLotAllocation_demand.reduce(
-            (s, a) => s.plus(a.quantity.mul(a.documentLine.document.kind === 'ISSUE' ? 1 : -1)),
+            (s, a) =>
+              s.plus(
+                a.quantity.mul(
+                  ['ISSUE', 'MIGRATION_ISSUE'].includes(a.documentLine.document.kind) ? 1 : -1
+                )
+              ),
             D(0)
           )
           const reserved = demand.stockReservation_demand.reduce(
@@ -279,7 +347,12 @@ export async function postReceiptProcurement(tx: Tx, ctx: LedgerContext, documen
         include: { documentLine: { include: { document: true } } },
       })
       const net = issued.reduce(
-        (s, a) => s.plus(a.quantity.mul(a.documentLine.document.kind === 'ISSUE' ? 1 : -1)),
+        (s, a) =>
+          s.plus(
+            a.quantity.mul(
+              ['ISSUE', 'MIGRATION_ISSUE'].includes(a.documentLine.document.kind) ? 1 : -1
+            )
+          ),
         D(0)
       )
       const reserved = await tx.stockReservation.aggregate({
@@ -429,7 +502,12 @@ export async function autoAllocatePurchaseReceipt(tx: Tx, ctx: LedgerContext, do
             .reduce((sum, a) => sum.plus(a.quantity), D(0))
         )
       const issued = demand.documentLotAllocation_demand.reduce(
-        (sum, a) => sum.plus(a.quantity.mul(a.documentLine.document.kind === 'ISSUE' ? 1 : -1)),
+        (sum, a) =>
+          sum.plus(
+            a.quantity.mul(
+              ['ISSUE', 'MIGRATION_ISSUE'].includes(a.documentLine.document.kind) ? 1 : -1
+            )
+          ),
         D(0)
       )
       const need = D(demand.requiredQty)

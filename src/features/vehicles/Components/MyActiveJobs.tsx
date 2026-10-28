@@ -202,7 +202,7 @@ export function MyActiveJobs({
       partNumber: scannedPart.partNumber || undefined,
       name: scannedPart.name,
       quantity: qty,
-      unit: scannedPart.unit ?? null,
+      unit: scannedPart.unit?.trim() || 'шт.',
       unitPrice: price,
       total: price * qty,
       unitCost: scannedPart.unitCost,

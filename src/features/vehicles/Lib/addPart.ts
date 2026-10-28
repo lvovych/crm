@@ -72,7 +72,7 @@ export async function addPart(args: {
     const stock = input.inventoryPartId
       ? await tx.inventoryPart.findFirst({
           where: { id: input.inventoryPartId, organizationId },
-          select: { brand: { select: { name: true } } },
+          select: { unit: true, brand: { select: { name: true } } },
         })
       : null
     const created = await tx.servicePart.create({
@@ -81,7 +81,7 @@ export async function addPart(args: {
         partNumber: input.partNumber || null,
         name: input.name,
         quantity: input.quantity,
-        unit: input.unit || null,
+        unit: input.unit?.trim() || stock?.unit?.trim() || 'шт.',
         unitPrice: input.unitPrice,
         total: input.total,
         unitCost: input.unitCost,

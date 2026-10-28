@@ -10,9 +10,18 @@ public/uploads
 backups
 data/uploads
 infra
+tmp
+output
+test-results
+coverage
+*.tsbuildinfo
+.codex
+.agents
 
-# Browser authentication state and test artifacts must not enter images.
+# Browser sessions and test artifacts never belong in an image context.
 e2e/.auth
 playwright-report
 blob-report
-test-results
+
+# Local browser state and build artifacts.
+e2e/.data

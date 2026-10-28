@@ -48,6 +48,7 @@ interface InvoiceRecord {
   totalAmount: number
   cost: number
   invoiceNumber: string | null
+  ledgerBalance?: { total: string; paid: string; debt: string }
   manuallyPaid: boolean
   discountType: string | null
   discountValue: number
@@ -328,8 +329,14 @@ export function InvoiceView({
   const effectiveInvoiceDate = record.invoiceDate ?? record.startDateTime ?? record.serviceDate
   const serviceDate = fmtDate(effectiveInvoiceDate, df, tz)
   const paidFromPayments = record.payments.reduce((sum, p) => sum + p.amount, 0)
-  const totalPaid = record.manuallyPaid ? displayTotal : paidFromPayments
-  const balanceDue = displayTotal - totalPaid
+  const totalPaid = record.ledgerBalance
+    ? Number(record.ledgerBalance.paid)
+    : record.manuallyPaid
+      ? displayTotal
+      : paidFromPayments
+  const balanceDue = record.ledgerBalance
+    ? Number(record.ledgerBalance.debt)
+    : displayTotal - totalPaid
   const shopName = workshop.name || record.shopName || 'Torqvoice'
 
   // Layout config overrides for header field visibility & ordering

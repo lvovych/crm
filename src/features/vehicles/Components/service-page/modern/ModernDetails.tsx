@@ -1,4 +1,5 @@
 'use client'
+import { CustomerLedger } from '@/features/stock-ledger/Components/CustomerLedger'
 
 import { useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
@@ -366,6 +367,7 @@ export function ModernDetails(props: ModernDetailsProps) {
                   )}
 
                   <LaborEditor
+                    stockLedgerRecordId={record.stockLedgerEnabled ? record.id : undefined}
                     quickAdd={props.quickLabor}
                     technicians={props.boardTechnicians}
                     primaryTechnicianId={record.technicianId}
@@ -385,7 +387,7 @@ export function ModernDetails(props: ModernDetailsProps) {
 
                   <PartsEditor
                     stockLedgerRecordId={record.stockLedgerEnabled ? record.id : undefined}
-        stockLedgerVersion={String(record.updatedAt ?? "")}
+                    stockLedgerVersion={String(record.updatedAt ?? '')}
                     pendingPart={props.pendingPart}
                     onPendingPartConsumed={props.onPendingPartConsumed}
                     locked={locked}
@@ -508,22 +510,30 @@ export function ModernDetails(props: ModernDetailsProps) {
                     </div>
                   </Lockable>
                   <div className="space-y-3 p-5">
-                    <PaymentsSection
-                      payments={record.payments || []}
-                      paymentStatus={formState.paymentStatus}
-                      manuallyPaid={record.manuallyPaid}
-                      totalPaid={formState.totalPaid}
-                      displayTotal={formState.displayTotal}
-                      balanceDue={formState.balanceDue}
-                      currencyCode={currencyCode}
-                      onCreatePayment={actions.handleCreatePayment}
-                      onDeletePayment={actions.handleDeletePayment}
-                      onTogglePaid={actions.handleTogglePaid}
-                      paymentLoading={actions.paymentLoading}
-                      deletingPayment={actions.deletingPayment}
-                      openFormSignal={paymentSignal}
-                      extraAction={props.payCode}
-                    />
+                    {record.financeAccountingMode === 'LEDGER' ? (
+                      <CustomerLedger
+                        openFormSignal={paymentSignal}
+                        recordId={record.id}
+                        customerId={record.customer?.id ?? record.vehicle?.customer?.id}
+                      />
+                    ) : (
+                      <PaymentsSection
+                        payments={record.payments || []}
+                        paymentStatus={formState.paymentStatus}
+                        manuallyPaid={record.manuallyPaid}
+                        totalPaid={formState.totalPaid}
+                        displayTotal={formState.displayTotal}
+                        balanceDue={formState.balanceDue}
+                        currencyCode={currencyCode}
+                        onCreatePayment={actions.handleCreatePayment}
+                        onDeletePayment={actions.handleDeletePayment}
+                        onTogglePaid={actions.handleTogglePaid}
+                        paymentLoading={actions.paymentLoading}
+                        deletingPayment={actions.deletingPayment}
+                        openFormSignal={paymentSignal}
+                        extraAction={props.payCode}
+                      />
+                    )}
                   </div>
                 </AppCard>
 

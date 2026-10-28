@@ -1,4 +1,4 @@
-import { D } from './amounts'
+import { assertProductQuantity } from './catalogs'
 import type { LedgerContext, Tx } from './transaction'
 
 /** Backdating against today's projection can create a negative historical balance.
@@ -14,10 +14,9 @@ export async function assertLotDate(
   if (quantity) {
     const lot = await tx.stockLot.findFirstOrThrow({
       where: { ...org, id: lotId },
-      include: { sourceLine: { select: { snapshotUnit: true } } },
+      include: { inventoryPart: true },
     })
-    if (['pcs', 'шт', 'шт.'].includes(lot.sourceLine.snapshotUnit) && !D(quantity).isInteger())
-      throw new Error('Штучний товар потребує цілої кількості')
+    await assertProductQuantity(tx, ctx, lot.inventoryPart, quantity, true)
   }
   const [movement, reservation] = await Promise.all([
     tx.inventoryLedgerEntry.findFirst({

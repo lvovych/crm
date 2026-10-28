@@ -32,6 +32,13 @@ model DashboardWidget {
 }
 
 model Organization {
+ ledgerMigrationBatches LedgerMigrationBatch[] @relation("LedgerMigrationOrg")
+ ledgerAttachments LedgerAttachment[] @relation("LedgerAttachmentOrg")
+  ledgerUnits UnitOfMeasure[]
+  ledgerLocations WarehouseLocation[]
+  supplierProducts SupplierProduct[]
+  customerAdjustments CustomerAdjustment[]
+  ledgerImportTasks LedgerImportTask[]
   ledgerDocumentSequence DocumentSequence[] @relation("LedgerOrgDocumentSequence")
   ledgerAllocationEvent AllocationEvent[] @relation("LedgerOrgAllocationEvent")
   ledgerSupplierServiceDocument SupplierServiceDocument[] @relation("LedgerOrgSupplierServiceDocument")

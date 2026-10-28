@@ -1,4 +1,6 @@
 'use client'
+import { ProductStockDetails } from './ProductStockDetails'
+import { ProductCatalog } from './ProductCatalog'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,13 +18,18 @@ const kinds: Record<string, string> = {
   ADJUSTMENT: 'Інвентаризація',
   REVERSAL: 'Сторно',
 }
-export function StockOverview() {
+export function StockOverview({ costAllowed = false }: { costAllowed?: boolean }) {
   const [data, setData] = useState<Summary>(),
     [warehouses, setWarehouses] = useState<{ id: string; name: string }[]>([]),
     [search, setSearch] = useState(''),
     [warehouseId, setWarehouse] = useState(''),
     [sort, setSort] = useState('name'),
     [onlyAvailable, setAvailable] = useState(false),
+    [onlyDeficit, setDeficit] = useState(false),
+    [includeArchived, setArchived] = useState(false),
+    [brand, setBrand] = useState(''),
+    [category, setCategory] = useState(''),
+    [pageSize, setPageSize] = useState(25),
     [page, setPage] = useState(1),
     [error, setError] = useState(''),
     [selected, setSelected] = useState<Summary['rows'][number]>(),
@@ -30,13 +37,23 @@ export function StockOverview() {
     [historyPage, setHistoryPage] = useState(1),
     [from, setFrom] = useState(''),
     [through, setThrough] = useState(''),
-    [ready, setReady] = useState(false)
+    [ready, setReady] = useState(false),
+    [revision, setRevision] = useState(0)
   useEffect(() => {
     const query = new URLSearchParams(window.location.search)
     setSearch((query.get('stockSearch') ?? '').slice(0, 100))
     setWarehouse(query.get('stockWarehouse') ?? '')
     setSort(query.get('stockSort') === 'available' ? 'available' : 'name')
     setAvailable(query.get('stockAvailable') === '1')
+    setDeficit(query.get('stockDeficit') === '1')
+    setArchived(query.get('stockArchived') === '1')
+    setBrand(query.get('stockBrand') ?? '')
+    setCategory(query.get('stockCategory') ?? '')
+    setPageSize(
+      [25, 50, 100].includes(Number(query.get('stockPageSize')))
+        ? Number(query.get('stockPageSize'))
+        : 25
+    )
     const p = Number(query.get('stockPage') ?? '1')
     setPage(Number.isInteger(p) && p > 0 && p <= 100000 ? p : 1)
     setReady(true)
@@ -45,6 +62,11 @@ export function StockOverview() {
     if (!ready) return
     const url = new URL(window.location.href)
     for (const [key, value] of Object.entries({
+      stockDeficit: onlyDeficit ? '1' : '',
+      stockArchived: includeArchived ? '1' : '',
+      stockBrand: brand,
+      stockCategory: category,
+      stockPageSize: String(pageSize),
       stockSearch: search,
       stockWarehouse: warehouseId,
       stockSort: sort,
@@ -55,7 +77,19 @@ export function StockOverview() {
       else url.searchParams.delete(key)
     }
     window.history.replaceState(null, '', url)
-  }, [ready, search, warehouseId, sort, onlyAvailable, page])
+  }, [
+    ready,
+    search,
+    warehouseId,
+    sort,
+    onlyAvailable,
+    page,
+    onlyDeficit,
+    includeArchived,
+    brand,
+    category,
+    pageSize,
+  ])
   useEffect(() => {
     getStockWarehouses().then((r) => {
       setWarehouses(r.data ?? [])
@@ -66,7 +100,18 @@ export function StockOverview() {
     if (!ready) return
     let live = true
     const timer = setTimeout(() => {
-      getStockSummary({ search, warehouseId, sort, onlyAvailable, page }).then((r) => {
+      getStockSummary({
+        search,
+        warehouseId,
+        sort,
+        onlyAvailable,
+        page,
+        onlyDeficit,
+        includeArchived,
+        brand,
+        category,
+        pageSize,
+      }).then((r) => {
         if (live) {
           setData(r.data)
           setError(r.error ?? '')
@@ -77,7 +122,20 @@ export function StockOverview() {
       live = false
       clearTimeout(timer)
     }
-  }, [ready, search, warehouseId, sort, onlyAvailable, page])
+  }, [
+    ready,
+    revision,
+    search,
+    warehouseId,
+    sort,
+    onlyAvailable,
+    page,
+    onlyDeficit,
+    includeArchived,
+    brand,
+    category,
+    pageSize,
+  ])
   useEffect(() => {
     if (!selected) return
     let live = true
@@ -101,6 +159,13 @@ export function StockOverview() {
   return (
     <section className="grid min-w-0 gap-4 [&_button]:min-h-11 [&_input]:min-h-11 [&_select]:min-h-11">
       <h2 className="text-xl">Залишки за товаром і складом</h2>
+      {data && (
+        <p className="text-sm">
+          За всім фільтром: на складі {data.totals.onHand} · резерв {data.totals.reserved} ·
+          доступно {data.totals.available} · очікується {data.totals.expected}. Кількості різних
+          одиниць не є грошовою оцінкою.
+        </p>
+      )}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Input
           aria-label="Пошук товарів у залишках"
@@ -151,6 +216,52 @@ export function StockOverview() {
           Лише доступні
         </label>
       </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Input
+          aria-label="Фільтр бренду"
+          placeholder="Бренд"
+          value={brand}
+          onChange={(e) => {
+            setBrand(e.target.value)
+            setPage(1)
+          }}
+        />
+        <Input
+          aria-label="Фільтр категорії"
+          placeholder="Категорія"
+          value={category}
+          onChange={(e) => {
+            setCategory(e.target.value)
+            setPage(1)
+          }}
+        />
+        <label className="flex min-h-11 items-center gap-2">
+          <input
+            type="checkbox"
+            checked={onlyDeficit}
+            onChange={(e) => {
+              setDeficit(e.target.checked)
+              setPage(1)
+            }}
+          />
+          Нижче мінімального запасу
+        </label>
+        <label className="flex min-h-11 items-center gap-2">
+          <input
+            type="checkbox"
+            checked={includeArchived}
+            onChange={(e) => {
+              setArchived(e.target.checked)
+              setPage(1)
+            }}
+          />
+          Показати архівні
+        </label>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Очікується — підтверджені закупівлі, які ще не прийнято. Мінімальний запас із картки товару
+        контролюється на основному складі.
+      </p>
       {error && <p role="alert">{error}</p>}
       {data?.rows.map((r) => (
         <article
@@ -168,7 +279,12 @@ export function StockOverview() {
             <br />
             Резерв: {r.reserved}
           </div>
-          <strong>Доступно: {r.available}</strong>
+          <div>
+            <strong>Доступно: {r.available}</strong>
+            <p>Очікується: {r.expected}</p>
+            <p>Мінімум: {r.minimum}</p>
+            {r.deficit !== '0.000' && <p className="text-amber-600">До закупівлі: {r.deficit}</p>}
+          </div>
           <Button
             variant="outline"
             onClick={() => {
@@ -182,14 +298,35 @@ export function StockOverview() {
         </article>
       ))}
       {data?.total === 0 && <p>За цими умовами залишків немає.</p>}
-      <div className="flex gap-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <label>
+          Рядків{' '}
+          <select
+            aria-label="Рядків на сторінці залишків"
+            value={pageSize}
+            className="rounded border bg-background p-2"
+            onChange={(e) => {
+              setPageSize(Number(e.target.value))
+              setPage(1)
+            }}
+          >
+            {[25, 50, 100].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
         <Button disabled={page === 1} onClick={() => setPage((p) => p - 1)}>
           Назад
         </Button>
         <span>
           Сторінка {page} · {data?.total ?? 0} записів
         </span>
-        <Button disabled={!data || page * 25 >= data.total} onClick={() => setPage((p) => p + 1)}>
+        <Button
+          disabled={!data || page * pageSize >= data.total}
+          onClick={() => setPage((p) => p + 1)}
+        >
           Далі
         </Button>
       </div>
@@ -201,8 +338,16 @@ export function StockOverview() {
       >
         <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Рух товару · {selected?.name}</DialogTitle>
+            <DialogTitle>Картка товару · {selected?.name}</DialogTitle>
           </DialogHeader>
+          {selected && costAllowed && (
+            <ProductCatalog
+              productId={selected.productId}
+              onSaved={() => setRevision((v) => v + 1)}
+            />
+          )}
+          {selected && <ProductStockDetails productId={selected.productId} />}
+          <h3 className="font-semibold">Рух товару</h3>
           <div className="grid grid-cols-2 gap-2">
             <label>
               Від
@@ -234,6 +379,13 @@ export function StockOverview() {
                 {r.date}
                 <br />
                 {r.number}
+                <br />
+                {r.actor}
+                {r.serviceRecordIds.map((id) => (
+                  <a key={id} className="block min-h-11 underline" href={`/sales/${id}`}>
+                    Наряд
+                  </a>
+                ))}
               </span>
               <span>
                 {kinds[r.kind] ?? r.kind}

@@ -1,4 +1,6 @@
 'use client'
+import { MigrationManager } from './MigrationManager'
+import { ProviderAccounts } from './ProviderAccounts'
 import { useEffect, useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -6,6 +8,7 @@ import {
   getLedgerAdministration,
   getLedgerReconciliation,
   closeAccountingPeriod,
+  reopenAccountingPeriod,
   postOpeningBalance,
   postOpeningStock,
   searchLedgerProducts,
@@ -26,6 +29,7 @@ export function AdministrationPanel() {
     [note, setNote] = useState(''),
     [through, setThrough] = useState(''),
     [area, setArea] = useState('BOTH'),
+    [periodAction, setPeriodAction] = useState('close'),
     [reason, setReason] = useState(''),
     [confirmed, setConfirmed] = useState(false),
     [check, setCheck] = useState<Awaited<ReturnType<typeof getLedgerReconciliation>>['data']>(),
@@ -92,6 +96,8 @@ export function AdministrationPanel() {
   }
   return (
     <section className="grid gap-6 [&_input]:min-h-11 [&_button]:min-h-11 [&_select]:min-h-11 [&_select]:rounded [&_select]:border [&_select]:bg-background [&_select]:p-2">
+      <ProviderAccounts />
+      <MigrationManager />
       {error && <p role="status">{error}</p>}
       {!data ? (
         <p>Завантаження адміністративних даних…</p>
@@ -337,9 +343,17 @@ export function AdministrationPanel() {
             onSubmit={(e) => {
               e.preventDefault()
               run(() =>
-                closeAccountingPeriod({
-                  idempotencyKey: commandKey(['period', through, area, reason, confirmed]),
+                (periodAction === 'close' ? closeAccountingPeriod : reopenAccountingPeriod)({
+                  idempotencyKey: commandKey([
+                    'period',
+                    periodAction,
+                    through,
+                    area,
+                    reason,
+                    confirmed,
+                  ]),
                   through,
+                  from: through,
                   area,
                   reason,
                   confirmed,
@@ -347,7 +361,27 @@ export function AdministrationPanel() {
               )
             }}
           >
-            <h2 className="text-xl">Закриття періоду</h2>
+            <h2 className="text-xl">Періоди обліку</h2>
+            <label>
+              Дія з періодом
+              <select
+                className="min-h-11 w-full rounded border bg-background"
+                value={periodAction}
+                onChange={(e) => {
+                  setPeriodAction(e.target.value)
+                  setConfirmed(false)
+                }}
+              >
+                <option value="close">Закрити період</option>
+                <option value="reopen">Відкрити період з причиною</option>
+              </select>
+            </label>
+            {periodAction === 'reopen' && (
+              <p>
+                Історичні вартості не перераховуються. Відкриття дозволяє нові документи з указаною
+                датою й записується в аудит.
+              </p>
+            )}
             <p>
               Склад закрито до:{' '}
               {data.period?.inventoryClosedThrough
@@ -359,7 +393,7 @@ export function AdministrationPanel() {
                 : 'не закрито'}
             </p>
             <label>
-              Закрити включно до
+              {periodAction === 'close' ? 'Закрити включно до' : 'Відкрити починаючи з'}
               <Input
                 required
                 type="date"
@@ -392,7 +426,9 @@ export function AdministrationPanel() {
               />{' '}
               Звірку завершено; проведення в закриті дати буде заблоковане
             </label>
-            <Button disabled={busy || !confirmed}>Закрити період</Button>
+            <Button disabled={busy || !confirmed}>
+              {periodAction === 'close' ? 'Закрити період' : 'Відкрити період'}
+            </Button>
           </form>
           <section className="grid gap-3">
             <h2 className="text-xl">Звірка кількості й резервів</h2>
@@ -408,17 +444,27 @@ export function AdministrationPanel() {
             >
               Виконати звірку
             </Button>
+            {data?.diagnostic && (
+              <p>
+                Автоматична звірка: {new Date(data.diagnostic.checkedAt).toLocaleString('uk-UA')} ·
+                Розбіжностей: {data.diagnostic.count}. Автоматичне виправлення не виконується.
+              </p>
+            )}
             {check && (
               <p>
                 {check.length
                   ? `Розбіжностей: ${check.length}`
-                  : 'Кількість і резерви відповідають журналу'}
+                  : 'Склад, резерви, каси й розрахунки відповідають документам'}
               </p>
             )}
             {check?.map((r) => (
-              <pre key={r.id} className="overflow-auto rounded border p-3 text-xs">
-                {JSON.stringify(r, null, 2)}
-              </pre>
+              <div key={r.kind + ':' + r.id} className="rounded border p-3 text-sm break-words">
+                <strong>{r.kind}</strong>
+                <p>
+                  Очікується: {r.expected}; фактично: {r.actual}
+                </p>
+                <p className="text-xs">Документ / запис: {r.id}</p>
+              </div>
             ))}
           </section>
           <section className="grid gap-3">

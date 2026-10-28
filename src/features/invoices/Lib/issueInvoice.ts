@@ -135,6 +135,34 @@ export async function issueInvoice(
   })
   if (!record) return false
   if (!shouldIssue(record, reason)) return false
+  const ledgerRecord = await db.serviceRecord.findFirst({
+    where: { id: recordId, organizationId, financeAccountingMode: 'LEDGER' },
+    select: { billedPartyId: true },
+  })
+  if (ledgerRecord && !ledgerRecord.billedPartyId) {
+    if (process.env.STOCK_LEDGER_ENABLED !== 'true')
+      throw new Error('Увімкніть новий фінансовий облік перед виставленням рахунку')
+    const { createHash } = await import('node:crypto'),
+      { ensureCustomerInvoice } = await import('@/features/stock-ledger/Lib/customerFinance')
+    const systemId =
+      'ledger-issuer-' + createHash('sha256').update(organizationId).digest('hex').slice(0, 24)
+    await db.user.upsert({
+      where: { id: systemId },
+      create: {
+        id: systemId,
+        name: 'Виставлення рахунків (система)',
+        email: systemId + '@internal.invalid',
+      },
+      update: {},
+    })
+    const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Kyiv' }).format(new Date())
+    await ensureCustomerInvoice(
+      db as unknown as import('@/features/stock-ledger/Lib/transaction').LedgerDB,
+      { organizationId, userId: systemId },
+      recordId,
+      day
+    )
+  }
 
   // A backfilled invoice is dated to when it was sent, which is the
   // nearest thing to when it was issued that the record knows.

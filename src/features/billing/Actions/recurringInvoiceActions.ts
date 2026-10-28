@@ -1,5 +1,5 @@
 'use server'
-import { newRecordStockMode } from '@/features/stock-ledger/Lib/cutover'
+import { newRecordStockMode, newRecordFinanceMode } from '@/features/stock-ledger/Lib/cutover'
 
 import { db } from '@/lib/db'
 import { withAuth } from '@/lib/with-auth'
@@ -352,6 +352,7 @@ export async function processRecurringInvoices() {
               description: ri.description,
               type: ri.type,
               inventoryAccountingMode: stockMode,
+                financeAccountingMode: await newRecordFinanceMode(tx, organizationId),
                 status: stockMode === 'LEDGER' && ri.templateParts.length ? 'pending' : 'completed',
               cost: ri.cost,
               serviceDate: now,
@@ -385,6 +386,8 @@ export async function processRecurringInvoices() {
             },
           })
 
+          const {chargeCompletedRecord}=await import('@/features/stock-ledger/Lib/customerFinance')
+          await chargeCompletedRecord(tx as unknown as import('@/features/stock-ledger/Lib/transaction').Tx,organizationId,sr)
           // Update recurring invoice
           const nextRunDate = calculateNextRunDate(ri.nextRunDate, ri.frequency, timeZone)
           const shouldDeactivate = ri.endDate && nextRunDate > ri.endDate

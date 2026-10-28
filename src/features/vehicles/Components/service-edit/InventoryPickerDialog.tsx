@@ -109,7 +109,7 @@ export function InventoryPickerDialog({
                   brand: ip.brand?.name ?? '---',
                   name: ip.name,
                   quantity: 1,
-                  unit: ip.unit ?? null,
+                  unit: ip.unit?.trim() || 'шт.',
                   unitPrice: price,
                   total: price,
                   unitCost: ip.unitCost,

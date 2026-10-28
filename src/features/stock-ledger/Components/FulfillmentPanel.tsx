@@ -5,11 +5,13 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   listLedgerDemands,
+  getPurchaseSuggestion,
   getLedgerDirectory,
   stockOperation,
   purchaseOperation,
 } from '../Actions/ledgerActions'
 import { D } from '../Lib/amounts'
+import { BulkFulfillment } from './BulkFulfillment'
 type Demand = NonNullable<Awaited<ReturnType<typeof listLedgerDemands>>['data']>[number]
 type Directory = NonNullable<Awaited<ReturnType<typeof getLedgerDirectory>>['data']>
 export function FulfillmentPanel({
@@ -22,6 +24,8 @@ export function FulfillmentPanel({
   const [rows, setRows] = useState<Demand[]>([]),
     [directory, setDirectory] = useState<Directory>(),
     [search, setSearch] = useState(''),
+    [page, setPage] = useState(1),
+    [group, setGroup] = useState<'job' | 'supplier' | 'none'>('job'),
     [revision, setRevision] = useState(0),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false)
@@ -39,7 +43,7 @@ export function FulfillmentPanel({
   useEffect(() => {
     let active = true
     Promise.all([
-      listLedgerDemands(search, { serviceRecordId, servicePartId }),
+      listLedgerDemands(search, { serviceRecordId, servicePartId, page }),
       getLedgerDirectory(),
     ]).then(([d, w]) => {
       if (!active) return
@@ -50,7 +54,7 @@ export function FulfillmentPanel({
     return () => {
       active = false
     }
-  }, [search, revision, serviceRecordId, servicePartId])
+  }, [search, revision, serviceRecordId, servicePartId, page])
   const open = (r: Demand, action: typeof op) => {
     setSelected(r)
     setOp(action)
@@ -59,6 +63,22 @@ export function FulfillmentPanel({
     setKey(crypto.randomUUID())
     setError('')
   }
+  useEffect(() => {
+    let live = true
+    if (selected && op === 'purchase') {
+      setSupplier(selected.preferredSupplier?.supplierId ?? '')
+      setPrice('0')
+      getPurchaseSuggestion(selected.inventoryPartId).then((r) => {
+        if (live && r.data) {
+          setSupplier(r.data.supplierId)
+          setPrice(r.data.price)
+        }
+      })
+    }
+    return () => {
+      live = false
+    }
+  }, [selected, op])
   async function submit() {
     if (!selected) return
     setBusy(true)
@@ -115,22 +135,68 @@ export function FulfillmentPanel({
     <section className="grid min-w-0 gap-4">
       <Input
         aria-label="Пошук потреб за нарядом"
-        placeholder="Номер або назва наряду"
+        placeholder="Наряд, номер авто або клієнт"
         value={search}
-        onChange={(e) => setSearch(e.target.value)}
+        onChange={(e) => {
+          setSearch(e.target.value)
+          setPage(1)
+        }}
       />
       {error && <p role="alert">{error}</p>}
       {rows.length === 0 && (
         <p>Потреб нових нарядів не знайдено. Історичні наряди потребують окремої звірки.</p>
       )}
-      {rows.map((r) => (
+      <BulkFulfillment
+        rows={rows}
+        directory={directory}
+        onChanged={() => setRevision((r) => r + 1)}
+      />
+      <label>
+        Групувати потреби
+        <select
+          aria-label="Групування потреб"
+          className="min-h-11 rounded border bg-background p-2"
+          value={group}
+          onChange={(e) => setGroup(e.target.value as 'job' | 'supplier' | 'none')}
+        >
+          <option value="job">За нарядом</option>
+          <option value="supplier">За постачальником</option>
+          <option value="none">Без групування</option>
+        </select>
+      </label>
+      <div className="flex flex-wrap gap-2">
+        <Button disabled={page === 1} onClick={() => setPage((p) => p - 1)}>
+          Попередні потреби
+        </Button>
+        <span>Сторінка {page}</span>
+        <Button disabled={rows.length < 50} onClick={() => setPage((p) => p + 1)}>
+          Наступні потреби
+        </Button>
+      </div>
+      {(group === 'none'
+        ? rows
+        : [...rows].sort((a, b) =>
+            (group === 'job' ? a.job : (a.preferredSupplier?.supplier.name ?? '')).localeCompare(
+              group === 'job' ? b.job : (b.preferredSupplier?.supplier.name ?? '')
+            )
+          )
+      ).map((r) => (
         <div
           key={r.servicePartId}
           className="grid min-w-0 gap-3 rounded-lg border p-3 lg:grid-cols-3"
         >
           <div className="break-words">
             <strong>{r.job}</strong>
+            <p>
+              {r.licensePlate} · {r.customerName}
+            </p>
             <p>{r.name}</p>
+            {r.preferredSupplier && (
+              <p>
+                {r.preferredSupplier.supplier.name} · поставка{' '}
+                {r.preferredSupplier.leadTimeDays ?? '—'} днів
+              </p>
+            )}
           </div>
           <div>
             Потрібно: {r.quantity} · Видано: {r.issued} · Резерв: {r.reserved} · Очікується:{' '}

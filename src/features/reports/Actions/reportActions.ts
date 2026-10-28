@@ -1,4 +1,8 @@
 'use server'
+import { newRecordStockMode } from '@/features/stock-ledger/Lib/cutover'
+import { catalogQuantities } from '@/features/stock-ledger/Lib/catalogReadModel'
+import type { LedgerDB } from '@/features/stock-ledger/Lib/transaction'
+import { readLedgerCustomerTotals } from '@/features/stock-ledger/Lib/customerReadModel'
 
 import { db } from '@/lib/db'
 import { listOrgEntries } from '@/features/time-tracking/Lib/timeEntries'
@@ -61,6 +65,7 @@ export async function getRevenueReport(params: ReportRange) {
           ...statusScope(params.completedOnly),
         },
         select: {
+          id: true,
           serviceDate: true,
           startDateTime: true,
           totalAmount: true,
@@ -69,6 +74,7 @@ export async function getRevenueReport(params: ReportRange) {
           taxRate: true,
           taxInclusive: true,
           manuallyPaid: true,
+          financeAccountingMode: true,
           payments: { select: { amount: true } },
           partItems: { select: { unitCost: true, quantity: true, total: true } },
           laborItems: { select: { total: true } },
@@ -101,9 +107,24 @@ export async function getRevenueReport(params: ReportRange) {
       // Type breakdown
       const byType: Record<string, { revenue: number; count: number }> = {}
 
+      const ledgerTotals = await readLedgerCustomerTotals(
+        db as unknown as import('@/features/stock-ledger/Lib/transaction').LedgerDB,
+        organizationId,
+        records.filter((r) => r.financeAccountingMode === 'LEDGER').map((r) => r.id)
+      )
+
       for (const r of records) {
-        const total = r.totalAmount > 0 ? r.totalAmount : r.cost
-        const paid = r.manuallyPaid ? total : r.payments.reduce((s, p) => s + p.amount, 0)
+        const balance = ledgerTotals.get(r.id)
+
+        const total = balance ? Number(balance.total) : r.totalAmount > 0 ? r.totalAmount : r.cost
+
+        const paid = balance
+          ? Number(balance.paid)
+          : r.financeAccountingMode === 'LEDGER'
+            ? 0
+            : r.manuallyPaid
+              ? total
+              : r.payments.reduce((s, p) => s + p.amount, 0)
         const partsCost = r.partItems.reduce((s, p) => s + p.unitCost * p.quantity, 0)
         const partsRevenue = r.partItems.reduce(
           (s, p) => s + netLineTotal(p.total, r.taxRate, r.taxInclusive),
@@ -707,6 +728,20 @@ export async function getInventoryReport() {
         orderBy: { name: 'asc' },
       })
 
+      const ledgerMode = (await newRecordStockMode(db, organizationId)) === 'LEDGER'
+      const quantities = ledgerMode
+        ? await catalogQuantities(
+            db as unknown as LedgerDB,
+            organizationId,
+            parts.map((p) => p.id)
+          )
+        : null
+      if (quantities) for (const part of parts) part.quantity = quantities.get(part.id) ?? 0
+      const cost = ledgerMode
+        ? await db.$queryRaw<
+            { amount: string }[]
+          >`SELECT COALESCE(SUM(b."onHandQty"*l."unitCost"),0)::text AS amount FROM "public"."stock_lot_balances" b JOIN "public"."stock_lots" l ON l.id=b."lotId" AND l."organizationId"=b."organizationId" JOIN "public"."inventory_parts" p ON p.id=l."inventoryPartId" WHERE b."organizationId"=${organizationId} AND NOT p."isArchived"`
+        : null
       let totalValue = 0
       let totalSellValue = 0
       let totalItems = 0
@@ -724,12 +759,17 @@ export async function getInventoryReport() {
       return {
         totalParts: parts.length,
         totalItems,
-        totalValue,
+        totalValue: cost ? Number(cost[0].amount) : totalValue,
         totalSellValue,
         lowStock,
       }
     },
-    { requiredPermissions: [{ action: PermissionAction.READ, subject: PermissionSubject.REPORTS }] }
+    {
+      requiredPermissions: [
+        { action: PermissionAction.READ, subject: PermissionSubject.REPORTS },
+        { action: PermissionAction.READ, subject: PermissionSubject.STOCK_COST },
+      ],
+    }
   )
 }
 
@@ -752,6 +792,7 @@ export async function getPastDueInvoicesReport() {
           totalAmount: true,
           cost: true,
           manuallyPaid: true,
+          financeAccountingMode: true,
           payments: { select: { amount: true } },
           customer: { select: { name: true, company: true } },
           vehicle: {
@@ -784,9 +825,24 @@ export async function getPastDueInvoicesReport() {
       let over60 = 0
       let over90 = 0
 
+      const ledgerTotals = await readLedgerCustomerTotals(
+        db as unknown as import('@/features/stock-ledger/Lib/transaction').LedgerDB,
+        organizationId,
+        records.filter((r) => r.financeAccountingMode === 'LEDGER').map((r) => r.id)
+      )
+
       for (const r of records) {
-        const total = r.totalAmount > 0 ? r.totalAmount : r.cost
-        const paid = r.manuallyPaid ? total : r.payments.reduce((s, p) => s + p.amount, 0)
+        const balance = ledgerTotals.get(r.id)
+
+        const total = balance ? Number(balance.total) : r.totalAmount > 0 ? r.totalAmount : r.cost
+
+        const paid = balance
+          ? Number(balance.paid)
+          : r.financeAccountingMode === 'LEDGER'
+            ? 0
+            : r.manuallyPaid
+              ? total
+              : r.payments.reduce((s, p) => s + p.amount, 0)
         const amountDue = total - paid
 
         if (amountDue <= 0) continue

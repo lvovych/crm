@@ -1,11 +1,25 @@
 'use client'
-import { cloneElement, useId, type ReactElement, useEffect, useRef, useState } from 'react'
+import { SupplierCard } from './SupplierCard'
+import { DocumentAttachments } from './DocumentAttachments'
+import { receiptTotal } from '../Lib/landedCost'
+import { PaymentAllocationDialog } from './PaymentAllocationDialog'
+import {
+  Fragment,
+  cloneElement,
+  useId,
+  type ReactElement,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
 import Link from 'next/link'
 import { FulfillmentPanel } from './FulfillmentPanel'
 import { PurchasesPanel } from './PurchasesPanel'
 import { SettlementReversal, StatementDownload } from './SettlementTools'
 import { StockActions } from './StockActions'
 import { ReceiptAllocation } from './ReceiptAllocation'
+import { PaymentDraftPanel } from './PaymentDraftPanel'
+import { StockCountPanel } from './StockCountPanel'
 import { FinancialReportPanel } from './FinancialReportPanel'
 import { AdministrationPanel } from './AdministrationPanel'
 import { StockOverview } from './StockOverview'
@@ -16,6 +30,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
   getLedgerDirectory,
+  getLedgerCapabilities,
   getLedgerDocument,
   listLedgerDocuments,
   listLedgerStock,
@@ -26,7 +41,6 @@ import {
   saveWarehouse,
   saveCashAccount,
   getSupplierFinances,
-  postSupplierPayment,
   allocateSupplierPayment,
 } from '../Actions/ledgerActions'
 import type { ActionResult } from '@/lib/with-auth'
@@ -57,6 +71,7 @@ function RecordCard({ children }: { children: React.ReactNode }) {
   )
 }
 export function LedgerWorkspace() {
+  const [capabilities, setCapabilities] = useState<Data<typeof getLedgerCapabilities>>()
   const [tab, setTab] = useState('receipts'),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
@@ -69,23 +84,22 @@ export function LedgerWorkspace() {
     [page, setPage] = useState(1),
     [search, setSearch] = useState('')
   useEffect(() => {
-    const view = new URLSearchParams(window.location.search).get('view')
-    if (
-      view &&
-      [
-        'receipts',
-        'overview',
-        'stock',
-        'demands',
-        'purchases',
-        'import',
-        'report',
-        'finances',
-        'directories',
-        'administration',
-      ].includes(view)
-    )
-      setTab(view)
+    getLedgerCapabilities()
+      .then((r) => {
+        if (!r.data) {
+          setError(r.error ?? 'Не вдалося перевірити права')
+          return
+        }
+        setCapabilities(r.data)
+        const view = new URLSearchParams(window.location.search).get('view') ?? 'receipts'
+        const sections = r.data.sections
+        setTab(
+          sections[view as keyof typeof sections]
+            ? view
+            : (Object.entries(sections).find(([k, v]) => v && k !== 'editor')?.[0] ?? 'none')
+        )
+      })
+      .catch(() => setError('Не вдалося перевірити права'))
   }, [])
   const keys = useRef(new Map<string, string>())
   const execute = async <T,>(action: (v: unknown) => Promise<ActionResult<T>>, payload: object) => {
@@ -112,6 +126,8 @@ export function LedgerWorkspace() {
     let cancelled = false
     setError('')
     const load = async () => {
+      if (!capabilities || !capabilities.sections[tab as keyof typeof capabilities.sections]) return
+      if (!['finances', 'stock', 'receipts', 'editor'].includes(tab)) return
       const results =
         tab === 'finances'
           ? [await getSupplierFinances(party || undefined)]
@@ -135,7 +151,8 @@ export function LedgerWorkspace() {
     return () => {
       cancelled = true
     }
-  }, [tab, page, search, party, revision])
+  }, [tab, page, search, party, revision, capabilities])
+  const [originalImportId, setOriginalImportId] = useState<string | null>(null)
   const [draft, setDraft] = useState<{ id?: string; version?: number; status: string }>({
     status: 'DRAFT',
   })
@@ -144,7 +161,13 @@ export function LedgerWorkspace() {
     [date, setDate] = useState(today),
     [dueDate, setDueDate] = useState(today),
     [external, setExternal] = useState(''),
-    [note, setNote] = useState('')
+    [note, setNote] = useState(''),
+    [additionalCost, setAdditionalCost] = useState('0'),
+    [costMethod, setCostMethod] = useState('PROPORTIONAL'),
+    [manualCosts, setManualCosts] = useState<string[]>([]),
+    [rounding, setRounding] = useState('0'),
+    [roundingReason, setRoundingReason] = useState(''),
+    [sourceTotal, setSourceTotal] = useState('')
   const [savedPayload, setSavedPayload] = useState(''),
     [detailIndex, setDetailIndex] = useState<number | null>(null)
   const [lines, setLines] = useState<Line[]>([]),
@@ -160,8 +183,27 @@ export function LedgerWorkspace() {
     dueDate,
     external,
     note,
+    additionalCost,
+    costMethod,
+    manualCosts,
+    rounding,
+    roundingReason,
+    sourceTotal,
     lines,
   })
+  const receiptPreview = (() => {
+    try {
+      return receiptTotal(
+        lines.map((l) => calculateLine(lineSchema.parse(l))),
+        additionalCost,
+        rounding,
+        roundingReason,
+        sourceTotal || undefined
+      ).toFixed(2)
+    } catch {
+      return null
+    }
+  })()
   const dirty = editing && payloadText !== savedPayload && (lines.length > 0 || external.length > 0)
   useEffect(() => {
     const warn = (e: BeforeUnloadEvent) => {
@@ -219,6 +261,7 @@ export function LedgerWorkspace() {
       return
     }
     const d = r.data
+    setOriginalImportId(d.originalImportId)
     setDraft({ id: d.id, version: d.version, status: d.status })
     setSupplierId(d.supplierId)
     setWarehouseId(d.targetWarehouseId)
@@ -226,6 +269,16 @@ export function LedgerWorkspace() {
     setDueDate(d.dueDate?.slice(0, 10) ?? today())
     setExternal(d.externalNumber ?? '')
     setNote(d.note ?? '')
+    setAdditionalCost(d.additionalCost)
+    setCostMethod(d.costAllocationMethod)
+    setManualCosts(
+      d.costAllocationMethod === 'MANUAL'
+        ? d.inventoryDocumentLine_document.map((l) => l.additionalCostAmount)
+        : []
+    )
+    setRounding(d.roundingAdjustment)
+    setRoundingReason(d.roundingReason)
+    setSourceTotal(d.sourceTotal ?? '')
     setLines(
       d.inventoryDocumentLine_document.map((l) => ({
         ...l,
@@ -243,6 +296,15 @@ export function LedgerWorkspace() {
         dueDate: d.dueDate?.slice(0, 10) ?? today(),
         external: d.externalNumber ?? '',
         note: d.note ?? '',
+        additionalCost: d.additionalCost,
+        costMethod: d.costAllocationMethod,
+        manualCosts:
+          d.costAllocationMethod === 'MANUAL'
+            ? d.inventoryDocumentLine_document.map((l) => l.additionalCostAmount)
+            : [],
+        rounding: d.roundingAdjustment,
+        roundingReason: d.roundingReason,
+        sourceTotal: d.sourceTotal ?? '',
         lines: d.inventoryDocumentLine_document.map((l) => ({
           ...l,
           purchaseOrderLineId: l.purchaseOrderLineId ?? undefined,
@@ -258,9 +320,16 @@ export function LedgerWorkspace() {
     if (!leave()) return
     setSavedPayload('')
     setDraft({ status: 'DRAFT' })
+    setOriginalImportId(null)
     setLines([])
     setExternal('')
     setNote('')
+    setAdditionalCost('0')
+    setCostMethod('PROPORTIONAL')
+    setManualCosts([])
+    setRounding('0')
+    setRoundingReason('')
+    setSourceTotal('')
     setDate(today())
     setDueDate(today())
     setTab('editor')
@@ -276,6 +345,13 @@ export function LedgerWorkspace() {
       externalDate: date,
       dueDate,
       note,
+      additionalCost,
+      costAllocationMethod: costMethod,
+      manualCostAllocations:
+        costMethod === 'MANUAL' ? lines.map((_, i) => manualCosts[i] || '0') : undefined,
+      roundingAdjustment: rounding,
+      roundingReason,
+      sourceTotal: sourceTotal || undefined,
       lines: lines.map(({ name, brand, article, ...line }) => line),
     })
     if (result) {
@@ -313,6 +389,13 @@ export function LedgerWorkspace() {
           Каталог товарів
         </Link>
       </div>
+      {!capabilities && <p role="status">Перевірка доступу…</p>}
+      {capabilities && tab === 'none' && (
+        <p>
+          Ваша роль не має доступу до складського або фінансового обліку. Зверніться до
+          адміністратора.
+        </p>
+      )}
       <nav aria-label="Складський облік" className="flex flex-wrap gap-2">
         {[
           ['receipts', 'Надходження'],
@@ -320,27 +403,30 @@ export function LedgerWorkspace() {
           ['stock', 'Партії та операції'],
           ['demands', 'Потреби нарядів'],
           ['purchases', 'Закупівлі'],
+          ['counts', 'Інвентаризації'],
           ['import', 'Імпорт'],
           ['report', 'Звіти на дату'],
           ['finances', 'Розрахунки'],
           ['directories', 'Довідники'],
-          ...(directory?.isAdmin ? [['administration', 'Адміністрування']] : []),
-        ].map(([key, label]) => (
-          <Button
-            key={key}
-            variant={tab === key ? 'default' : 'outline'}
-            onClick={() => {
-              if (!leave()) return
-              setTab(key)
-              const url = new URL(window.location.href)
-              url.searchParams.set('view', key)
-              window.history.replaceState(null, '', url)
-              setPage(1)
-            }}
-          >
-            {label}
-          </Button>
-        ))}
+          ...(capabilities?.admin ? [['administration', 'Адміністрування']] : []),
+        ]
+          .filter(([key]) => capabilities?.sections[key as keyof typeof capabilities.sections])
+          .map(([key, label]) => (
+            <Button
+              key={key}
+              variant={tab === key ? 'default' : 'outline'}
+              onClick={() => {
+                if (!leave()) return
+                setTab(key)
+                const url = new URL(window.location.href)
+                url.searchParams.set('view', key)
+                window.history.replaceState(null, '', url)
+                setPage(1)
+              }}
+            >
+              {label}
+            </Button>
+          ))}
       </nav>
       <p className="text-sm text-muted-foreground">
         Окремий облік нових операцій. Історичні залишки та оплати сюди автоматично не перенесені.
@@ -366,7 +452,7 @@ export function LedgerWorkspace() {
                 setPage(1)
               }}
             />
-            <Button onClick={newReceipt}>Нове надходження</Button>
+            {capabilities?.draft && <Button onClick={newReceipt}>Нове надходження</Button>}
           </div>
           {documents?.rows.map((d) => (
             <RecordCard key={d.id}>
@@ -405,6 +491,9 @@ export function LedgerWorkspace() {
                 ? 'Надходження — сторновано'
                 : 'Надходження — проведено'}
           </h2>
+          {draft.id && (
+            <DocumentAttachments kind="receipt" id={draft.id} canUpload={capabilities?.draft} />
+          )}
           {dirty && <p className="text-sm">Збережіть зміни перед проведенням.</p>}
           <div className="grid gap-3 md:grid-cols-3">
             <Field label="Постачальник">
@@ -470,26 +559,89 @@ export function LedgerWorkspace() {
             <Field label="Коментар">
               <Input disabled={!editing} value={note} onChange={(e) => setNote(e.target.value)} />
             </Field>
+            {originalImportId && (
+              <a
+                className="inline-flex min-h-11 items-center underline"
+                href={`/api/protected/stock-ledger/import/${originalImportId}/original`}
+              >
+                Оригінал накладної постачальника
+              </a>
+            )}
+            <details className="md:col-span-3">
+              <summary className="min-h-11 cursor-pointer py-3">
+                Доставка, округлення та сума накладної
+              </summary>
+              <div className="grid gap-3 md:grid-cols-3">
+                <Field label="Додаткові витрати цього постачальника, грн">
+                  <Input
+                    disabled={!editing}
+                    inputMode="decimal"
+                    value={additionalCost}
+                    onChange={(e) => setAdditionalCost(e.target.value.replace(',', '.'))}
+                  />
+                </Field>
+                <Field label="Розподіл додаткових витрат">
+                  <select
+                    className={field}
+                    disabled={!editing}
+                    value={costMethod}
+                    onChange={(e) => setCostMethod(e.target.value)}
+                  >
+                    <option value="PROPORTIONAL">Пропорційно вартості товарів</option>
+                    <option value="MANUAL">Вручну за позиціями</option>
+                  </select>
+                </Field>
+                <Field label="Підсумок у накладній, грн">
+                  <Input
+                    disabled={!editing}
+                    inputMode="decimal"
+                    placeholder="Для перевірки суми"
+                    value={sourceTotal}
+                    onChange={(e) => setSourceTotal(e.target.value.replace(',', '.'))}
+                  />
+                </Field>
+                <Field label="Округлення документа, грн">
+                  <Input
+                    disabled={!editing}
+                    inputMode="decimal"
+                    value={rounding}
+                    onChange={(e) => setRounding(e.target.value.replace(',', '.'))}
+                  />
+                </Field>
+                {rounding !== '0' && rounding !== '0.00' && (
+                  <Field label="Причина округлення">
+                    <Input
+                      disabled={!editing}
+                      value={roundingReason}
+                      onChange={(e) => setRoundingReason(e.target.value)}
+                    />
+                  </Field>
+                )}
+                {costMethod === 'MANUAL' &&
+                  lines.map((line, i) => (
+                    <Field key={i} label={`Витрати: ${line.name}`}>
+                      <Input
+                        disabled={!editing}
+                        inputMode="decimal"
+                        value={manualCosts[i] ?? '0'}
+                        onChange={(e) =>
+                          setManualCosts(
+                            lines.map((_, n) =>
+                              n === i ? e.target.value.replace(',', '.') : (manualCosts[n] ?? '0')
+                            )
+                          )
+                        }
+                      />
+                    </Field>
+                  ))}
+                <p className="text-sm text-muted-foreground">
+                  Витрати цього постачальника збільшують борг і собівартість. Послугу іншого
+                  постачальника оформлюйте окремо. При поверненні товару доставка автоматично не
+                  повертається.
+                </p>
+              </div>
+            </details>
           </div>
-          {draft.id && draft.status === 'POSTED' && (
-            <SettlementReversal
-              paymentId={null}
-              receiptId={draft.id}
-              allocations={[]}
-              onSaved={() => {
-                void loadDocument(draft.id!)
-                setRevision((v) => v + 1)
-              }}
-            />
-          )}
-          {editing && draft.id && !dirty && (
-            <ReceiptAllocation
-              documentId={draft.id}
-              onSaved={() => {
-                void loadDocument(draft.id!)
-              }}
-            />
-          )}
           {editing && (
             <div className="relative">
               <Input
@@ -674,19 +826,29 @@ export function LedgerWorkspace() {
               }}
             />
           )}
+          <div className="rounded border p-3" aria-live="polite">
+            Позицій: {lines.length} · До сплати постачальнику:{' '}
+            <strong>{receiptPreview ?? 'Перевірте суми'} грн</strong>
+            {editing && (
+              <p className="text-sm text-muted-foreground">
+                Проведення збільшить залишки вибраного складу й борг постачальнику. Оплата
+                оформлюється окремо.
+              </p>
+            )}
+          </div>
           {editing && (
             <div className="flex flex-wrap gap-3">
-              <Button disabled={busy} onClick={save}>
+              <Button disabled={busy || !capabilities?.draft} onClick={save}>
                 Зберегти чернетку
               </Button>
               {draft.id && (
                 <Button
                   variant="outline"
-                  disabled={busy || dirty}
+                  disabled={busy || dirty || !capabilities?.post}
                   onClick={async () => {
                     if (
                       !window.confirm(
-                        'Провести збережену чернетку? Залишок і борг постачальнику збільшаться.'
+                        `Провести ${lines.length} позицій? Борг постачальнику збільшиться на ${receiptPreview} грн. Товари надійдуть на вибраний склад.`
                       )
                     )
                       return
@@ -710,9 +872,10 @@ export function LedgerWorkspace() {
       {tab === 'purchases' && <PurchasesPanel />}
       {tab === 'import' && <ImportPanel />}
       {tab === 'demands' && <FulfillmentPanel />}
+      {tab === 'counts' && <StockCountPanel />}
       {tab === 'report' && <FinancialReportPanel />}
-      {tab === 'administration' && directory?.isAdmin && <AdministrationPanel />}
-      {tab === 'overview' && <StockOverview />}
+      {tab === 'administration' && capabilities?.admin && <AdministrationPanel />}
+      {tab === 'overview' && <StockOverview costAllowed={!!capabilities?.cost} />}
       {tab === 'stock' && (
         <>
           {stock?.rows.map((r) => (
@@ -808,7 +971,7 @@ export function LedgerWorkspace() {
             </Field>
           )}
           <Button
-            disabled={busy || !directory?.isAdmin}
+            disabled={busy || !capabilities?.admin}
             onClick={async () => {
               const result = await execute(
                 directoryKind === 'supplier'
@@ -840,7 +1003,7 @@ export function LedgerWorkspace() {
             Створити
           </Button>
           <p className="text-sm text-muted-foreground">Довідники створює адміністратор.</p>
-          {directory?.isAdmin && (
+          {capabilities?.admin && (
             <DirectoryManager revision={revision} onSaved={() => setRevision((v) => v + 1)} />
           )}
         </section>
@@ -851,7 +1014,12 @@ export function LedgerWorkspace() {
             <select
               className={field}
               value={party || finances.selectedPartyId || ''}
-              onChange={(e) => setParty(e.target.value)}
+              onChange={(e) => {
+                setParty(e.target.value)
+                setDebit('')
+                setCredit('')
+                setAllocateAmount('')
+              }}
             >
               {finances.parties.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -860,141 +1028,123 @@ export function LedgerWorkspace() {
               ))}
             </select>
           </Field>
-          <div className="flex flex-wrap gap-6">
-            <strong>Борг: {finances.debt} грн</strong>
-            <strong>Аванс: {finances.advance} грн</strong>
-          </div>
-          {finances.selectedPartyId && <StatementDownload partyId={finances.selectedPartyId} />}
-          {finances.rows.map((r) => (
-            <RecordCard key={r.id}>
-              <span>
-                {r.label} · {r.date}
-              </span>
-              <span>
-                {r.polarity === 'DEBIT' ? 'Нараховано' : 'Кредит / оплата'}: {r.amount}
-              </span>
-              <span>Рознесено: {r.allocated}</span>
-              <strong>Залишок: {r.remaining}</strong>
-              <div className="md:col-span-4">
-                <SettlementReversal
-                  paymentId={r.paymentId}
-                  allocations={r.polarity === 'DEBIT' ? r.allocations : []}
+          {party && finances.selectedPartyId !== party ? (
+            <p role="status">Завантаження розрахунків постачальника…</p>
+          ) : (
+            <Fragment key={finances.selectedPartyId}>
+              <div className="flex flex-wrap gap-6">
+                <strong>Борг: {finances.debt} грн</strong>
+                <strong>Аванс: {finances.advance} грн</strong>
+              </div>
+              {finances.selectedPartyId && <StatementDownload partyId={finances.selectedPartyId} />}
+              {capabilities?.cost &&
+                finances.parties
+                  .filter((p) => p.id === finances.selectedPartyId && p.supplierId)
+                  .map((p) => <SupplierCard key={p.id} supplierId={p.supplierId!} />)}
+              {finances.rows.map((r) => (
+                <RecordCard key={r.id}>
+                  <span>
+                    {r.label} · {r.date}
+                  </span>
+                  <span>
+                    {r.polarity === 'DEBIT' ? 'Нараховано' : 'Кредит / оплата'}: {r.amount}
+                  </span>
+                  <span>Рознесено: {r.allocated}</span>
+                  <strong>Залишок: {r.remaining}</strong>
+                  <div className="md:col-span-4">
+                    <SettlementReversal
+                      paymentId={capabilities?.financeReverse ? r.paymentId : null}
+                      allocations={
+                        capabilities?.allocate && r.polarity === 'DEBIT' ? r.allocations : []
+                      }
+                      onSaved={() => setRevision((v) => v + 1)}
+                    />
+                  </div>
+                </RecordCard>
+              ))}
+              {finances.selectedPartyId &&
+                (capabilities?.financeDraft || capabilities?.financePost) && (
+                  <PaymentDraftPanel
+                    partyId={finances.selectedPartyId}
+                    accounts={finances.accounts}
+                    canDraft={!!capabilities?.financeDraft}
+                    canPost={!!capabilities?.financePost}
+                    onSaved={() => setRevision((v) => v + 1)}
+                  />
+                )}
+              {capabilities?.allocate && (
+                <PaymentAllocationDialog
+                  credits={finances.rows.filter(
+                    (r) => r.polarity === 'CREDIT' && r.remaining !== '0.00'
+                  )}
                   onSaved={() => setRevision((v) => v + 1)}
                 />
-              </div>
-            </RecordCard>
-          ))}
-          <fieldset disabled={busy} className="grid gap-3 rounded-lg border p-4 md:grid-cols-3">
-            <legend>Зареєструвати оплату</legend>
-            <Field label="Каса / рахунок">
-              <select
-                className={field}
-                value={accountId}
-                onChange={(e) => setAccountId(e.target.value)}
-              >
-                <option value="">Виберіть</option>
-                {finances.accounts.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Напрям">
-              <select
-                className={field}
-                value={direction}
-                onChange={(e) => setDirection(e.target.value)}
-              >
-                <option value="OUT">Оплата постачальнику</option>
-                <option value="IN">Повернення від постачальника</option>
-              </select>
-            </Field>
-            <Field label="Сума, грн">
-              <Input
-                inputMode="decimal"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-              />
-            </Field>
-            <Field label="Дата">
-              <Input
-                type="date"
-                value={paymentDate}
-                onChange={(e) => setPaymentDate(e.target.value)}
-              />
-            </Field>
-            <Button
-              onClick={async () => {
-                if (!window.confirm('Записати факт оплати? Банківський переказ не виконується.'))
-                  return
-                const r = await execute(postSupplierPayment, {
-                  partyId: party || finances.selectedPartyId,
-                  accountId,
-                  direction,
-                  amount,
-                  effectiveAt: paymentDate,
-                  method: 'manual',
-                })
-                if (r) {
-                  setAmount('')
-                  toast.success('Оплату зареєстровано')
-                }
-              }}
-            >
-              Зареєструвати оплату
-            </Button>
-          </fieldset>
-          <fieldset disabled={busy} className="grid gap-3 rounded-lg border p-4 md:grid-cols-3">
-            <legend>Рознести оплату</legend>
-            <Field label="Нарахування">
-              <select className={field} value={debit} onChange={(e) => setDebit(e.target.value)}>
-                <option value="">Виберіть</option>
-                {finances.rows
-                  .filter((r) => r.polarity === 'DEBIT' && r.remaining !== '0.00')
-                  .map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.label} · {r.remaining} грн
-                    </option>
-                  ))}
-              </select>
-            </Field>
-            <Field label="Оплата / аванс">
-              <select className={field} value={credit} onChange={(e) => setCredit(e.target.value)}>
-                <option value="">Виберіть</option>
-                {finances.rows
-                  .filter((r) => r.polarity === 'CREDIT' && r.remaining !== '0.00')
-                  .map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.date} · {r.remaining} грн
-                    </option>
-                  ))}
-              </select>
-            </Field>
-            <Field label="Сума рознесення">
-              <Input
-                inputMode="decimal"
-                value={allocateAmount}
-                onChange={(e) => setAllocateAmount(e.target.value)}
-              />
-            </Field>
-            <Button
-              onClick={async () => {
-                const r = await execute(allocateSupplierPayment, {
-                  debitEntryId: debit,
-                  creditEntryId: credit,
-                  amount: allocateAmount,
-                  effectiveAt: today(),
-                })
-                if (r) {
-                  setAllocateAmount('')
-                  toast.success('Оплату рознесено')
-                }
-              }}
-            >
-              Рознести
-            </Button>
-          </fieldset>
+              )}
+              {capabilities?.allocate && (
+                <fieldset
+                  disabled={busy}
+                  className="grid gap-3 rounded-lg border p-4 md:grid-cols-3"
+                >
+                  <legend>Рознести оплату на один документ</legend>
+                  <Field label="Нарахування">
+                    <select
+                      className={field}
+                      value={debit}
+                      onChange={(e) => setDebit(e.target.value)}
+                    >
+                      <option value="">Виберіть</option>
+                      {finances.rows
+                        .filter((r) => r.polarity === 'DEBIT' && r.remaining !== '0.00')
+                        .map((r) => (
+                          <option key={r.id} value={r.id}>
+                            {r.label} · {r.remaining} грн
+                          </option>
+                        ))}
+                    </select>
+                  </Field>
+                  <Field label="Оплата / аванс">
+                    <select
+                      className={field}
+                      value={credit}
+                      onChange={(e) => setCredit(e.target.value)}
+                    >
+                      <option value="">Виберіть</option>
+                      {finances.rows
+                        .filter((r) => r.polarity === 'CREDIT' && r.remaining !== '0.00')
+                        .map((r) => (
+                          <option key={r.id} value={r.id}>
+                            {r.date} · {r.remaining} грн
+                          </option>
+                        ))}
+                    </select>
+                  </Field>
+                  <Field label="Сума рознесення">
+                    <Input
+                      inputMode="decimal"
+                      value={allocateAmount}
+                      onChange={(e) => setAllocateAmount(e.target.value)}
+                    />
+                  </Field>
+                  <Button
+                    onClick={async () => {
+                      const r = await execute(allocateSupplierPayment, {
+                        debitEntryId: debit,
+                        creditEntryId: credit,
+                        amount: allocateAmount,
+                        effectiveAt: today(),
+                      })
+                      if (r) {
+                        setAllocateAmount('')
+                        toast.success('Оплату рознесено')
+                      }
+                    }}
+                  >
+                    Рознести
+                  </Button>
+                </fieldset>
+              )}
+            </Fragment>
+          )}
         </section>
       )}
       {(tab === 'stock' || tab === 'receipts') && (

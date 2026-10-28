@@ -1,4 +1,6 @@
 'use client'
+import { SupplierCard } from './SupplierCard'
+import { CatalogManager } from './CatalogManager'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -51,6 +53,7 @@ export function DirectoryManager({ revision, onSaved }: { revision: number; onSa
   const patch = (p: Partial<Edit>) => setEdit((e) => e && { ...e, ...p })
   return (
     <section className="grid gap-3 [&_button]:min-h-11 [&_input]:min-h-11 [&_select]:min-h-11">
+      <CatalogManager />
       <h2 className="text-xl">Редагування довідників</h2>
       <Input
         aria-label="Пошук у довідниках"
@@ -73,6 +76,7 @@ export function DirectoryManager({ revision, onSaved }: { revision: number; onSa
             {r.type === 'supplier' ? 'Постачальник' : r.type === 'warehouse' ? 'Склад' : 'Рахунок'}
             {r.archivedAt ? ' · Архівний' : ''}
           </span>
+          {r.type === 'supplier' && <SupplierCard supplierId={r.id} canUpload />}
           <Button
             variant="outline"
             onClick={() => {

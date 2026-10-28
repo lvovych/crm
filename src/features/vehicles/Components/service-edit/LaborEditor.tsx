@@ -14,9 +14,11 @@ import { serviceLaborSchema, type ServiceLaborInput } from '../../Schema/service
 import { makeEmptyLabor, makeEmptyService } from './form-types'
 import { LineEditorDialog, LineField } from './LineEditorDialog'
 import { LaborNumberInput } from './LaborNumberInput'
+import { WorkSubcontract } from '@/features/stock-ledger/Components/WorkSubcontract'
 import { LaborQuickAdd, type LaborQuickAddProps } from './LaborQuickAdd'
 
 interface LaborEditorProps {
+  stockLedgerRecordId?: string
   laborItems: ServiceLaborInput[]
   setLaborItems: React.Dispatch<React.SetStateAction<ServiceLaborInput[]>>
   updateLabor: (index: number, field: keyof ServiceLaborInput, value: string | number) => void
@@ -34,6 +36,7 @@ interface LaborEditorProps {
   locked?: boolean
 }
 export function LaborEditor({
+  stockLedgerRecordId,
   laborItems,
   setLaborItems,
   laborSubtotal,
@@ -284,6 +287,7 @@ export function LaborEditor({
               </td>
               <td className="break-words p-2">
                 {executor(l)}
+                {l.executionType==='SUBCONTRACT'&&<span className="block text-xs">Підрядник</span>}
                 <span className="block text-xs text-muted-foreground">{mode(l)}</span>
               </td>
               <td className="p-2">
@@ -324,6 +328,7 @@ export function LaborEditor({
             {isShopFeeLine(l) && <ShopFeeTag />}
             <p className="mt-2 break-words text-sm">
               {e('executor')}: {executor(l)}{' '}
+              {l.executionType==='SUBCONTRACT'&&<span className="block text-xs">Підрядник</span>}
               <span className="text-xs text-muted-foreground">{mode(l)}</span>
             </p>
             <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
@@ -383,6 +388,27 @@ export function LaborEditor({
           </LineField>
           {!isFee && (
             <>
+              {stockLedgerRecordId && (
+                <>
+                  <LineField label="Тип виконання">
+                    <select
+                      className="min-h-11 rounded border bg-background p-2"
+                      value={draft.executionType ?? 'INTERNAL'}
+                      onChange={(ev) => change('executionType', ev.target.value)}
+                    >
+                      <option value="INTERNAL">Власна майстерня</option>
+                      <option value="SUBCONTRACT">Підрядник</option>
+                    </select>
+                  </LineField>
+                  {draft.executionType === 'SUBCONTRACT' && (
+                    <WorkSubcontract
+                      recordId={stockLedgerRecordId}
+                      laborId={draft.id}
+                      description={draft.description}
+                    />
+                  )}
+                </>
+              )}
               <LineField label={e('executor')}>
                 <select
                   className="min-h-11 rounded-md border bg-background px-2"

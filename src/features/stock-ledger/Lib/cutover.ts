@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { ledgerCommand, type LedgerContext, type LedgerDB } from './transaction'
 import { reconciliation } from './reconciliation'
+export const FINANCE_CUTOVER_KEY = 'stockLedger.approvedFinanceCutover.v1'
 export const STOCK_CUTOVER_KEY = 'stockLedger.approvedCutover.v1'
 const approval = z.object({
   effectiveDate: z.iso.date(),
@@ -71,4 +72,19 @@ export async function approveStockCutover(db: LedgerDB, ctx: LedgerContext, raw:
     })
     return { id: ctx.organizationId, ...config }
   })
+}
+
+export async function newRecordFinanceMode(
+  client: Parameters<typeof newRecordStockMode>[0],
+  organizationId: string
+): Promise<'LEGACY' | 'LEDGER'> {
+  const setting = await client.appSetting.findUnique({
+    where: { organizationId_key: { organizationId, key: FINANCE_CUTOVER_KEY } },
+    select: { value: true },
+  })
+  if (!setting) return 'LEGACY'
+  approval.parse(JSON.parse(setting.value))
+  if (process.env.STOCK_LEDGER_ENABLED !== 'true')
+    throw new Error('Фінансовий облік організації вже переведено. Увімкніть модуль.')
+  return 'LEDGER'
 }

@@ -328,18 +328,31 @@ export function useServiceFormState({
   const totalAmount = moneyChanged ? calculatedTotal : (initialData.totalAmount ?? calculatedTotal)
 
   const [localManuallyPaid, setLocalManuallyPaid] = useState(record.manuallyPaid)
-  const displayTotal =
-    moneyChanged || partItems.length > 0 || laborItems.length > 0 ? totalAmount : record.cost
+  const displayTotal = record.ledgerBalance
+    ? Number(record.ledgerBalance.total)
+    : moneyChanged || partItems.length > 0 || laborItems.length > 0
+      ? totalAmount
+      : record.cost
   const paidFromPayments = record.payments?.reduce((sum, p) => sum + p.amount, 0) || 0
-  const totalPaid = localManuallyPaid ? displayTotal : paidFromPayments
+  const totalPaid = record.ledgerBalance
+    ? displayTotal - Number(record.ledgerBalance.debt)
+    : localManuallyPaid
+      ? displayTotal
+      : paidFromPayments
   const balanceDue = displayTotal - totalPaid
-  const paymentStatus = localManuallyPaid
-    ? 'paid'
-    : totalPaid === 0
-      ? 'unpaid'
-      : balanceDue <= 0
-        ? 'paid'
-        : 'partial'
+  const paymentStatus = record.ledgerBalance
+    ? Number(record.ledgerBalance.debt) <= 0
+      ? 'paid'
+      : totalPaid > 0
+        ? 'partial'
+        : 'unpaid'
+    : localManuallyPaid
+      ? 'paid'
+      : totalPaid === 0
+        ? 'unpaid'
+        : balanceDue <= 0
+          ? 'paid'
+          : 'partial'
   const imageAttachments = record.attachments?.filter((a) => a.category === 'image') || []
   const vehicleName = record.vehicle
     ? `${record.vehicle.year} ${record.vehicle.make} ${record.vehicle.model}`

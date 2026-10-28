@@ -19,9 +19,11 @@ export async function createPayment(input: unknown) {
       // Verify ownership: serviceRecord -> vehicle -> organizationId
       const serviceRecord = await db.serviceRecord.findFirst({
         where: { id: data.serviceRecordId, organizationId },
-        select: { id: true, vehicleId: true },
+        select: { id: true, vehicleId: true, financeAccountingMode: true },
       })
       if (!serviceRecord) throw new Error('Service record not found')
+      if (serviceRecord.financeAccountingMode === 'LEDGER')
+        throw new Error('Внесіть платіж із вибором каси в розділі «Розрахунки за нарядом».')
 
       const payment = await db.payment.create({
         data: {
@@ -79,6 +81,7 @@ export async function deletePayment(paymentId: string) {
         include: {
           serviceRecord: {
             select: {
+              financeAccountingMode: true,
               vehicleId: true,
               id: true,
               sentAt: true,
@@ -92,6 +95,8 @@ export async function deletePayment(paymentId: string) {
         },
       })
       if (!payment) throw new Error('Payment not found')
+      if (payment.serviceRecord.financeAccountingMode === 'LEDGER')
+        throw new Error('Платежі нового обліку виправляються документом сторно.')
 
       // Recording payments is always allowed, but removing the payment that
       // settled a locked invoice would release the lock — the admin-only
@@ -145,9 +150,20 @@ export async function getPaidTotal(serviceRecordId: string) {
     async ({ organizationId }) => {
       const record = await db.serviceRecord.findFirst({
         where: { id: serviceRecordId, organizationId },
-        select: { manuallyPaid: true, payments: { select: { amount: true } } },
+        select: {
+          financeAccountingMode: true,
+          manuallyPaid: true,
+          payments: { select: { amount: true } },
+        },
       })
       if (!record) throw new Error('Service record not found')
+      if (record.financeAccountingMode === 'LEDGER') {
+        const rows = await db.$queryRaw<
+          { paid: string }[]
+        >`SELECT GREATEST(total-debt,0)::text paid FROM "public"."ledger_customer_balances" WHERE "organizationId"=${organizationId} AND "serviceRecordId"=${serviceRecordId}`
+        return { paid: Number(rows[0]?.paid ?? '0'), payments: rows.length, manuallyPaid: false }
+      }
+
       return {
         paid: Math.round(record.payments.reduce((sum, p) => sum + p.amount, 0) * 100) / 100,
         payments: record.payments.length,

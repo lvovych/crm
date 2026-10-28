@@ -122,6 +122,7 @@ interface InventoryPart {
 }
 
 interface PaginatedData {
+  ledgerControlled?: boolean
   parts: InventoryPart[]
   total: number
   page: number
@@ -666,6 +667,12 @@ export function InventoryClient({
                 <button
                   type="button"
                   className="flex items-center hover:text-foreground"
+                  disabled={data.ledgerControlled}
+                  title={
+                    data.ledgerControlled
+                      ? 'Для сортування залишків відкрийте Склад і постачальники'
+                      : undefined
+                  }
                   onClick={() => handleSort('quantity')}
                 >
                   {t('table.inStock')}

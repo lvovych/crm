@@ -50,5 +50,15 @@ export async function register() {
     processScheduledMessages()
     processIntegrationJobs()
     cleanupIntegrationLogs()
+    if (process.env.STOCK_LEDGER_ENABLED === 'true') {
+      const { startLedgerImportWorker } = await import(
+        './features/stock-ledger/Lib/importWorker.server'
+      )
+      startLedgerImportWorker()
+      const { startLedgerDiagnosticWorker } = await import(
+        './features/stock-ledger/Lib/diagnosticWorker.server'
+      )
+      startLedgerDiagnosticWorker()
+    }
   }
 }

@@ -39,6 +39,8 @@ export function useWorkOrderStock(recordId?: string, recordVersion?: string) {
         </p>
       )
     const row = rows.find((r) => r.servicePartId === part.id)
+    if (row?.trackingMode === 'NON_STOCK')
+      return <p className="mt-2 text-xs">Без складського обліку</p>
     const saved =
       !!row &&
       row.inventoryPartId === part.inventoryPartId &&

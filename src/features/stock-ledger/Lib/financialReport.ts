@@ -30,6 +30,9 @@ export async function financialReport(tx: Tx, ctx: LedgerContext, raw: unknown) 
       debt: ReturnType<typeof D>
       advance: ReturnType<typeof D>
       balance: ReturnType<typeof D>
+      overdue: ReturnType<typeof D>
+      notDue: ReturnType<typeof D>
+      nearestDue: string | null
     }
   >()
   const errors: string[] = []
@@ -42,11 +45,19 @@ export async function financialReport(tx: Tx, ctx: LedgerContext, raw: unknown) 
         debt: D(0),
         advance: D(0),
         balance: D(0),
+        overdue: D(0),
+        notDue: D(0),
+        nearestDue: null as string | null,
       }
     const remaining = D(e.amount).minus(allocated.get(e.id) ?? 0)
     if (remaining.lt(0)) errors.push('Надмірне рознесення: ' + e.id)
-    if (e.polarity === 'DEBIT') row.debt = row.debt.plus(remaining)
-    else row.advance = row.advance.plus(remaining)
+    if (e.polarity === 'DEBIT') {
+      row.debt = row.debt.plus(remaining)
+      const due = e.dueDate?.toISOString().slice(0, 10)
+      if (due && due < through) row.overdue = row.overdue.plus(remaining)
+      else row.notDue = row.notDue.plus(remaining)
+      if (due && remaining.gt(0) && (!row.nearestDue || due < row.nearestDue)) row.nearestDue = due
+    } else row.advance = row.advance.plus(remaining)
     row.balance = row.balance.plus(D(e.amount).mul(e.polarity === 'DEBIT' ? 1 : -1))
     groups.set(id, row)
   }
@@ -79,6 +90,8 @@ export async function financialReport(tx: Tx, ctx: LedgerContext, raw: unknown) 
       debt: r.debt.toFixed(2),
       advance: r.advance.toFixed(2),
       balance: r.balance.toFixed(2),
+      overdue: r.overdue.toFixed(2),
+      notDue: r.notDue.toFixed(2),
     }))
   return {
     through,

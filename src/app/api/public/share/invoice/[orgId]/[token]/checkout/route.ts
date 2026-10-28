@@ -1,3 +1,5 @@
+import { readLedgerCustomerTotals } from '@/features/stock-ledger/Lib/customerReadModel'
+import { D } from '@/features/stock-ledger/Lib/amounts'
 import { NextResponse } from 'next/server'
 import { workshopCurrencySettings } from '@/lib/workshop-currency'
 import { z } from 'zod'
@@ -84,13 +86,30 @@ export async function POST(
       record.totalAmount > 0 ? record.totalAmount : computedTotal > 0 ? computedTotal : record.cost
     const paidFromPayments = record.payments.reduce((sum, p) => sum + p.amount, 0)
     const totalPaid = record.manuallyPaid ? displayTotal : paidFromPayments
-    const balanceDue = displayTotal - totalPaid
+    const ledgerBalance =
+      record.financeAccountingMode === 'LEDGER'
+        ? (
+            await readLedgerCustomerTotals(
+              db as unknown as import('@/features/stock-ledger/Lib/transaction').LedgerDB,
+              orgId,
+              [record.id]
+            )
+          ).get(record.id)
+        : undefined
+    if (record.financeAccountingMode === 'LEDGER' && !ledgerBalance)
+      return NextResponse.json({ error: 'Invoice has not been issued yet' }, { status: 409 })
+    const balanceDue = ledgerBalance ? Number(ledgerBalance.debt) : displayTotal - totalPaid
 
     if (balanceDue <= 0) {
       return NextResponse.json({ error: 'Invoice is already paid in full' }, { status: 400 })
     }
 
-    if (amount < 0.01 || amount > balanceDue + 0.01) {
+    if (
+      amount < 0.01 ||
+      (ledgerBalance
+        ? D(String(amount)).decimalPlaces() > 2 || D(String(amount)).gt(ledgerBalance.debt)
+        : amount > balanceDue + 0.01)
+    ) {
       return NextResponse.json(
         { error: `Amount must be between 0.01 and ${balanceDue.toFixed(2)}` },
         { status: 400 }

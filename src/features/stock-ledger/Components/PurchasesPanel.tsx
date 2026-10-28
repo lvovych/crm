@@ -14,6 +14,9 @@ const labels: Record<string, string> = {
   CANCELLED: 'Залишок скасований',
 }
 export function PurchasesPanel() {
+  const [amending, setAmending] = useState<{ order: Order; line: Order['lines'][number] }>(),
+    [amendedQty, setAmendedQty] = useState(''),
+    [reason, setReason] = useState('')
   const [rows, setRows] = useState<Order[]>([]),
     [page, setPage] = useState(1),
     [revision, setRevision] = useState(0),
@@ -39,14 +42,20 @@ export function PurchasesPanel() {
     if (op === 'cancel' && !window.confirm('Скасувати непоставлений залишок цього замовлення?'))
       return
     setBusy(true)
-    const r = await purchaseOperation(op, {
-      documentId: row.id,
-      expectedVersion: row.version,
-      idempotencyKey: `${row.id}:${row.version}:${op}`,
-    })
-    setBusy(false)
-    if (!r.success) setError(r.error ?? 'Помилка')
-    else setRevision((v) => v + 1)
+    setError('')
+    try {
+      const r = await purchaseOperation(op, {
+        documentId: row.id,
+        expectedVersion: row.version,
+        idempotencyKey: `${row.id}:${row.version}:${op}`,
+      })
+      if (!r.success) setError(r.error ?? 'Помилка')
+      else setRevision((v) => v + 1)
+    } catch {
+      setError('Немає відповіді сервера. Повторіть той самий запит.')
+    } finally {
+      setBusy(false)
+    }
   }
   async function receive() {
     if (!selected) return
@@ -61,25 +70,30 @@ export function PurchasesPanel() {
         quantity: quantities[l.id],
         unitPrice: l.unitPrice,
       }))
-    const r = await saveReceipt({
-      idempotencyKey: key,
-      autoAllocatePurchase: true,
-      supplierId: selected.supplierId,
-      warehouseId: selected.warehouseId,
-      effectiveAt: date,
-      externalDate: date,
-      dueDate: date,
-      externalNumber: external,
-      lines,
-    })
-    setBusy(false)
-    if (!r.success) setError(r.error ?? 'Помилка')
-    else {
-      setSelected(undefined)
-      setRevision((v) => v + 1)
-      setError(
-        'Чернетку приходу створено. Відкрийте її у «Надходженнях», перевірте автоматичний розподіл між нарядами й проведіть.'
-      )
+    try {
+      const r = await saveReceipt({
+        idempotencyKey: key,
+        autoAllocatePurchase: true,
+        supplierId: selected.supplierId,
+        warehouseId: selected.warehouseId,
+        effectiveAt: date,
+        externalDate: date,
+        dueDate: date,
+        externalNumber: external,
+        lines,
+      })
+      if (!r.success) setError(r.error ?? 'Помилка')
+      else {
+        setSelected(undefined)
+        setRevision((v) => v + 1)
+        setError(
+          'Чернетку приходу створено. Відкрийте її у «Надходженнях», перевірте автоматичний розподіл між нарядами й проведіть.'
+        )
+      }
+    } catch {
+      setError('Немає відповіді сервера. Повторіть той самий запит.')
+    } finally {
+      setBusy(false)
     }
   }
   return (
@@ -106,6 +120,19 @@ export function PurchasesPanel() {
                 Замовлено: {l.ordered} · Отримано: {l.received}
               </span>
               <span>Скасовано: {l.cancelled}</span>
+              {['CONFIRMED', 'PARTIALLY_RECEIVED'].includes(o.status) && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setAmending({ order: o, line: l })
+                    setAmendedQty(l.ordered)
+                    setReason('')
+                    setKey(crypto.randomUUID())
+                  }}
+                >
+                  Змінити замовлену кількість
+                </Button>
+              )}
             </div>
           ))}
           <div className="flex flex-wrap gap-2">
@@ -150,6 +177,72 @@ export function PurchasesPanel() {
           Далі
         </Button>
       </div>
+      <Dialog
+        open={!!amending}
+        onOpenChange={(v) => {
+          if (!v && !busy) setAmending(undefined)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Зміна замовленої кількості</DialogTitle>
+          </DialogHeader>
+          <p>
+            {amending?.line.name} · Було {amending?.line.ordered}
+          </p>
+          <label>
+            Нова загальна кількість
+            <Input
+              inputMode="decimal"
+              value={amendedQty}
+              onChange={(e) => {
+                setAmendedQty(e.target.value.replace(',', '.'))
+                setKey(crypto.randomUUID())
+              }}
+            />
+          </label>
+          <label>
+            Причина зміни
+            <Input
+              value={reason}
+              onChange={(e) => {
+                setReason(e.target.value)
+                setKey(crypto.randomUUID())
+              }}
+            />
+          </label>
+          {error && <p role="alert">{error}</p>}
+          <Button
+            disabled={busy || reason.trim().length < 5}
+            onClick={async () => {
+              if (!amending) return
+              setBusy(true)
+              setError('')
+              try {
+                const r = await purchaseOperation('amend', {
+                  idempotencyKey: key,
+                  documentId: amending.order.id,
+                  expectedVersion: amending.order.version,
+                  lineId: amending.line.id,
+                  quantity: amendedQty,
+                  reason,
+                })
+                if (!r.success) setError(r.error ?? 'Помилка')
+                else {
+                  setAmending(undefined)
+                  setRevision((v) => v + 1)
+                }
+              } catch {
+                setError('Немає відповіді. Повторіть збереження.')
+              } finally {
+                setBusy(false)
+              }
+            }}
+          >
+            Зберегти зміну з аудитом
+          </Button>
+        </DialogContent>
+      </Dialog>
       <Dialog
         open={!!selected}
         onOpenChange={(v) => {

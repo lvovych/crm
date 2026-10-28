@@ -1,3 +1,4 @@
+import { CustomerLedger } from '@/features/stock-ledger/Components/CustomerLedger'
 import type { ReactNode } from 'react'
 import { PartsEditor } from '../service-edit/PartsEditor'
 import { LaborEditor } from '../service-edit/LaborEditor'
@@ -154,7 +155,7 @@ export function DetailsLeftColumn({
 
       <PartsEditor
         stockLedgerRecordId={record.stockLedgerEnabled ? record.id : undefined}
-        stockLedgerVersion={String(record.updatedAt ?? "")}
+        stockLedgerVersion={String(record.updatedAt ?? '')}
         pendingPart={pendingPart}
         onPendingPartConsumed={onPendingPartConsumed}
         locked={locked}
@@ -171,6 +172,7 @@ export function DetailsLeftColumn({
         markupAppliesToInventory={markupAppliesToInventory}
       />
       <LaborEditor
+        stockLedgerRecordId={record.stockLedgerEnabled ? record.id : undefined}
         quickAdd={quickLabor}
         technicians={boardTechnicians}
         primaryTechnicianId={record.technicianId}
@@ -221,21 +223,28 @@ export function DetailsLeftColumn({
         />
       )}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <PaymentsSection
-          payments={record.payments || []}
-          paymentStatus={formState.paymentStatus}
-          manuallyPaid={record.manuallyPaid}
-          totalPaid={formState.totalPaid}
-          displayTotal={formState.displayTotal}
-          balanceDue={formState.balanceDue}
-          currencyCode={currencyCode}
-          onCreatePayment={actions.handleCreatePayment}
-          onDeletePayment={actions.handleDeletePayment}
-          onTogglePaid={actions.handleTogglePaid}
-          paymentLoading={actions.paymentLoading}
-          deletingPayment={actions.deletingPayment}
-          extraAction={payCode}
-        />
+        {record.financeAccountingMode === 'LEDGER' ? (
+          <CustomerLedger
+            recordId={record.id}
+            customerId={record.customer?.id ?? record.vehicle?.customer?.id}
+          />
+        ) : (
+          <PaymentsSection
+            payments={record.payments || []}
+            paymentStatus={formState.paymentStatus}
+            manuallyPaid={record.manuallyPaid}
+            totalPaid={formState.totalPaid}
+            displayTotal={formState.displayTotal}
+            balanceDue={formState.balanceDue}
+            currencyCode={currencyCode}
+            onCreatePayment={actions.handleCreatePayment}
+            onDeletePayment={actions.handleDeletePayment}
+            onTogglePaid={actions.handleTogglePaid}
+            paymentLoading={actions.paymentLoading}
+            deletingPayment={actions.deletingPayment}
+            extraAction={payCode}
+          />
+        )}
         <InvoiceSummary
           hasPartItems={formState.partItems.length > 0}
           hasLaborItems={formState.laborItems.length > 0}

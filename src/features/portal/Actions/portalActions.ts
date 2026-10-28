@@ -1,4 +1,5 @@
 'use server'
+import { readLedgerCustomerTotals } from '@/features/stock-ledger/Lib/customerReadModel'
 
 import { workshopTimeZone } from '@/lib/workshop-timezone'
 import { toSafeWorkshopDate } from '@/lib/workshop-datetime'
@@ -138,13 +139,21 @@ export async function getPortalDashboard() {
         status: 'completed',
       },
       select: {
+        id: true,
+        financeAccountingMode: true,
         totalAmount: true,
         manuallyPaid: true,
         payments: { select: { amount: true } },
       },
     })
 
+    const totals = await readLedgerCustomerTotals(
+      db as unknown as import('@/features/stock-ledger/Lib/transaction').LedgerDB,
+      organizationId,
+      completedInvoices.map((i) => i.id)
+    )
     const openInvoiceCount = completedInvoices.filter((inv) => {
+      if (inv.financeAccountingMode === 'LEDGER') return Number(totals.get(inv.id)?.debt ?? 0) > 0
       if (inv.manuallyPaid) return false
       const paid = inv.payments.reduce((sum, p) => sum + p.amount, 0)
       return paid < inv.totalAmount
@@ -268,6 +277,7 @@ export async function getPortalInvoices() {
       },
       select: {
         id: true,
+        financeAccountingMode: true,
         title: true,
         invoiceNumber: true,
         status: true,
@@ -281,7 +291,12 @@ export async function getPortalInvoices() {
       },
       orderBy: [{ startDateTime: { sort: 'desc', nulls: 'last' } }, { serviceDate: 'desc' }],
     })
-    return invoices
+    const totals = await readLedgerCustomerTotals(
+      db as unknown as import('@/features/stock-ledger/Lib/transaction').LedgerDB,
+      organizationId,
+      invoices.map((i) => i.id)
+    )
+    return invoices.map((i) => ({ ...i, ledgerBalance: totals.get(i.id) }))
   })
 }
 

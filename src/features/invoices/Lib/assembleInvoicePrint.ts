@@ -19,6 +19,7 @@
  * the reader's translations.
  */
 
+import { readFinancialSnapshot } from '@/features/stock-ledger/Lib/financialSnapshot'
 import { resolveCurrencyCode, resolveCurrencyFormat } from '@/lib/currencies'
 import { readFile } from 'fs/promises'
 import { db } from '@/lib/db'
@@ -295,11 +296,34 @@ export function liveInvoiceSettings(settingsMap: Record<string, string>): Invoic
   }
 }
 
-function paymentSummaryOf(
+async function paymentSummaryOf(
   record: InvoiceRecordForPrint,
   dateFormat: string | undefined,
   timezone: string | undefined
-): PaymentSummary | undefined {
+): Promise<PaymentSummary | undefined> {
+  if (record.financeAccountingMode === 'LEDGER') {
+    const allocations = await db.settlementAllocation.findMany({
+      where: {
+        organizationId: record.organizationId!,
+        reversedAt: null,
+        debitEntry: { serviceRecordId: record.id },
+      },
+      include: { creditEntry: { include: { moneyTransaction: true, customerAdjustment: true } } },
+      orderBy: { effectiveAt: 'asc' },
+    })
+    if (!allocations.length) return undefined
+    const { D } = await import('@/features/stock-ledger/Lib/amounts')
+    return {
+      totalPaid: Number(allocations.reduce((s, a) => s.plus(a.amount), D(0)).toFixed(2)),
+      payments: allocations.map((a) => ({
+        amount: Number(a.amount.toFixed(2)),
+        date: formatDateForPdf(a.effectiveAt, dateFormat, timezone),
+        method: a.creditEntry.customerAdjustment
+          ? `Кредитове коригування ${a.creditEntry.customerAdjustment.number}`
+          : (a.creditEntry.moneyTransaction?.method ?? 'Зарахування авансу'),
+      })),
+    }
+  }
   if (record.payments.length === 0 && !record.manuallyPaid) return undefined
   const paidFromPayments = record.payments.reduce((sum, p) => sum + p.amount, 0)
   const effectiveTotal = record.totalAmount > 0 ? record.totalAmount : record.cost
@@ -349,6 +373,48 @@ export async function assembleInvoicePrint(
   const record = await loadRecord(recordId)
   if (!record?.organizationId) return null
   const organizationId = record.organizationId
+  const ledgerSnapshot =
+    record.financeAccountingMode === 'LEDGER'
+      ? readFinancialSnapshot(record.ledgerFinancialSnapshot)
+      : null
+  if (ledgerSnapshot) {
+    record.totalAmount = Number(ledgerSnapshot.total)
+    record.subtotal = Number(ledgerSnapshot.subtotal)
+    record.taxAmount = Number(ledgerSnapshot.taxAmount)
+    record.taxRate = Number(ledgerSnapshot.taxRate)
+    record.taxInclusive = ledgerSnapshot.taxInclusive
+    record.discountType = ledgerSnapshot.discountType
+    record.discountValue = Number(ledgerSnapshot.discountValue)
+    record.discountAmount = Number(ledgerSnapshot.discountAmount)
+    record.partItems = ledgerSnapshot.parts.map((p) => {
+      const current = record.partItems.find((row) => row.id === p.id)
+      if (!current) throw new Error('Позицію фінансового знімка не знайдено')
+      return {
+        ...current,
+        ...p,
+        quantity: Number(p.quantity),
+        unitPrice: Number(p.unitPrice),
+        total: Number(p.total),
+        discountValue: Number(p.discountValue),
+      }
+    })
+    record.laborItems = ledgerSnapshot.labor.map((l) => {
+      const current = record.laborItems.find((row) => row.id === l.id)
+      if (!current) throw new Error('Роботу фінансового знімка не знайдено')
+      return {
+        ...current,
+        ...l,
+        hours: Number(l.hours),
+        rate: Number(l.rate),
+        total: Number(l.total),
+      }
+    })
+    record.customer = {
+      ...ledgerSnapshot.customer,
+      invoiceDesignId: record.customer?.invoiceDesignId ?? null,
+    }
+    if (record.vehicle) record.vehicle.customer = record.customer
+  }
 
   const [settings, org] = await Promise.all([
     db.appSetting.findMany({ where: { organizationId }, select: { key: true, value: true } }),
@@ -363,6 +429,7 @@ export async function assembleInvoicePrint(
   const frozen: IssuedInvoiceData | null =
     mode === 'auto' && rendersFromIssue(record) ? readIssuedInvoiceData(record.issuedData) : null
 
+  if (frozen && ledgerSnapshot) frozen.customer = ledgerSnapshot.customer
   if (frozen) return assembleFrozen(record, organizationId, org, settingsMap, frozen)
   return assembleLive(record, organizationId, org, settingsMap)
 }
@@ -438,7 +505,11 @@ async function assembleLive(
     layoutConfig: template.layoutConfig!,
     logoDataUri,
     signer: { name: record.createdBy?.name ?? '', dataUri: signatureDataUri },
-    paymentSummary: paymentSummaryOf(record, invoiceSettings.dateFormat, invoiceSettings.timezone),
+    paymentSummary: await paymentSummaryOf(
+      record,
+      invoiceSettings.dateFormat,
+      invoiceSettings.timezone
+    ),
     designSource,
     labelSettings: {
       'workshop.serviceType': serviceType,
@@ -449,13 +520,13 @@ async function assembleLive(
   }
 }
 
-function assembleFrozen(
+async function assembleFrozen(
   record: InvoiceRecordForPrint,
   organizationId: string,
   org: InvoicePrintAssembly['org'],
   settingsMap: Record<string, string>,
   frozen: IssuedInvoiceData
-): InvoicePrintAssembly {
+): Promise<InvoicePrintAssembly> {
   const snapshot = record.issuedDesignSnapshot
   // A snapshot that cannot be read falls back to the live look rather than
   // to nothing: the words on the sheet are still the frozen ones.
@@ -521,7 +592,11 @@ function assembleFrozen(
         ? assetDataUri(record.issuedSignatureSnapshot)
         : undefined,
     },
-    paymentSummary: paymentSummaryOf(record, invoiceSettings.dateFormat, invoiceSettings.timezone),
+    paymentSummary: await paymentSummaryOf(
+      record,
+      invoiceSettings.dateFormat,
+      invoiceSettings.timezone
+    ),
     designSource,
     labelSettings: {
       'workshop.serviceType': serviceType,

@@ -60,6 +60,17 @@ model Brand {
 }
 
 model InventoryPart {
+  /// SQL-generated search projections. Application writes never supply these fields.
+  ledgerArticleKey String? @default(dbgenerated())
+  ledgerSearchText String? @default(dbgenerated())
+  unitId String?
+  measureUnit UnitOfMeasure? @relation(fields:[organizationId,unitId],references:[organizationId,id],onDelete:Restrict,onUpdate:Restrict)
+  locationId String?
+  warehouseLocation WarehouseLocation? @relation(fields:[organizationId,locationId],references:[organizationId,id],onDelete:Restrict,onUpdate:Restrict)
+  trackingMode String @default("STOCK")
+  supplierProducts SupplierProduct[]
+
+  ledgerCountLines LedgerStockCountLine[]
   purchaseOrderLine_inventoryPart PurchaseOrderLine[] @relation("PurchaseOrderLine_inventoryPart")
 
   stockDemand_inventoryPart StockDemand[] @relation("StockDemand_inventoryPart")

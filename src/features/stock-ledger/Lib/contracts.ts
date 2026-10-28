@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { lineSchema, moneyText, quantityText, decimalText } from './amounts'
+import { lineSchema, moneyText, quantityText, decimalText, D } from './amounts'
 export const dateText = z.iso.date().transform((v) => new Date(`${v}T00:00:00.000Z`))
 export const commandSchema = z.object({ idempotencyKey: z.string().min(16).max(100) })
 export const supplierSchema = commandSchema.extend({
@@ -20,6 +20,15 @@ export const accountSchema = commandSchema.extend({
   kind: z.enum(['CASH', 'BANK', 'CARD_CLEARING']).default('BANK'),
 })
 export const receiptSchema = commandSchema.extend({
+  additionalCost: decimalText.refine((v) => D(v).decimalPlaces() <= 2).default('0'),
+  costAllocationMethod: z.enum(['PROPORTIONAL', 'MANUAL']).default('PROPORTIONAL'),
+  manualCostAllocations: z.array(decimalText).optional(),
+  roundingAdjustment: z
+    .string()
+    .regex(/^-?0(?:\.0[01])?$/)
+    .default('0'),
+  roundingReason: z.string().max(2000).default(''),
+  sourceTotal: decimalText.optional(),
   autoAllocatePurchase: z.boolean().default(false),
   documentId: z.string().optional(),
   expectedVersion: z.number().int().positive().optional(),
@@ -153,9 +162,12 @@ export const subcontractSchema = commandSchema.extend({
     .array(
       z.object({
         serviceRecordId: z.string().min(1),
+        serviceLaborId: z.string().min(1).optional(),
         description: z.string().trim().min(1).max(1000),
         quantity: quantityText,
         unitCost: decimalText,
+        taxMode: z.enum(['NONE', 'INCLUSIVE', 'EXCLUSIVE']).default('NONE'),
+        taxRate: decimalText.default('0'),
       })
     )
     .min(1)

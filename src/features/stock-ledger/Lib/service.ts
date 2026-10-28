@@ -1,3 +1,5 @@
+import { assertProductQuantity } from './catalogs'
+import { distributeCost, receiptTotal } from './landedCost'
 import { randomUUID } from 'node:crypto'
 import { nextDocumentNumber } from './numbers'
 import {
@@ -72,102 +74,9 @@ export function createStockLedger(db: LedgerDB, ctx: LedgerContext) {
     },
     async saveReceiptDraft(raw: unknown) {
       const input = receiptSchema.parse(raw)
-      return ledgerCommand(db, ctx, 'receipt.save', input, async (tx) => {
-        const supplier = await tx.supplier.findFirst({
-          where: { ...org, id: input.supplierId, archivedAt: null },
-        })
-        const warehouse = await tx.warehouse.findFirst({
-          where: { ...org, id: input.warehouseId, archivedAt: null },
-        })
-        if (!supplier || !warehouse) throw new Error('Постачальник або склад не знайдені')
-        if (supplier.kind === 'SERVICES') throw new Error('Виберіть постачальника товарів')
-        const products = await tx.inventoryPart.findMany({
-          where: {
-            ...org,
-            id: { in: [...new Set(input.lines.map((l) => l.inventoryPartId))] },
-            isArchived: false,
-          },
-          include: { brand: true },
-        })
-        const productsById = new Map(products.map((p) => [p.id, p]))
-        const lines = []
-        for (const [index, line] of input.lines.entries()) {
-          const product = productsById.get(line.inventoryPartId)
-          if (!product) throw new Error('Товар не знайдений')
-          if (['pcs', 'шт', 'шт.'].includes(product.unit ?? 'pcs') && !D(line.quantity).isInteger())
-            throw new Error('Штучний товар потребує цілої кількості')
-          lines.push({
-            ...meta,
-            ...line,
-            ...calculateLine(line),
-            snapshotName: product.name,
-            snapshotBrand: product.brand.name,
-            snapshotArticle: product.partNumber,
-            snapshotUnit: product.unit ?? 'pcs',
-            sortOrder: index,
-          })
-        }
-        const totals = {
-          subtotal: lines.reduce((sum, l) => sum.plus(l.netAmount), D(0)),
-          taxAmount: lines.reduce((sum, l) => sum.plus(l.taxAmount), D(0)),
-          totalAmount: lines.reduce((sum, l) => sum.plus(l.totalAmount), D(0)),
-        }
-        const values = {
-          supplierId: input.supplierId,
-          targetWarehouseId: input.warehouseId,
-          effectiveAt: input.effectiveAt,
-          externalNumber: input.externalNumber.normalize('NFKC').toLocaleUpperCase('uk'),
-          externalDate: input.externalDate,
-          dueDate: input.dueDate,
-          note: input.note,
-          ...totals,
-        }
-        if (input.documentId) {
-          const doc = await tx.inventoryDocument.findFirst({
-            where: { ...org, id: input.documentId },
-          })
-          if (!doc) throw new Error('Документ не знайдений')
-          if (doc.status !== 'DRAFT' || doc.kind !== 'RECEIPT')
-            throw new Error('Проведений документ не можна змінювати')
-          if (doc.version !== input.expectedVersion)
-            throw new Error('Документ уже змінено. Оновіть сторінку')
-          if (
-            await tx.receiptDemandAllocation.count({
-              where: { ...org, receiptLine: { documentId: doc.id } },
-            })
-          )
-            throw new Error(
-              'Перед зміною рядків зніміть розподіл приходу між нарядами. Розподіл не видаляється автоматично.'
-            )
-          await tx.inventoryDocumentLine.deleteMany({ where: { ...org, documentId: doc.id } })
-          await tx.inventoryDocument.update({
-            where: { id: doc.id },
-            data: { ...values, version: { increment: 1 } },
-          })
-          await tx.inventoryDocumentLine.createMany({
-            data: lines.map((l) => ({ ...l, documentId: doc.id })),
-          })
-          return {
-            id: doc.id,
-            version: doc.version + 1,
-            status: 'DRAFT',
-            total: totals.totalAmount.toFixed(2),
-          }
-        }
-        const doc = await tx.inventoryDocument.create({
-          data: {
-            ...meta,
-            ...values,
-            number: await nextDocumentNumber(tx, ctx, 'RC', input.effectiveAt),
-            kind: 'RECEIPT',
-          },
-        })
-        await tx.inventoryDocumentLine.createMany({
-          data: lines.map((l) => ({ ...l, documentId: doc.id })),
-        })
-        if (input.autoAllocatePurchase) await autoAllocatePurchaseReceipt(tx, ctx, doc.id)
-        return { id: doc.id, version: 1, status: 'DRAFT', total: totals.totalAmount.toFixed(2) }
-      })
+      return ledgerCommand(db, ctx, 'receipt.save', input, (tx) =>
+        saveReceiptDraftTx(tx, ctx, input)
+      )
     },
     async postReceipt(raw: unknown) {
       const input = postSchema.parse(raw)
@@ -193,13 +102,31 @@ export function createStockLedger(db: LedgerDB, ctx: LedgerContext) {
           where: { ...org, id: doc.targetWarehouseId, archivedAt: null },
         })
         if (!supplier || !warehouse) throw new Error('Постачальник або склад архівовані')
+        const products = await tx.inventoryPart.findMany({
+          where: {
+            ...org,
+            id: { in: doc.inventoryDocumentLine_document.map((l) => l.inventoryPartId) },
+            isArchived: false,
+          },
+        })
+        const byId = new Map(products.map((p) => [p.id, p]))
+        for (const line of doc.inventoryDocumentLine_document) {
+          const product = byId.get(line.inventoryPartId)
+          if (!product) throw new Error('Товар архівований або не знайдений')
+          if ((product.unit ?? 'pcs') !== line.snapshotUnit)
+            throw new Error('Одиниця товару змінилася. Оновіть чернетку приходу.')
+          await assertProductQuantity(tx, ctx, product, line.quantity.toString())
+        }
         const lots = doc.inventoryDocumentLine_document.map((line) => ({
           id: randomUUID(),
           ...meta,
           inventoryPartId: line.inventoryPartId,
           sourceLineId: line.id,
           acquiredAt: doc.effectiveAt,
-          unitCost: line.netAmount.div(line.quantity).toDecimalPlaces(6),
+          unitCost: line.netAmount
+            .plus(line.additionalCostAmount)
+            .div(line.quantity)
+            .toDecimalPlaces(6),
         }))
         await tx.stockLot.createMany({ data: lots })
         await tx.stockLotBalance.createMany({
@@ -219,7 +146,7 @@ export function createStockLedger(db: LedgerDB, ctx: LedgerContext) {
               warehouseId: warehouse.id,
               documentLineId: line.id,
               quantityDelta: line.quantity,
-              costAmountDelta: line.netAmount,
+              costAmountDelta: line.netAmount.plus(line.additionalCostAmount),
               effectiveAt: doc.effectiveAt,
               operationKey: 'receipt:' + line.id,
             }
@@ -258,51 +185,9 @@ export function createStockLedger(db: LedgerDB, ctx: LedgerContext) {
     },
     async postMoneyTransaction(raw: unknown) {
       const input = paymentSchema.parse(raw)
-      return ledgerCommand(db, ctx, 'payment.post', input, async (tx) => {
-        await assertPeriod(tx, ctx, input.effectiveAt, false)
-        const party = await tx.settlementParty.findFirst({ where: { ...org, id: input.partyId } })
-        const account = await tx.cashAccount.findFirst({
-          where: { ...org, id: input.accountId, archivedAt: null },
-        })
-        if (!party || !account) throw new Error('Контрагент або рахунок не знайдені')
-        const payment = await tx.moneyTransaction.create({
-          data: {
-            ...meta,
-            partyId: party.id,
-            accountId: account.id,
-            direction: input.direction,
-            amount: input.amount,
-            effectiveAt: input.effectiveAt,
-            method: input.method,
-            note: input.note,
-          },
-        })
-        await tx.cashLedgerEntry.create({
-          data: {
-            ...meta,
-            accountId: account.id,
-            moneyTransactionId: payment.id,
-            amountDelta: D(input.amount).mul(input.direction === 'IN' ? 1 : -1),
-            effectiveAt: input.effectiveAt,
-            operationKey: 'payment:' + payment.id,
-          },
-        })
-        const isCredit =
-          party.kind === 'SUPPLIER' ? input.direction === 'OUT' : input.direction === 'IN'
-        const entry = await tx.settlementEntry.create({
-          data: {
-            ...meta,
-            partyId: party.id,
-            side: party.kind === 'SUPPLIER' ? 'AP' : 'AR',
-            polarity: isCredit ? 'CREDIT' : 'DEBIT',
-            amount: input.amount,
-            effectiveAt: input.effectiveAt,
-            moneyTransactionId: payment.id,
-            operationKey: 'payment:' + payment.id,
-          },
-        })
-        return { id: payment.id, entryId: entry.id, amount: input.amount }
-      })
+      return ledgerCommand(db, ctx, 'payment.post', input, (tx) =>
+        postMoneyTransactionTx(tx, ctx, input)
+      )
     },
     async allocateSettlement(raw: unknown) {
       const input = allocationSchema.parse(raw)
@@ -353,4 +238,186 @@ export async function allocated(tx: Tx, ctx: LedgerContext, id: string, polarity
     _sum: { amount: true },
   })
   return sum._sum.amount ?? D(0)
+}
+
+/** Caller must hold the organization's ledger transaction lock. */
+export async function saveReceiptDraftTx(
+  tx: Tx,
+  ctx: LedgerContext,
+  input: ReturnType<typeof receiptSchema.parse>
+) {
+  const org = { organizationId: ctx.organizationId },
+    meta = metadata(ctx)
+
+  const supplier = await tx.supplier.findFirst({
+    where: { ...org, id: input.supplierId, archivedAt: null },
+  })
+  const warehouse = await tx.warehouse.findFirst({
+    where: { ...org, id: input.warehouseId, archivedAt: null },
+  })
+  if (!supplier || !warehouse) throw new Error('Постачальник або склад не знайдені')
+  if (supplier.kind === 'SERVICES') throw new Error('Виберіть постачальника товарів')
+  const products = await tx.inventoryPart.findMany({
+    where: {
+      ...org,
+      id: { in: [...new Set(input.lines.map((l) => l.inventoryPartId))] },
+      isArchived: false,
+    },
+    include: { brand: true },
+  })
+  const productsById = new Map(products.map((p) => [p.id, p]))
+  const lines = []
+  for (const [index, line] of input.lines.entries()) {
+    const product = productsById.get(line.inventoryPartId)
+    if (!product) throw new Error('Товар не знайдений')
+    await assertProductQuantity(tx, ctx, product, line.quantity)
+    lines.push({
+      ...meta,
+      ...line,
+      ...calculateLine(line),
+      snapshotName: product.name,
+      snapshotBrand: product.brand.name,
+      snapshotArticle: product.partNumber,
+      snapshotUnit: product.unit ?? 'pcs',
+      sortOrder: index,
+    })
+  }
+  if (input.costAllocationMethod === 'MANUAL' && !input.manualCostAllocations)
+    throw new Error('Вкажіть ручний розподіл витрат')
+  const costShares = distributeCost(
+    input.additionalCost,
+    lines.map((l) => l.netAmount.toString()),
+    input.costAllocationMethod === 'MANUAL' ? input.manualCostAllocations : undefined
+  )
+  const valuedLines = lines.map((l, i) => ({ ...l, additionalCostAmount: costShares[i] }))
+  const totals = {
+    subtotal: lines.reduce((sum, l) => sum.plus(l.netAmount), D(0)),
+    taxAmount: lines.reduce((sum, l) => sum.plus(l.taxAmount), D(0)),
+    totalAmount: receiptTotal(
+      lines,
+      input.additionalCost,
+      input.roundingAdjustment,
+      input.roundingReason,
+      input.sourceTotal
+    ),
+  }
+  const values = {
+    additionalCost: input.additionalCost,
+    roundingAdjustment: input.roundingAdjustment,
+    roundingReason: input.roundingReason,
+    sourceTotal: input.sourceTotal ?? null,
+    costAllocationMethod: input.costAllocationMethod,
+    supplierId: input.supplierId,
+    targetWarehouseId: input.warehouseId,
+    effectiveAt: input.effectiveAt,
+    externalNumber: input.externalNumber.normalize('NFKC').toLocaleUpperCase('uk'),
+    externalDate: input.externalDate,
+    dueDate: input.dueDate,
+    note: input.note,
+    ...totals,
+  }
+  if (input.documentId) {
+    const doc = await tx.inventoryDocument.findFirst({
+      where: { ...org, id: input.documentId },
+    })
+    if (!doc) throw new Error('Документ не знайдений')
+    if (doc.status !== 'DRAFT' || doc.kind !== 'RECEIPT')
+      throw new Error('Проведений документ не можна змінювати')
+    if (doc.version !== input.expectedVersion)
+      throw new Error('Документ уже змінено. Оновіть сторінку')
+    if (
+      await tx.receiptDemandAllocation.count({
+        where: { ...org, receiptLine: { documentId: doc.id } },
+      })
+    )
+      throw new Error(
+        'Перед зміною рядків зніміть розподіл приходу між нарядами. Розподіл не видаляється автоматично.'
+      )
+    await tx.inventoryDocumentLine.deleteMany({ where: { ...org, documentId: doc.id } })
+    await tx.inventoryDocument.update({
+      where: { id: doc.id },
+      data: { ...values, version: { increment: 1 } },
+    })
+    await tx.inventoryDocumentLine.createMany({
+      data: valuedLines.map((l) => ({ ...l, documentId: doc.id })),
+    })
+    return {
+      id: doc.id,
+      version: doc.version + 1,
+      status: 'DRAFT',
+      total: totals.totalAmount.toFixed(2),
+    }
+  }
+  const doc = await tx.inventoryDocument.create({
+    data: {
+      ...meta,
+      ...values,
+      number: await nextDocumentNumber(tx, ctx, 'RC', input.effectiveAt),
+      kind: 'RECEIPT',
+    },
+  })
+  await tx.inventoryDocumentLine.createMany({
+    data: valuedLines.map((l) => ({ ...l, documentId: doc.id })),
+  })
+  if (input.autoAllocatePurchase) await autoAllocatePurchaseReceipt(tx, ctx, doc.id)
+  return { id: doc.id, version: 1, status: 'DRAFT', total: totals.totalAmount.toFixed(2) }
+}
+
+/** Caller owns the ledger lock; draftId was checked for status and version in that transaction. */
+export async function postMoneyTransactionTx(
+  tx: Tx,
+  ctx: LedgerContext,
+  input: ReturnType<typeof paymentSchema.parse>,
+  draftId?: string
+) {
+  const org = { organizationId: ctx.organizationId },
+    meta = metadata(ctx)
+
+  await assertPeriod(tx, ctx, input.effectiveAt, false)
+  const party = await tx.settlementParty.findFirst({ where: { ...org, id: input.partyId } })
+  const account = await tx.cashAccount.findFirst({
+    where: { ...org, id: input.accountId, archivedAt: null },
+  })
+  if (!party || !account) throw new Error('Контрагент або рахунок не знайдені')
+  const payment = draftId
+    ? await tx.moneyTransaction.update({
+        where: { id: draftId },
+        data: { status: 'POSTED', version: { increment: 1 } },
+      })
+    : await tx.moneyTransaction.create({
+        data: {
+          ...meta,
+          partyId: party.id,
+          accountId: account.id,
+          direction: input.direction,
+          amount: input.amount,
+          effectiveAt: input.effectiveAt,
+          method: input.method,
+          note: input.note,
+        },
+      })
+  await tx.cashLedgerEntry.create({
+    data: {
+      ...meta,
+      accountId: account.id,
+      moneyTransactionId: payment.id,
+      amountDelta: D(input.amount).mul(input.direction === 'IN' ? 1 : -1),
+      effectiveAt: input.effectiveAt,
+      operationKey: 'payment:' + payment.id,
+    },
+  })
+  const isCredit = party.kind === 'SUPPLIER' ? input.direction === 'OUT' : input.direction === 'IN'
+  const entry = await tx.settlementEntry.create({
+    data: {
+      ...meta,
+      partyId: party.id,
+      side: party.kind === 'SUPPLIER' ? 'AP' : 'AR',
+      polarity: isCredit ? 'CREDIT' : 'DEBIT',
+      amount: input.amount,
+      effectiveAt: input.effectiveAt,
+      moneyTransactionId: payment.id,
+      operationKey: 'payment:' + payment.id,
+    },
+  })
+  return { id: payment.id, entryId: entry.id, amount: input.amount }
 }

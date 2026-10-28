@@ -63,7 +63,7 @@ export async function ledgerCommand<T extends Prisma.InputJsonObject>(
         {
           isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
           maxWait: 10000,
-          timeout: 20000,
+          timeout: scope === 'migration.apply' ? 120000 : 20000,
         }
       )
     } catch (error) {

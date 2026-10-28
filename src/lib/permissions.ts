@@ -4,6 +4,12 @@ export enum PermissionAction {
   UPDATE = 'update',
   DELETE = 'delete',
   MANAGE = 'manage',
+  POST = 'post',
+  RESERVE = 'reserve',
+  ISSUE = 'issue',
+  ADJUST = 'adjust',
+  ALLOCATE = 'allocate',
+  REVERSE = 'reverse',
 }
 
 export enum PermissionSubject {
@@ -43,19 +49,35 @@ export type PermissionGroup = {
 }
 
 export const permissionGroups: PermissionGroup[] = [
-  { name: 'Stock ledger', subject: PermissionSubject.STOCK_LEDGER, permissions: [
-    { action: PermissionAction.READ, label: 'View stock documents' },
-    { action: PermissionAction.CREATE, label: 'Save drafts' },
-    { action: PermissionAction.MANAGE, label: 'Post stock documents' },
-  ] },
-  { name: 'Purchase costs', subject: PermissionSubject.STOCK_COST, permissions: [
-    { action: PermissionAction.READ, label: 'View purchase costs' },
-  ] },
-  { name: 'Supplier settlements', subject: PermissionSubject.SUPPLIER_FINANCE, permissions: [
-    { action: PermissionAction.READ, label: 'View balances' },
-    { action: PermissionAction.CREATE, label: 'Register payments' },
-    { action: PermissionAction.MANAGE, label: 'Allocate payments' },
-  ] },
+  {
+    name: 'Stock ledger',
+    subject: PermissionSubject.STOCK_LEDGER,
+    permissions: [
+      { action: PermissionAction.READ, label: 'View stock documents' },
+      { action: PermissionAction.CREATE, label: 'Save drafts' },
+      { action: PermissionAction.POST, label: 'Проводити надходження' },
+      { action: PermissionAction.RESERVE, label: 'Резервувати та знімати резерв' },
+      { action: PermissionAction.ISSUE, label: 'Видавати, повертати й переміщувати' },
+      { action: PermissionAction.ADJUST, label: 'Проводити інвентаризацію' },
+      { action: PermissionAction.REVERSE, label: 'Сторнувати складські документи' },
+    ],
+  },
+  {
+    name: 'Purchase costs',
+    subject: PermissionSubject.STOCK_COST,
+    permissions: [{ action: PermissionAction.READ, label: 'View purchase costs' }],
+  },
+  {
+    name: 'Supplier settlements',
+    subject: PermissionSubject.SUPPLIER_FINANCE,
+    permissions: [
+      { action: PermissionAction.READ, label: 'View balances' },
+      { action: PermissionAction.CREATE, label: 'Чернетки оплат' },
+      { action: PermissionAction.POST, label: 'Проводити оплати й послуги' },
+      { action: PermissionAction.ALLOCATE, label: 'Розносити оплати' },
+      { action: PermissionAction.REVERSE, label: 'Сторнувати оплати' },
+    ],
+  },
   {
     name: 'Dashboard',
     subject: PermissionSubject.DASHBOARD,

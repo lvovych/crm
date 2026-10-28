@@ -28,6 +28,10 @@ vi.mock('@/lib/realtime/actor.server', () => ({
 }))
 import {
   getLedgerDocument,
+  stockOperation,
+  allocateSupplierPayment,
+  postSupplierPayment,
+  stockCountCommand,
   getFinancialReport,
   getLedgerAdministration,
   updateLedgerDirectory,
@@ -98,6 +102,38 @@ it('stock-only readers cannot inspect financial reports or administer directorie
   expect((await getLedgerAdministration()).success).toBe(false)
   expect((await updateLedgerDirectory('supplier', {})).success).toBe(false)
   expect((await closeAccountingPeriod({})).success).toBe(false)
+  expect(mocks.transaction).not.toHaveBeenCalled()
+  quiet.mockRestore()
+})
+
+it('separates reserve, issue, post, adjustment and finance allocation rights', async () => {
+  const quiet = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+  mocks.member.mockResolvedValue({
+    organizationId: 'org',
+    role: 'member',
+    customRole: {
+      isAdmin: false,
+      permissions: [
+        { action: 'read', subject: 'stock_ledger' },
+        { action: 'reserve', subject: 'stock_ledger' },
+      ],
+    },
+  })
+  expect((await stockOperation('issue', {})).forbidden).toBe(true)
+  expect((await postReceipt({})).forbidden).toBe(true)
+  expect((await stockCountCommand('start', {})).forbidden).toBe(true)
+  // Valid reserve role reaches validation, without a purchase-cost permission.
+  expect((await stockOperation('reserve', {})).forbidden).not.toBe(true)
+  mocks.member.mockResolvedValue({
+    organizationId: 'org',
+    role: 'member',
+    customRole: {
+      isAdmin: false,
+      permissions: [{ action: 'allocate', subject: 'supplier_finance' }],
+    },
+  })
+  expect((await postSupplierPayment({})).forbidden).toBe(true)
+  expect((await allocateSupplierPayment({})).forbidden).not.toBe(true)
   expect(mocks.transaction).not.toHaveBeenCalled()
   quiet.mockRestore()
 })

@@ -1,4 +1,6 @@
 'use server'
+import { newRecordStockMode } from '@/features/stock-ledger/Lib/cutover'
+import { catalogQuantities } from '@/features/stock-ledger/Lib/catalogReadModel'
 
 import { assertSelectableBrand } from '../Lib/brands.server'
 import { db } from '@/lib/db'
@@ -18,6 +20,26 @@ import { PermissionAction, PermissionSubject } from '@/lib/permissions'
 import { normalizeBarcode, withBarcodeConflictMessage } from '../Lib/barcode'
 import { SETTING_KEYS } from '@/features/settings/Schema/settingsSchema'
 
+async function assertCatalogCostPermission(
+  userId: string,
+  isAdmin: boolean,
+  ledgerControlled: boolean
+) {
+  if (!ledgerControlled || isAdmin) return
+  const { getCachedMembership } = await import('@/lib/cached-session')
+  const { hasPermission } = await import('@/lib/permissions')
+  const member = await getCachedMembership(userId)
+  if (
+    !hasPermission(member?.customRole?.permissions ?? [], {
+      action: PermissionAction.READ,
+      subject: PermissionSubject.STOCK_COST,
+    })
+  )
+    throw new Error(
+      'Каталог містить закупівельні ціни. Перегляд залишків без цін доступний у розділі «Склад і постачальники».'
+    )
+}
+
 export async function getInventoryPartsPaginated(params: {
   page?: number
   pageSize?: number
@@ -29,7 +51,9 @@ export async function getInventoryPartsPaginated(params: {
   lowStock?: boolean
 }) {
   return withAuth(
-    async ({ userId, organizationId }) => {
+    async ({ userId, organizationId, isAdmin }) => {
+      const ledgerControlled = (await newRecordStockMode(db, organizationId)) === 'LEDGER'
+      await assertCatalogCostPermission(userId, isAdmin, ledgerControlled)
       const page = params.page || 1
       const pageSize = params.pageSize || 20
       const skip = (page - 1) * pageSize
@@ -76,7 +100,7 @@ export async function getInventoryPartsPaginated(params: {
         WHERE "organizationId" = ${organizationId}
           AND "isArchived" = false
           AND COALESCE(NULLIF("minQuantity", 0), ${lowStockDefault}) > 0
-          AND "quantity" <= COALESCE(NULLIF("minQuantity", 0), ${lowStockDefault})
+          AND (CASE WHEN ${ledgerControlled} THEN COALESCE((SELECT SUM(b."onHandQty") FROM "public"."stock_lot_balances" b JOIN "public"."stock_lots" l ON l.id=b."lotId" WHERE l."inventoryPartId"=inventory_parts.id AND b."organizationId"=${organizationId}),0) ELSE "quantity" END) <= COALESCE(NULLIF("minQuantity", 0), ${lowStockDefault})
       `
         where.id = { in: lowRows.map((r) => r.id) }
       }
@@ -99,7 +123,7 @@ export async function getInventoryPartsPaginated(params: {
       const [parts, total] = await Promise.all([
         db.inventoryPart.findMany({
           where,
-          orderBy: { [sortColumn]: dir },
+          orderBy: { [ledgerControlled && sortColumn === 'quantity' ? 'name' : sortColumn]: dir },
           skip,
           take: pageSize,
           include: { brand: true, gallery: { orderBy: { sortOrder: 'asc' } } },
@@ -107,8 +131,20 @@ export async function getInventoryPartsPaginated(params: {
         db.inventoryPart.count({ where }),
       ])
 
+      const quantities = ledgerControlled
+        ? await catalogQuantities(
+            db as unknown as import('@/features/stock-ledger/Lib/transaction').LedgerDB,
+            organizationId,
+            parts.map((p) => p.id)
+          )
+        : new Map<string, number>()
       return {
-        parts,
+        ledgerControlled,
+        parts: parts.map((p) => ({
+          ...p,
+          ledgerControlled,
+          quantity: ledgerControlled ? (quantities.get(p.id) ?? 0) : p.quantity,
+        })),
         total,
         page,
         pageSize,
@@ -125,13 +161,30 @@ export async function getInventoryPartsPaginated(params: {
 
 export async function getInventoryPart(partId: string) {
   return withAuth(
-    async ({ userId, organizationId }) => {
+    async ({ userId, organizationId, isAdmin }) => {
+      await assertCatalogCostPermission(
+        userId,
+        isAdmin,
+        (await newRecordStockMode(db, organizationId)) === 'LEDGER'
+      )
       const part = await db.inventoryPart.findFirst({
         where: { id: partId, organizationId },
         include: { brand: true, gallery: { orderBy: { sortOrder: 'asc' } } },
       })
       if (!part) throw new Error('Part not found')
-      return part
+      const ledgerControlled = (await newRecordStockMode(db, organizationId)) === 'LEDGER'
+      const quantities = ledgerControlled
+        ? await catalogQuantities(
+            db as unknown as import('@/features/stock-ledger/Lib/transaction').LedgerDB,
+            organizationId,
+            [part.id]
+          )
+        : new Map<string, number>()
+      return {
+        ...part,
+        ledgerControlled,
+        quantity: ledgerControlled ? (quantities.get(part.id) ?? 0) : part.quantity,
+      }
     },
     {
       requiredPermissions: [
@@ -145,6 +198,10 @@ export async function createInventoryPart(input: unknown) {
   return withAuth(
     async ({ userId, organizationId }) => {
       const data = createInventoryPartSchema.parse(input)
+      if ((await newRecordStockMode(db, organizationId)) === 'LEDGER' && data.quantity !== 0)
+        throw new Error(
+          'Створіть товар з нульовим залишком. Кількість додається через надходження або інвентаризацію.'
+        )
       await assertSelectableBrand(data.brandId)
       assertOwnUploads(data, organizationId)
       const { gallery, ...rest } = data
@@ -206,6 +263,7 @@ export async function updateInventoryPart(input: unknown) {
       const data = updateInventoryPartSchema.parse(input)
       assertOwnUploads(data, organizationId)
       const { id, gallery: galleryData, ...updateData } = data
+      if ((await newRecordStockMode(db, organizationId)) === 'LEDGER') delete updateData.quantity
 
       // The part has to be this workshop's before its gallery is touched: the
       // gallery rows are keyed by the part alone.
@@ -360,6 +418,8 @@ export async function adjustInventoryStock(input: unknown) {
   return withAuth(
     async ({ userId, organizationId }) => {
       const { id, adjustment } = adjustStockSchema.parse(input)
+      if ((await newRecordStockMode(db, organizationId)) === 'LEDGER')
+        throw new Error('Кількість змінюється через складські документи: Склад → Інвентаризація.')
       const part = await db.inventoryPart.findFirst({
         where: { id, organizationId },
       })
@@ -404,11 +464,16 @@ export async function getInventoryCategories() {
 
 export async function getInventoryPartsList() {
   return withAuth(
-    async ({ userId, organizationId }) => {
+    async ({ userId, organizationId, isAdmin }) => {
+      await assertCatalogCostPermission(
+        userId,
+        isAdmin,
+        (await newRecordStockMode(db, organizationId)) === 'LEDGER'
+      )
       // Include out-of-stock and backordered (negative) parts too — the picker
       // shows their stock state so a part can still be added to a work order
       // when depleted (which then correctly drives stock negative / backorder).
-      return db.inventoryPart.findMany({
+      const parts = await db.inventoryPart.findMany({
         where: { organizationId, isArchived: false },
         select: {
           id: true,
@@ -429,6 +494,13 @@ export async function getInventoryPartsList() {
         },
         orderBy: { name: 'asc' },
       })
+      if ((await newRecordStockMode(db, organizationId)) !== 'LEDGER') return parts
+      const quantities = await catalogQuantities(
+        db as unknown as import('@/features/stock-ledger/Lib/transaction').LedgerDB,
+        organizationId,
+        parts.map((p) => p.id)
+      )
+      return parts.map((p) => ({ ...p, quantity: quantities.get(p.id) ?? 0 }))
     },
     {
       requiredPermissions: [
@@ -506,6 +578,19 @@ export async function hasAnyReorderPoint() {
       })
       return configured > 0
     },
+    {
+      requiredPermissions: [
+        { action: PermissionAction.READ, subject: PermissionSubject.INVENTORY },
+      ],
+    }
+  )
+}
+
+export async function getInventoryAccountingMode() {
+  return withAuth(
+    async (ctx) => ({
+      ledgerControlled: (await newRecordStockMode(db, ctx.organizationId)) === 'LEDGER',
+    }),
     {
       requiredPermissions: [
         { action: PermissionAction.READ, subject: PermissionSubject.INVENTORY },

@@ -1,4 +1,5 @@
 'use client'
+import { getInventoryAccountingMode } from '../Actions/inventoryActions'
 
 import { interactiveRow } from '@/lib/interactive-row'
 import { useState, useRef, useCallback, useEffect } from 'react'
@@ -105,6 +106,13 @@ export function InventoryPartForm({
   categories = [],
   onViewImages,
 }: InventoryPartFormProps) {
+  const [ledgerControlled, setLedgerControlled] = useState(false)
+  useEffect(() => {
+    if (open)
+      getInventoryAccountingMode().then((r) =>
+        setLedgerControlled(r.data?.ledgerControlled ?? false)
+      )
+  }, [open])
   const router = useRouter()
   const modal = useGlassModal()
   const t = useTranslations('inventory')
@@ -760,13 +768,22 @@ export function InventoryPartForm({
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-5 sm:gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="quantity">{t('form.quantity')}</Label>
+                  {ledgerControlled && (
+                    <p className="text-sm text-muted-foreground">
+                      Залишок ведеться документами.{' '}
+                      <a className="underline" href="/stock-ledger?view=overview">
+                        Відкрити склад
+                      </a>
+                    </p>
+                  )}
                   <Input
                     id="quantity"
                     name="quantity"
                     type="number"
                     min="0"
                     step="any"
-                    defaultValue={part?.quantity ?? 1}
+                    disabled={ledgerControlled}
+                    defaultValue={ledgerControlled ? 0 : (part?.quantity ?? 1)}
                   />
                 </div>
                 <div className="space-y-2">
