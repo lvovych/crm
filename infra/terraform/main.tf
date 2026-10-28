@@ -16,7 +16,7 @@ resource "hcloud_firewall" "crm" {
     direction  = "in"
     protocol   = "tcp"
     port       = "22"
-    source_ips = var.admin_cidrs
+    source_ips = concat(var.admin_cidrs, var.deploy_runner_cidrs)
   }
 
   dynamic "rule" {
