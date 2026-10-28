@@ -266,6 +266,7 @@ export function LaborEditor({
         <tbody>
           {laborItems.map((l, i) => (
             <tr
+              data-testid="labor-row"
               key={l.id ?? i}
               className="border-b align-top hover:bg-muted/40"
               onDoubleClick={(event) => {
@@ -274,6 +275,7 @@ export function LaborEditor({
             >
               <td className="p-2">
                 <button
+                  data-testid="labor-name"
                   type="button"
                   className="min-h-11 w-full break-words text-left font-medium"
                   onClick={() => open(i, l)}
@@ -313,8 +315,9 @@ export function LaborEditor({
       </table>
       <div className="space-y-3 @[850px]:hidden">
         {laborItems.map((l, i) => (
-          <article key={l.id ?? i} className="rounded-lg border p-3">
+          <article data-testid="labor-row" key={l.id ?? i} className="rounded-lg border p-3">
             <button
+              data-testid="labor-name"
               type="button"
               className="min-h-11 w-full break-words text-left font-medium"
               onClick={() => open(i, l)}

@@ -1,3 +1,4 @@
+import { addPart, laborRows } from '../../support/work-order'
 import { test, expect, type Page } from '@playwright/test'
 
 /**
@@ -94,23 +95,13 @@ test.describe('quote to invoice', () => {
 
     // The labour the quote carried has to arrive with it, or the conversion has
     // quietly produced an empty job.
-    await expect(page.getByPlaceholder('Description *').first()).toHaveValue(/front brake pads/i)
+    await expect(laborRows(page).first()).toHaveText(/front brake pads/i)
   })
 
   test('parts added to the work order land in an invoice with a number', async ({ page }) => {
     await page.goto(workOrderUrl)
 
-    const name = page.getByPlaceholder('Name *').last()
-    await expect(async () => {
-      await page.getByRole('button', { name: 'Add Part' }).last().click()
-      await expect(name).toBeVisible({ timeout: 2_000 })
-    }).toPass({ timeout: 30_000 })
-    await name.fill(PART_NAME)
-
-    const row = rowOf(page, name)
-    const numbers = row.locator('input[type="number"]')
-    await numbers.nth(0).fill('1')
-    await numbers.nth(1).fill('450')
+    await addPart(page, { name: PART_NAME, quantity: 1, cost: 450 })
 
     await page.getByRole('button', { name: 'Save', exact: true }).click()
     await expect(page.getByText('Saved')).toBeVisible()

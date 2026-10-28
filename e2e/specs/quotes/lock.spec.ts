@@ -1,3 +1,4 @@
+import { partRows } from '../../support/work-order'
 import { expect, type Page, test } from '@playwright/test'
 import { settle } from '../../support/hydration'
 import { clearMailbox, waitForMail } from '../../support/mail'
@@ -56,7 +57,7 @@ async function convertToWorkOrder(page: Page, quoteUrl: string, partName: string
 
   await page.waitForURL(/\/vehicles\/[^/]+\/service\/[^/]+$/, { timeout: 60_000 })
   await settle(page)
-  await expect(page.getByPlaceholder('Name *').first()).toHaveValue(partName)
+  await expect(partRows(page).first()).toContainText(partName)
 
   // Back on the quote, it is marked converted and offers no second conversion.
   await page.goto(quoteUrl)

@@ -10,23 +10,70 @@
 - All commands below start from `infra/ansible`, unless stated otherwise.
 
 Application, PostgreSQL and Caddy images are pinned by digest.
-Application images are built by `.github/workflows/crm-image.yml`. Release by
-updating `crm_image` to the successful build's immutable digest in
-`group_vars/all/main.yml`. The application is not automatically upgraded on push.
-Keep registry authentication separate from the application secrets. Authenticate
-with a read-only GHCR credential before deployment and log out after pulling.
-Never place tokens in CLI arguments or Git. The initial deployment uses the
-operator's existing GitHub authentication temporarily for the pull.
+Production releases are made manually in GitHub; deployment is performed only by
+`.github/workflows/deploy-prod.yml` on `release: published`.
 
-```sh
-ansible-playbook --private-key ~/.ssh/id_rsa playbooks/deploy.yml \
-  -e @group_vars/all/vault.yml --vault-password-file ../.secrets/vault-password
-```
+### Release procedure
 
-Before deploying schema changes, run `systemctl start crm-backup` on the server
-and confirm success. Do not run deployment concurrently with backup/restore.
-Rollback to a previous image only if its schema is compatible; otherwise restore
-a matching recovery set. Never run demo seed scripts against production.
+1. Merge reviewed, tested changes into `main`.
+2. In GitHub → Releases → Draft a new release, choose **Target: main** and
+   create a **new** stable tag `vX.Y.Z` (for example `v1.2.40`).
+3. Write the release notes and click **Publish release**. Do not mark it as a
+   prerelease. A draft, bare tag push, ordinary main push or manual workflow
+   dispatch does not deploy.
+4. Follow **CRM release and production deploy** in Actions. It checks that the
+   tag resolves to the event commit, that the commit belongs to `origin/main`,
+   and that the release targets `main`. It checks SSH configuration, runs lint
+   and tests, builds native AMD64/ARM64 images and deploys the manifest digest.
+5. Deployment backs up the existing DB and files using `crm-backup.service`,
+   takes the maintenance lock, pulls the exact image and updates only the app
+   image in `/srv/crm/compose.yml`. Existing `.env`, DB and proxy settings are
+   retained. Compose health checks and public HTTPS must pass.
+
+Release tags must never be moved or reused. Publish a new version to retry a
+changed commit. Re-running a failed Actions run uses the same tagged source.
+No automatic database rollback is attempted on failure: migrations may already
+have run. Inspect the failure and recovery set before taking recovery action.
+For a code rollback, revert the relevant changes on main and publish a new
+release, after checking schema compatibility. Disaster recovery remains a
+separate operator procedure below.
+
+The digest in `group_vars/all/main.yml` is the bootstrap/recovery baseline, not
+an automatic selector for future releases. The active version is recorded on
+the server in `/srv/crm/deployed-release` and in the Actions summary. Do not run
+`playbooks/deploy.yml` as a routine release; it can restore the older baseline.
+
+### One-time GitHub setup (operator)
+
+Add these **environment secrets** in Settings → Environments → `production`:
+
+| Secret | Value |
+| --- | --- |
+| `CRM_DEPLOY_HOST` | Production SSH hostname or IPv4, without `https://` or a port |
+| `CRM_DEPLOY_SSH_KEY` | Dedicated private SSH key authorized for root on that host |
+| `CRM_DEPLOY_KNOWN_HOSTS` | OpenSSH known_hosts entry for that exact hostname/IP, verified through a trusted channel |
+
+Use a dedicated deployment key, never the developer's personal SSH key. The
+workflow uses port 22, strict host-key verification and root for the existing
+Docker/systemd maintenance commands. Do not paste secrets into release notes or
+workflow files. It does not need application passwords or an Ansible vault key;
+the existing server configuration is retained. GHCR pulls use the temporary
+Actions token with `packages: read`.
+
+**Network prerequisite:** the production firewall currently restricts SSH to
+administrator addresses. A GitHub-hosted runner must have an approved network
+path to SSH. Do not open SSH to the entire Internet to make the workflow work.
+Use a runner with an approved fixed egress IP (adjust the deploy job's
+`runs-on`), or an approved private network connection. Adding secrets alone does
+not bypass the firewall. This setup does not change server access or firewall.
+
+Limit the `production` environment to release tags `v*` and protect these tags
+from updates/deletion with a repository ruleset. Only authorized maintainers
+should be able to publish releases. Workflow validation also rejects malformed
+versions, draft/prerelease and commits that have not reached main.
+
+Before the first release, complete the SSH/network setup. No release or
+production deployment is performed as part of configuring these workflows.
 
 ## Access and credentials
 

@@ -9,7 +9,14 @@ import {
 } from '../../support/db'
 import { settle } from '../../support/hydration'
 import { addPartFromInventory, setPartQuantityField } from '../../support/inventory'
-import { newWorkOrder, partRows, saveWorkOrder, seededVehicleUrl } from '../../support/work-order'
+import {
+  applyLine,
+  deletePart,
+  newWorkOrder,
+  partRows,
+  saveWorkOrder,
+  seededVehicleUrl,
+} from '../../support/work-order'
 
 /**
  * A part fitted to a car leaves the shelf exactly once.
@@ -55,9 +62,10 @@ test.describe('a stocked part used on a job', () => {
     jobUrl = await newWorkOrder(page, vehicleUrl, `E2E stock ${stamp}`)
     jobId = jobUrl.split('/').pop() ?? ''
 
-    await addPartFromInventory(page, part.name, 3)
+    await addPartFromInventory(page, part.name, 3, false)
     // Nothing has moved yet: the editor is a draft until it is saved.
-    expect(await partQuantity(part.id), 'unsaved edits move no stock').toBe(opening)
+    expect(await partQuantity(part.id), 'unapplied draft moves no stock').toBe(opening)
+    await applyLine(page.getByRole('dialog', { name: 'Add Part', exact: true }))
 
     await saveWorkOrder(page)
 
@@ -86,16 +94,7 @@ test.describe('a stocked part used on a job', () => {
     await settle(page)
 
     // Three became five, so two more leave the shelf, not five.
-    await expect(async () => {
-      await setPartQuantityField(page, 5)
-      await expect(
-        partRows(page)
-          .first()
-          .locator('xpath=ancestor::*[.//input[@placeholder="Cost"]][1]')
-          .locator('input[type="number"]')
-          .first()
-      ).toHaveValue('5', { timeout: 2_000 })
-    }).toPass({ timeout: 30_000 })
+    await setPartQuantityField(page, 5)
     await saveWorkOrder(page)
 
     expect(await partQuantity(part.id)).toBe(opening - 5)
@@ -109,10 +108,7 @@ test.describe('a stocked part used on a job', () => {
     await page.goto(jobUrl)
     await settle(page)
 
-    await expect(async () => {
-      await page.getByRole('button', { name: 'Delete row' }).first().click()
-      await expect(partRows(page)).toHaveCount(0, { timeout: 2_000 })
-    }).toPass({ timeout: 30_000 })
+    await deletePart(page)
     await saveWorkOrder(page)
 
     expect(await partQuantity(part.id), 'the shelf is whole again').toBe(opening)
@@ -129,12 +125,12 @@ test.describe('a stocked part used on a job', () => {
     // A priced row with no name is refused, and the refusal has to happen
     // before anything is written: a payload that reached the server with the
     // nameless row dropped used to save the rest and take the stock with it.
-    await addPartFromInventory(page, part.name, 2)
-    await partRows(page).first().fill('')
-
-    await page.getByRole('button', { name: 'Save', exact: true }).click()
-    await expect(page.getByText('Rows without a part name are not saved.')).toBeVisible()
-    await expect(page.getByText('Saved', { exact: true })).toHaveCount(0)
+    await addPartFromInventory(page, part.name, 2, false)
+    const editor = page.getByRole('dialog', { name: 'Add Part', exact: true })
+    await editor.getByRole('textbox', { name: 'Name', exact: true }).fill('')
+    await editor.getByRole('button', { name: 'Apply', exact: true }).click()
+    await expect(editor.getByRole('alert')).toContainText('Check the name and numeric fields')
+    await expect(partRows(page)).toHaveCount(0)
 
     expect(await partQuantity(part.id), 'a refused save moves no stock').toBe(opening)
     expect(await stockMovements(part.id, jobId)).toHaveLength(3)
@@ -171,10 +167,7 @@ test.describe('using more than the shop has', () => {
     await page.keyboard.press('Escape')
 
     // Put it back: the same row removed restocks everything it took.
-    await expect(async () => {
-      await page.getByRole('button', { name: 'Delete row' }).first().click()
-      await expect(partRows(page)).toHaveCount(0, { timeout: 2_000 })
-    }).toPass({ timeout: 30_000 })
+    await deletePart(page)
     await saveWorkOrder(page)
     expect(await partQuantity(part.id)).toBe(opening)
   })

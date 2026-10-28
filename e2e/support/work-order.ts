@@ -4,10 +4,9 @@ import { settle } from './hydration'
 /**
  * Driving a work order through the browser the way a workshop does.
  *
- * Everything here reads visible English and the placeholders the editors
- * print; the suite pins the locale so both hold. Clicks that add a row are
- * retried until the row is there: a click that lands before React has
- * hydrated the page does nothing, and the editor gives no other sign.
+ * The suite pins the locale and uses accessible dialog fields. Wait for the
+ * current page to settle before counting rows or opening a new line editor;
+ * otherwise a navigation can make an existing list look temporarily empty.
  */
 
 /** The address of one seeded vehicle, found through the list's own search. */
@@ -55,34 +54,50 @@ export async function newWorkOrder(page: Page, vehicleUrl: string, title: string
   return page.url()
 }
 
-/** The editor row an input belongs to: the nearest ancestor that also holds the given input. */
-function rowContaining(field: Locator, siblingPlaceholder: string): Locator {
-  return field.locator(`xpath=ancestor::*[.//input[@placeholder="${siblingPlaceholder}"]][1]`)
-}
-
-/**
- * The part rows, in the order the editor lists them. One locator per row: the
- * page used to draw the whole editor twice, once per breakpoint, and every row
- * came back doubled with half of them impossible to type into.
- * `specs/work-orders/layout.spec.ts` is what keeps it to one.
- */
+/** Visible line names: the other responsive rendering must not count twice. */
 export function partRows(page: Page): Locator {
-  return page.getByPlaceholder('Name *')
+  return page.getByTestId('part-name').filter({ visible: true })
 }
-
-/** The labour rows, likewise. */
 export function laborRows(page: Page): Locator {
-  return page.getByPlaceholder('Description *')
+  return page.getByTestId('labor-name').filter({ visible: true })
 }
-
-/** The whole row a part field sits in, buttons and figures included. */
-export function partRowOf(nameField: Locator): Locator {
-  return rowContaining(nameField, 'Cost')
+export function partRowOf(name: Locator): Locator {
+  return name.locator('xpath=ancestor::*[@data-testid="part-row"][1]')
 }
-
-/** The whole row a labour field sits in. */
-export function laborRowOf(descriptionField: Locator): Locator {
-  return rowContaining(descriptionField, 'Hours')
+export function laborRowOf(name: Locator): Locator {
+  return name.locator('xpath=ancestor::*[@data-testid="labor-row"][1]')
+}
+/** The scheduling fields live in a collapsed details section. */
+export async function openSchedule(page: Page): Promise<void> {
+  const summary = page.locator('summary').filter({ hasText: 'Mechanic and scheduling' })
+  const section = summary.locator('..')
+  if ((await section.getAttribute('open')) === null) await summary.click()
+  await expect(section).toHaveAttribute('open', '')
+}
+export async function editPart(page: Page, index = 0): Promise<Locator> {
+  await partRows(page).nth(index).click()
+  const dialog = page.getByRole('dialog', { name: 'Edit part', exact: true })
+  await expect(dialog).toBeVisible()
+  return dialog
+}
+export async function editLabor(page: Page, index = 0): Promise<Locator> {
+  await laborRows(page).nth(index).click()
+  const dialog = page.getByRole('dialog', { name: 'Edit service', exact: true })
+  await expect(dialog).toBeVisible()
+  return dialog
+}
+export async function applyLine(dialog: Locator): Promise<void> {
+  await dialog.getByRole('button', { name: 'Apply', exact: true }).click()
+  await expect(dialog).toBeHidden()
+}
+export async function deletePart(page: Page, index = 0): Promise<void> {
+  await settle(page)
+  const before = await partRows(page).count()
+  const dialog = await editPart(page, index)
+  await dialog.getByRole('button', { name: 'Delete', exact: true }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Delete', exact: true }).click()
+  await expect(dialog).toBeHidden()
+  await expect(partRows(page)).toHaveCount(before - 1)
 }
 
 export interface PartInput {
@@ -94,39 +109,33 @@ export interface PartInput {
   unitPrice?: number
 }
 
-/**
- * Adds a part line. The number inputs sit in the order the editor prints
- * them: quantity, cost, markup, unit price.
- */
+/** Fill and apply the part dialog, then verify the new row exists. */
 export async function addPart(page: Page, part: PartInput): Promise<void> {
-  const rows = partRows(page)
-  // Counted first, and waited for: a click before hydration adds nothing, and
-  // a guard that only asked whether some name field was on screen would be
-  // satisfied by the rows already there and type over the last of them.
-  const before = await rows.count()
-  await expect(async () => {
-    // An empty list offers the button twice, in the toolbar and as the dashed
-    // row beneath it; once there are rows, only the toolbar one is named.
-    await page.getByRole('button', { name: 'Add Part' }).last().click()
-    await expect(rows).toHaveCount(before + 1, { timeout: 2_000 })
-  }).toPass({ timeout: 30_000 })
-
-  // The toolbar button puts the new row at the top of the list, which is
-  // where the workshop looks after clicking it; the dashed one appends, and
-  // on an empty list either way leaves the row it made as the only one.
-  const name = rows.first()
-  await name.fill(part.name)
-
-  const numbers = rowContaining(name, 'Cost').locator('input[type="number"]')
-  await numbers.nth(0).fill(String(part.quantity))
-  if (part.cost !== undefined) await numbers.nth(1).fill(String(part.cost))
-  if (part.markupPercent !== undefined) await numbers.nth(2).fill(String(part.markupPercent))
-  if (part.unitPrice !== undefined) await numbers.nth(3).fill(String(part.unitPrice))
+  await settle(page)
+  const before = await partRows(page).count()
+  await page.getByRole('button', { name: 'Add Part', exact: true }).last().click()
+  const dialog = page.getByRole('dialog', { name: 'Add Part', exact: true })
+  await dialog.getByRole('textbox', { name: 'Name', exact: true }).fill(part.name)
+  await dialog.getByLabel('Qty', { exact: true }).fill(String(part.quantity))
+  if (part.cost !== undefined || part.markupPercent !== undefined) {
+    await dialog.locator('summary').click()
+    if (part.cost !== undefined)
+      await dialog.getByLabel('Cost', { exact: true }).fill(String(part.cost))
+    if (part.markupPercent !== undefined)
+      await dialog.getByLabel('Markup %', { exact: true }).fill(String(part.markupPercent))
+  }
+  if (part.unitPrice !== undefined)
+    await dialog.getByLabel('Unit Price', { exact: true }).fill(String(part.unitPrice))
+  await applyLine(dialog)
+  await expect(partRows(page)).toHaveCount(before + 1)
 }
 
-/** What the editor worked out as the unit price of the part added last. */
 export async function lastPartUnitPrice(page: Page): Promise<string> {
-  return partRowOf(partRows(page).first()).locator('input[type="number"]').nth(3).inputValue()
+  const dialog = await editPart(page, (await partRows(page).count()) - 1)
+  const value = await dialog.getByLabel('Unit Price', { exact: true }).inputValue()
+  await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect(dialog).toBeHidden()
+  return value
 }
 
 export interface LaborInput {
@@ -135,22 +144,17 @@ export interface LaborInput {
   rate: number
 }
 
-/** Adds an hourly labour line: description, hours, rate. */
+/** Add an hourly line through the same editor used by the workshop. */
 export async function addLabor(page: Page, labor: LaborInput): Promise<void> {
-  const rows = laborRows(page)
-  const before = await rows.count()
-  await expect(async () => {
-    await page.getByRole('button', { name: 'Add Labor' }).last().click()
-    await expect(rows).toHaveCount(before + 1, { timeout: 2_000 })
-  }).toPass({ timeout: 30_000 })
-
-  // Added at the top, like a part.
-  const description = rows.first()
-  await description.fill(labor.description)
-
-  const numbers = rowContaining(description, 'Hours').locator('input[type="number"]')
-  await numbers.nth(0).fill(String(labor.hours))
-  await numbers.nth(1).fill(String(labor.rate))
+  await settle(page)
+  const before = await laborRows(page).count()
+  await page.getByRole('button', { name: 'Add Labor', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'Add Service', exact: true })
+  await dialog.getByRole('textbox', { name: 'Description', exact: true }).fill(labor.description)
+  await dialog.getByLabel('Hours', { exact: true }).fill(String(labor.hours))
+  await dialog.getByLabel('Price / rate', { exact: true }).fill(String(labor.rate))
+  await applyLine(dialog)
+  await expect(laborRows(page)).toHaveCount(before + 1)
 }
 
 /** Saves the work order and waits for the header to say so. */

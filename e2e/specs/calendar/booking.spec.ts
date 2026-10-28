@@ -1,7 +1,7 @@
 import { expect, type Page, test } from '@playwright/test'
 import { settle } from '../../support/hydration'
 import { setWorkshopClock } from '../../support/settings'
-import { saveWorkOrder, setTitle } from '../../support/work-order'
+import { openSchedule, saveWorkOrder, setTitle } from '../../support/work-order'
 
 /**
  * A booking keeps the time it was made at.
@@ -129,9 +129,10 @@ test.describe('booking a job from the calendar', () => {
 
     // The schedule card prints the start as a date and a 24-hour clock, and
     // the clock has to be the one the calendar offered.
-    await expect(page.getByText(new RegExp(offered.replace('.', '[:.]')))).toBeVisible({
-      timeout: 30_000,
-    })
+    await openSchedule(page)
+    await expect(
+      page.getByText('Start Time', { exact: true }).locator('..').getByRole('button')
+    ).toContainText(new RegExp(offered.replace('.', '[:.]')), { timeout: 30_000 })
 
     await setTitle(page, `E2E booking ${stamp}`)
     await saveWorkOrder(page)
@@ -142,7 +143,10 @@ test.describe('booking a job from the calendar', () => {
     await settle(page)
     // The round trip through the database and back out again, which is where a
     // wall clock gets converted twice and comes back wrong.
-    await expect(page.getByText(new RegExp(offered.replace('.', '[:.]')))).toBeVisible()
+    await openSchedule(page)
+    await expect(
+      page.getByText('Start Time', { exact: true }).locator('..').getByRole('button')
+    ).toContainText(new RegExp(offered.replace('.', '[:.]')))
   })
 
   test('and the calendar shows it where it put it', async ({ page }) => {
@@ -178,6 +182,9 @@ test.describe('booking a job from the calendar', () => {
     await page.goto(jobUrl)
     await settle(page)
     // And back again: the stored instant never moved.
-    await expect(page.getByText(new RegExp(offered.replace('.', '[:.]')))).toBeVisible()
+    await openSchedule(page)
+    await expect(
+      page.getByText('Start Time', { exact: true }).locator('..').getByRole('button')
+    ).toBeVisible()
   })
 })
