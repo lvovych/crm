@@ -35,3 +35,18 @@ variable "admin_cidrs" {
     error_message = "Provide at least one valid trusted CIDR; unrestricted /0 ranges are forbidden."
   }
 }
+
+variable "deploy_runner_cidrs" {
+  description = "Dedicated deployment runner egress IPv4 /32 or IPv6 /128; never GitHub-wide ranges."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for cidr in var.deploy_runner_cidrs : can(cidrhost(cidr, 0)) && (
+        endswith(cidr, "/32") && !strcontains(cidr, ":") || endswith(cidr, "/128") && strcontains(cidr, ":")
+      )
+    ])
+    error_message = "Each deployment runner must be a single host (/32 IPv4 or /128 IPv6)."
+  }
+}

@@ -74,7 +74,7 @@ jobs:
 
   deploy:
     needs: [validate, image]
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, crm-production-deploy]
     timeout-minutes: 15
     environment:
       name: production
@@ -87,6 +87,7 @@ jobs:
         with:
           ref: ${{ needs.validate.outputs.sha }}
           fetch-depth: 0
+          persist-credentials: false
       - name: Recheck tag and release before accessing production
         env:
           GH_TOKEN: ${{ github.token }}

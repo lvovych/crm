@@ -1,0 +1,2 @@
+ssh_key_name = "YOUR_EXISTING_ADMIN_KEY"
+admin_cidrs  = ["203.0.113.10/32"] # Replace with your administrator IP.
