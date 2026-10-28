@@ -1,231 +1,133 @@
-name: "[Prod] Deploy"
+name: CRM release and production deploy
 
 on:
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: "Version tag to deploy (e.g. v1.2.39). Leave blank to deploy the newest published release. 'latest' is refused."
-        required: false
-        default: ""
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: crm-production-release
+  cancel-in-progress: false
 
 jobs:
-  deploy:
-    runs-on: [self-hosted, Linux, X64, hetzner]
-
+  validate:
+    if: github.repository == 'lvovych/crm' && !github.event.release.prerelease
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+      sha: ${{ steps.release.outputs.sha }}
     steps:
-      - name: Resolve version tag
-        id: tag
-        run: |
-          TAG="${{ inputs.tag }}"
-          if [ -z "$TAG" ]; then
-            # Newest published release (drafts are excluded, so publishing the
-            # release in GitHub is the gate that makes it deployable).
-            TAG=$(curl -fsSL -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-              "https://api.github.com/repos/${{ github.repository }}/releases/latest" \
-              | grep -m1 '"tag_name"' | cut -d'"' -f4)
-            echo "Resolved newest published release: $TAG"
-          fi
-          if [ -z "$TAG" ] || [ "$TAG" = "latest" ]; then
-            echo "::error::No deployable version tag ('latest' is refused; rollback needs a named target)."
-            exit 1
-          fi
-          echo "value=$TAG" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - name: Fetch current main and tag refs
+        run: git fetch origin '+refs/heads/main:refs/remotes/origin/main' '+refs/tags/*:refs/tags/*'
+      - name: Validate release provenance
+        id: release
+        run: python3 scripts/release/validate.py
 
-      - name: Log in to GitHub Container Registry
-        run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
-      - name: Create deployment files
+  configuration:
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Require production SSH configuration before building
         env:
-          VIRTUAL_HOST: ${{ secrets.CLOUD_VIRTUAL_HOST }}
-          DATABASE_URL: ${{ secrets.CLOUD_DATABASE_URL }}
-          BETTER_AUTH_SECRET: ${{ secrets.CLOUD_BETTER_AUTH_SECRET }}
-          APP_URL: ${{ secrets.CLOUD_APP_URL }}
-          # Plans are sold on torqvoice.com. This secret is the one torqvoice.com
-          # holds as TORQVOICE_SERVICE_SECRET; the app signs checkout handoffs
-          # with it and authenticates billing calls with it. The Stripe keys
-          # themselves live in this app's database and are edited from the
-          # torqvoice.com admin, so they are no longer passed here.
-          TORQVOICE_SERVICE_SECRET: ${{ secrets.TORQVOICE_SERVICE_SECRET }}
-          # Signed by torqvoice.com for APP_URL (scripts/mint-cloud-token.mjs there).
-          # Without it the app ignores TORQVOICE_MODE=cloud and runs self-hosted.
-          TORQVOICE_CLOUD_TOKEN: ${{ secrets.CLOUD_TORQVOICE_CLOUD_TOKEN }}
-          DATA_PATH: ${{ secrets.DATA_PATH }}
-          POSTHOG_HOST: ${{ secrets.NEXT_PUBLIC_POSTHOG_HOST }}
-          POSTHOG_KEY: ${{ secrets.NEXT_PUBLIC_POSTHOG_KEY }}
-          BACKUP_HEARTBEAT_TOKEN: ${{ secrets.BACKUP_HEARTBEAT_TOKEN }}
-          INTEGRATIONS_ENCRYPTION_KEY: ${{ secrets.CLOUD_INTEGRATIONS_ENCRYPTION_KEY }}
-          # Optional. Next encrypts what a server action closes over with a key
-          # made fresh by every build, so a tab left open across a deploy can
-          # no longer be read by the new container. A fixed key keeps those tabs
-          # working. 32 random bytes, base64: `openssl rand -base64 32`. Left
-          # unset, the build's own key is used, as before.
-          NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: ${{ secrets.CLOUD_NEXT_SERVER_ACTIONS_ENCRYPTION_KEY }}
-          GOOGLE_INTEGRATION_CLIENT_ID: ${{ secrets.CLOUD_GOOGLE_INTEGRATION_CLIENT_ID }}
-          GOOGLE_INTEGRATION_CLIENT_SECRET: ${{ secrets.CLOUD_GOOGLE_INTEGRATION_CLIENT_SECRET }}
-          GOOGLE_AUTH_CLIENT_ID: ${{ secrets.CLOUD_GOOGLE_AUTH_CLIENT_ID }}
-          GOOGLE_AUTH_CLIENT_SECRET: ${{ secrets.CLOUD_GOOGLE_AUTH_CLIENT_SECRET }}
-          MICROSOFT_INTEGRATION_CLIENT_ID: ${{ secrets.CLOUD_MICROSOFT_INTEGRATION_CLIENT_ID }}
-          MICROSOFT_INTEGRATION_CLIENT_SECRET: ${{ secrets.CLOUD_MICROSOFT_INTEGRATION_CLIENT_SECRET }}
-          ZOOM_INTEGRATION_CLIENT_ID: ${{ secrets.CLOUD_ZOOM_INTEGRATION_CLIENT_ID }}
-          ZOOM_INTEGRATION_CLIENT_SECRET: ${{ secrets.CLOUD_ZOOM_INTEGRATION_CLIENT_SECRET }}
-          QUICKBOOKS_INTEGRATION_CLIENT_ID: ${{ secrets.CLOUD_QUICKBOOKS_INTEGRATION_CLIENT_ID }}
-          QUICKBOOKS_INTEGRATION_CLIENT_SECRET: ${{ secrets.CLOUD_QUICKBOOKS_INTEGRATION_CLIENT_SECRET }}
-          FIKEN_INTEGRATION_CLIENT_ID: ${{ secrets.CLOUD_FIKEN_INTEGRATION_CLIENT_ID }}
-          FIKEN_INTEGRATION_CLIENT_SECRET: ${{ secrets.CLOUD_FIKEN_INTEGRATION_CLIENT_SECRET }}
+          DEPLOY_HOST: ${{ secrets.CRM_DEPLOY_HOST }}
+          DEPLOY_KEY: ${{ secrets.CRM_DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.CRM_DEPLOY_KNOWN_HOSTS }}
         run: |
-          mkdir -p $HOME/torqvoice-deploy/prod
-          cd $HOME/torqvoice-deploy/prod
+          test -n "$DEPLOY_HOST" || { echo '::error::Set production secret CRM_DEPLOY_HOST'; exit 1; }
+          test -n "$DEPLOY_KEY" || { echo '::error::Set production secret CRM_DEPLOY_SSH_KEY'; exit 1; }
+          test -n "$KNOWN_HOSTS" || { echo '::error::Set production secret CRM_DEPLOY_KNOWN_HOSTS'; exit 1; }
 
-          env | grep -E '^(VIRTUAL_HOST|DATA_PATH|DATABASE_URL|BETTER_AUTH_SECRET|APP_URL|TORQVOICE_|POSTHOG_|BACKUP_|INTEGRATIONS_|GOOGLE_INTEGRATION_|GOOGLE_AUTH_|MICROSOFT_INTEGRATION_|ZOOM_INTEGRATION_|QUICKBOOKS_INTEGRATION_|FIKEN_INTEGRATION_|NEXT_SERVER_ACTIONS_)' > .env
+  test:
+    needs: [validate, configuration]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: python3 -m unittest discover -s scripts/release -p 'test_*.py'
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm run lint
+      - run: npm test -- --maxWorkers=4
 
-          cat > docker-compose.yml << 'COMPOSE'
-          networks:
-            proxy:
-              external: true
-              name: proxy
-          services:
-            torqvoice-app:
-              container_name: torqvoice-app
-              image: ghcr.io/torqvoice/torqvoice:${APP_TAG:-latest}
-              restart: unless-stopped
-              volumes:
-                - ${DATA_PATH}/torqvoice_data:/app/data
-              expose:
-                - "3000"
-              environment:
-                VIRTUAL_HOST: ${VIRTUAL_HOST}
-                VIRTUAL_PORT: "3000"
-                LETSENCRYPT_HOST: ${VIRTUAL_HOST}
-                DATABASE_URL: ${DATABASE_URL}
-                BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
-                NEXT_PUBLIC_APP_URL: ${APP_URL}
-                TORQVOICE_MODE: cloud
-                # Production sits behind Cloudflare and the origin only accepts its
-                # edges, so the visitor address is the one Cloudflare says it is.
-                # Without this every visitor shares the edge's rate-limit bucket.
-                TRUST_CF_CONNECTING_IP: "true"
-                TORQVOICE_SERVICE_SECRET: ${TORQVOICE_SERVICE_SECRET}
-                TORQVOICE_CLOUD_TOKEN: ${TORQVOICE_CLOUD_TOKEN}
-                TORQVOICE_COM_URL: https://torqvoice.com
-                POSTHOG_HOST: ${POSTHOG_HOST}
-                POSTHOG_KEY: ${POSTHOG_KEY}
-                BACKUP_HEARTBEAT_TOKEN: ${BACKUP_HEARTBEAT_TOKEN}
-                INTEGRATIONS_ENCRYPTION_KEY: ${INTEGRATIONS_ENCRYPTION_KEY}
-                NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: ${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY}
-                GOOGLE_INTEGRATION_CLIENT_ID: ${GOOGLE_INTEGRATION_CLIENT_ID}
-                GOOGLE_INTEGRATION_CLIENT_SECRET: ${GOOGLE_INTEGRATION_CLIENT_SECRET}
-                GOOGLE_AUTH_CLIENT_ID: ${GOOGLE_AUTH_CLIENT_ID}
-                GOOGLE_AUTH_CLIENT_SECRET: ${GOOGLE_AUTH_CLIENT_SECRET}
-                MICROSOFT_INTEGRATION_CLIENT_ID: ${MICROSOFT_INTEGRATION_CLIENT_ID}
-                MICROSOFT_INTEGRATION_CLIENT_SECRET: ${MICROSOFT_INTEGRATION_CLIENT_SECRET}
-                ZOOM_INTEGRATION_CLIENT_ID: ${ZOOM_INTEGRATION_CLIENT_ID}
-                ZOOM_INTEGRATION_CLIENT_SECRET: ${ZOOM_INTEGRATION_CLIENT_SECRET}
-                QUICKBOOKS_INTEGRATION_CLIENT_ID: ${QUICKBOOKS_INTEGRATION_CLIENT_ID}
-                QUICKBOOKS_INTEGRATION_CLIENT_SECRET: ${QUICKBOOKS_INTEGRATION_CLIENT_SECRET}
-                FIKEN_INTEGRATION_CLIENT_ID: ${FIKEN_INTEGRATION_CLIENT_ID}
-                FIKEN_INTEGRATION_CLIENT_SECRET: ${FIKEN_INTEGRATION_CLIENT_SECRET}
-              networks:
-                - proxy
-          COMPOSE
+  image:
+    needs: [validate, test]
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/crm-image.yml
+    with:
+      sha: ${{ needs.validate.outputs.sha }}
+      version: ${{ needs.validate.outputs.tag }}
 
-          # Without the cloud token the new container would come up as a
-          # self-hosted install: one workshop for everybody, branding back on.
-          # Stop here, before anything is replaced.
-          if [ -z "$TORQVOICE_CLOUD_TOKEN" ]; then
-            echo "::error title=Cloud token missing::CLOUD_TORQVOICE_CLOUD_TOKEN is empty. Mint one for $APP_URL with scripts/mint-cloud-token.mjs in the torqvoice.com repo."
-            exit 1
-          fi
-
-          # The link to torqvoice.com is what the subscription pages hang on. A
-          # wrong secret or an origin the site does not list only shows up as a
-          # missing page, so the deploy asks the site itself and says so.
-          if [ -n "$TORQVOICE_SERVICE_SECRET" ]; then
-            status=$(curl -sS -o /dev/null -w '%{http_code}' -X POST https://torqvoice.com/api/app/subscription/ping \
-              -H "Authorization: Bearer $TORQVOICE_SERVICE_SECRET" -H 'Content-Type: application/json' \
-              -d "{\"appUrl\":\"$APP_URL\"}" || echo 000)
-            if [ "$status" != "200" ]; then
-              echo "::warning title=torqvoice.com link not confirmed::ping answered $status. Check TORQVOICE_SERVICE_SECRET on both sides and that $APP_URL is TORQVOICE_APP_URL or TORQVOICE_STAGING_APP_URL on torqvoice.com. The subscription page stays hidden until it is."
-            else
-              echo "torqvoice.com link confirmed for $APP_URL"
-            fi
-          else
-            echo "::warning title=torqvoice.com link not configured::TORQVOICE_SERVICE_SECRET is empty, so plans cannot be bought from this deployment."
-          fi
-
-      - name: Ensure data directory permissions
-        run: |
-          DATA_DIR="${{ secrets.DATA_PATH }}/torqvoice_data"
-          mkdir -p "$DATA_DIR"
-          docker run --rm -v "$DATA_DIR":/data alpine chown -R 1001:1001 /data
-
-      - name: Check free disk space
-        run: |
-          MIN_GB=5
-          DOCKER_ROOT=$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || echo /var/lib/docker)
-          AVAIL_KB=$(df -Pk "$DOCKER_ROOT" | awk 'NR==2 {print $4}')
-          AVAIL_GB=$(awk "BEGIN {printf \"%.1f\", $AVAIL_KB/1024/1024}")
-          echo "Free space on $DOCKER_ROOT: ${AVAIL_GB} GB (minimum ${MIN_GB} GB)"
-          if [ "$AVAIL_KB" -lt $((MIN_GB * 1024 * 1024)) ]; then
-            echo "::error::Not enough disk space to pull image: ${AVAIL_GB} GB free, need ${MIN_GB} GB. Aborting deploy."
-            exit 1
-          fi
-
-      - name: Back up production database
+  deploy:
+    needs: [validate, image]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: https://crm.srv.lauto.com.ua
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.sha }}
+          fetch-depth: 0
+      - name: Recheck tag and release before accessing production
         env:
-          DATABASE_URL: ${{ secrets.CLOUD_DATABASE_URL }}
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.validate.outputs.tag }}
+        run: |
+          git fetch origin '+refs/heads/main:refs/remotes/origin/main' '+refs/tags/*:refs/tags/*'
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > "$RUNNER_TEMP/release.json"
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          event = json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text())
+          current = json.loads(Path(os.environ['RUNNER_TEMP'], 'release.json').read_text())
+          assert current['id'] == event['release']['id'], 'Release was replaced'
+          event['release'] = current
+          Path(os.environ['GITHUB_EVENT_PATH']).write_text(json.dumps(event))
+          PY
+          python3 scripts/release/validate.py
+      - name: Deploy the tested digest over verified SSH
+        env:
+          DEPLOY_HOST: ${{ secrets.CRM_DEPLOY_HOST }}
+          DEPLOY_KEY: ${{ secrets.CRM_DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.CRM_DEPLOY_KNOWN_HOSTS }}
+          GH_TOKEN: ${{ github.token }}
+          IMAGE: ${{ needs.image.outputs.image }}
+          RELEASE_TAG: ${{ needs.validate.outputs.tag }}
         run: |
           set -euo pipefail
-
-          DB_USER=$(echo "$DATABASE_URL" | sed -E 's|^[^:]+://([^:]+):.*|\1|')
-          DB_NAME=$(echo "$DATABASE_URL" | sed -E 's|.*/([^/?]+)(\?.*)?$|\1|')
-
-          BACKUP_DIR="${{ secrets.DATA_PATH }}/db-backups/$DB_NAME"
-          # The volume is root-owned and the runner is not root. Binding the
-          # path into a container makes Docker create it, and the chown hands
-          # it to the runner so the dump redirect below can write there.
-          docker run --rm -v "$BACKUP_DIR":/b alpine chown "$(id -u):$(id -g)" /b
-
-          # The Postgres data directory lives on this filesystem: filling it
-          # takes the database down, not just the backup.
-          MIN_GB=2
-          AVAIL_KB=$(df -Pk "$BACKUP_DIR" | awk 'NR==2 {print $4}')
-          if [ "$AVAIL_KB" -lt $((MIN_GB * 1024 * 1024)) ]; then
-            echo "::error::Only $(awk "BEGIN {printf \"%.1f\", $AVAIL_KB/1024/1024}") GB free where the database lives. Refusing to dump."
-            exit 1
-          fi
-
-          DUMP="$BACKUP_DIR/${DB_NAME}-$(date +%Y%m%d-%H%M%S)-pre-${{ steps.tag.outputs.value }}.dump"
-          echo "Dumping $DB_NAME to $DUMP"
-          docker exec torqvoice-db pg_dump -U "$DB_USER" -d "$DB_NAME" -Fc > "$DUMP"
-
-          # A dump nobody can read is worse than no dump. No backup, no deploy.
-          docker exec -i torqvoice-db pg_restore --list < "$DUMP" > /dev/null
-          echo "Verified $(du -h "$DUMP" | cut -f1) backup"
-
-          # Keep the 10 most recent pre-deploy dumps; hourly dumps in the same
-          # folder belong to the backup cron and age out there.
-          ls -t "$BACKUP_DIR"/*-pre-*.dump 2>/dev/null | tail -n +11 | xargs -r rm --
-
-      - name: Deploy
-        run: |
-          cd $HOME/torqvoice-deploy/prod
-          APP_TAG=${{ steps.tag.outputs.value }} docker compose up -d --pull always
-
-      - name: Health check
-        run: |
-          echo "Waiting for prod container to be ready..."
-          for i in $(seq 1 12); do
-            STATUS=$(docker inspect --format='{{.State.Status}}' torqvoice-app 2>/dev/null || echo "not found")
-            if [ "$STATUS" = "running" ]; then
-              echo "Deployed ${{ steps.tag.outputs.value }}."
-              exit 0
-            fi
-            echo "Status: $STATUS, retrying in 5s..."
-            sleep 5
-          done
-          echo "::error::Container failed to start"
-          docker logs torqvoice-app --tail 50
-          exit 1
-
-      - name: Prune old images and build cache
-        run: docker image prune -f && docker builder prune -f
+          test -n "$DEPLOY_HOST" && test -n "$DEPLOY_KEY" && test -n "$KNOWN_HOSTS"
+          [[ "$DEPLOY_HOST" =~ ^[a-zA-Z0-9][a-zA-Z0-9.-]*$ ]]
+          [[ "$IMAGE" =~ ^ghcr\.io/lvovych/crm@sha256:[a-f0-9]{64}$ ]]
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          install -d -m 700 "$RUNNER_TEMP/crm-ssh"
+          trap 'rm -rf "$RUNNER_TEMP/crm-ssh"' EXIT
+          printf '%s\n' "$DEPLOY_KEY" > "$RUNNER_TEMP/crm-ssh/key"
+          printf '%s\n' "$KNOWN_HOSTS" > "$RUNNER_TEMP/crm-ssh/known_hosts"
+          chmod 600 "$RUNNER_TEMP/crm-ssh/"*
+          { printf '%s\n' "$GH_TOKEN"; cat scripts/release/deploy.sh; } | \
+            ssh -T -i "$RUNNER_TEMP/crm-ssh/key" -o IdentitiesOnly=yes \
+              -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=yes \
+              -o UserKnownHostsFile="$RUNNER_TEMP/crm-ssh/known_hosts" \
+              "root@$DEPLOY_HOST" \
+              "read -r REGISTRY_TOKEN; export REGISTRY_TOKEN; bash -s -- '$IMAGE' '$RELEASE_TAG' '$GITHUB_ACTOR'"
+      - name: Verify public HTTPS health
+        run: curl --fail --silent --show-error --max-time 20 --retry 3 --retry-delay 10 https://crm.srv.lauto.com.ua/api/v1/health
