@@ -50,3 +50,9 @@ variable "deploy_runner_cidrs" {
     error_message = "Each deployment runner must be a single host (/32 IPv4 or /128 IPv6)."
   }
 }
+
+variable "allow_public_ssh_during_development" {
+  description = "Temporary development access: allow TCP 22 from all IPv4/IPv6 addresses. Keep SSH key-only authentication; set false to restore the allowlist."
+  type        = bool
+  default     = false
+}

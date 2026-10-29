@@ -16,7 +16,7 @@ resource "hcloud_firewall" "crm" {
     direction  = "in"
     protocol   = "tcp"
     port       = "22"
-    source_ips = concat(var.admin_cidrs, var.deploy_runner_cidrs)
+    source_ips = var.allow_public_ssh_during_development ? ["0.0.0.0/0", "::/0"] : concat(var.admin_cidrs, var.deploy_runner_cidrs)
   }
 
   dynamic "rule" {
