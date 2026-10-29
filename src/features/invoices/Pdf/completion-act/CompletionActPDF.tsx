@@ -71,22 +71,35 @@ type Line = {
   price: number
   total: number
 }
+function lineDiscount(line: { discountType?: string; discountValue?: number }) {
+  const value = line.discountValue ?? 0
+  if (!Number.isFinite(value) || value <= 0) return undefined
+  if (line.discountType === 'percentage') return `${value}%`
+  if (line.discountType === 'fixed') return money(value)
+  return undefined
+}
 function Lines({
   title,
   lines,
   currency,
   taxed,
   showBrand = false,
+  showDiscount,
 }: {
   title: string
   lines: Line[]
   currency: string
   taxed: boolean
   showBrand?: boolean
+  showDiscount: boolean
 }) {
   const widths = showBrand
-    ? ['4%', '28%', '12%', '6%', '9%', '13%', '13%', '15%']
-    : ['5%', '49%', '7%', '11%', '14%', '14%']
+    ? showDiscount
+      ? ['4%', '28%', '12%', '6%', '9%', '13%', '13%', '15%']
+      : ['4%', '41%', '12%', '6%', '9%', '13%', '15%']
+    : showDiscount
+      ? ['5%', '36%', '7%', '11%', '14%', '13%', '14%']
+      : ['5%', '49%', '7%', '11%', '14%', '14%']
   return (
     <View>
       <View minPresenceAhead={50}>
@@ -99,8 +112,8 @@ function Lines({
             'Од.',
             'Кількість',
             taxed ? 'Ціна, грн' : 'Ціна без ПДВ',
-            ...(showBrand ? ['Знижка'] : []),
-            showBrand ? 'Сума зі знижкою' : taxed ? 'Сума, грн' : 'Сума без ПДВ',
+            ...(showDiscount ? ['Знижка'] : []),
+            showDiscount ? 'Сума зі знижкою' : taxed ? 'Сума, грн' : 'Сума без ПДВ',
           ].map((v, i) => (
             <Text
               key={i}
@@ -123,7 +136,7 @@ function Lines({
             line.unit,
             money(line.quantity),
             money(line.price),
-            ...(showBrand ? [line.discount || '—'] : []),
+            ...(showDiscount ? [line.discount || '—'] : []),
             money(line.total),
           ].map((v, j) => (
             <Text
@@ -160,6 +173,7 @@ export function CompletionActPDF({
   )
   const unit = currency === 'UAH' ? 'грн' : currency
   const labor = data.laborItems.map((l) => ({
+    discount: lineDiscount(l),
     name: l.description,
     unit: l.pricingType === 'service' ? 'посл.' : 'н/год',
     quantity: l.hours,
@@ -168,18 +182,14 @@ export function CompletionActPDF({
   }))
   const parts = data.partItems.map((p) => ({
     brand: p.brand || '---',
-    discount:
-      p.discountType === 'percentage'
-        ? `${p.discountValue ?? 0}%`
-        : p.discountType === 'fixed'
-          ? money(p.discountValue ?? 0)
-          : '—',
+    discount: lineDiscount(p),
     name: p.name,
     unit: p.unit || 'шт',
     quantity: p.quantity,
     price: p.unitPrice,
     total: p.total,
   }))
+  const showDiscount = [...labor, ...parts].some((line) => line.discount !== undefined)
   const discount = data.discountAmount ?? 0
   const taxed = data.taxAmount > 0
   return (
@@ -233,6 +243,7 @@ export function CompletionActPDF({
         <Lines
           title="Найменування (характеристика) послуг"
           lines={labor}
+          showDiscount={showDiscount}
           currency={unit}
           taxed={taxed}
         />
@@ -240,6 +251,7 @@ export function CompletionActPDF({
           title="Запасні частини, матеріали й товари, використані для ремонту"
           showBrand
           lines={parts}
+          showDiscount={showDiscount}
           currency={unit}
           taxed={taxed}
         />

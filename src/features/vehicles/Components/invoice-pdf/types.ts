@@ -73,6 +73,8 @@ export interface InvoiceData {
     total: number
   }[]
   laborItems: {
+    discountType?: string
+    discountValue?: number
     description: string
     hours: number
     rate: number
