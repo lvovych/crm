@@ -60,14 +60,21 @@ workflow files. It does not need application passwords or an Ansible vault key;
 the existing server configuration is retained. GHCR pulls use the temporary
 Actions token with `packages: read`.
 
-**Network prerequisite:** production SSH is restricted to administrator addresses.
-The deploy job uses a dedicated self-hosted Linux x86_64 runner labelled
-`crm-production-deploy`. Provisioning, registration, the single-IP firewall rule
-and the public-repository activation restriction are documented in
-[the dedicated runner guide](deploy-runner/README.md). Tests and image builds
-remain on GitHub-hosted runners. Adding secrets alone does not bypass the
-firewall. A rerun of v1.0.1 retains its old workflow; activate this change through
-a new manually published release from main after merging it.
+**Network prerequisite:** deployment runs on GitHub-hosted `ubuntu-latest`.
+During active development, the operator explicitly allows TCP 22 from
+`0.0.0.0/0` and `::/0` by setting
+`allow_public_ssh_during_development = true` in the production Terraform tfvars.
+The default remains false; setting it back to false restores administrator and
+runner allowlists. Review and apply the firewall change using Hetzner access;
+a workflow merge alone does not change the live firewall. SSH remains key-only:
+`PasswordAuthentication no`, `KbdInteractiveAuthentication no`, and root login
+without passwords. HTTP/HTTPS rules are unchanged.
+
+No separate runner or additional Actions secret is needed for this temporary
+mode. The optional dedicated runner guide remains at
+[infra/deploy-runner](deploy-runner/README.md) for a future restricted setup.
+The queued v1.0.2 run retains its self-hosted labels: cancel it after the fix is
+ready and publish a new release from main to use the updated workflow.
 
 Limit the `production` environment to release tags `v*` and protect these tags
 from updates/deletion with a repository ruleset. Only authorized maintainers
