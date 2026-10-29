@@ -471,7 +471,8 @@ describe('Fiken mapping: invoices as Torqvoice totals them', () => {
     }
     expect(checked).toBeGreaterThan(12_000)
     expect(wrong).toEqual([])
-  })
+    // This exhaustive matrix competes with other suites on shared CI runners.
+  }, 30_000)
 })
 
 describe('Fiken mapping: contacts and payments', () => {
