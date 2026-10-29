@@ -29,6 +29,8 @@ export const TABLE_COLUMNS: Readonly<Record<string, readonly string[]>> = {
     'id',
     'make',
     'model',
+    'generation',
+    'modification',
     'year',
     'vin',
     'licensePlate',
