@@ -15,6 +15,8 @@ const tsnSchema = z
 export const createVehicleSchema = z.object({
   make: z.string().min(1, 'Make is required'),
   model: z.string().min(1, 'Model is required'),
+  generation: z.string().trim().max(200).optional(),
+  modification: z.string().trim().max(200).optional(),
   year: z.coerce
     .number()
     .min(1900, 'Year must be after 1900')

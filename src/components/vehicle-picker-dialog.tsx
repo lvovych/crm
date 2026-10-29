@@ -22,6 +22,11 @@ import { toast } from 'sonner'
 import { useTranslations } from 'next-intl'
 import { handleGated } from '@/components/upgrade-gate'
 import { useServiceType } from '@/components/service-type-context'
+import {
+  VehicleCatalogFields,
+  EMPTY_VEHICLE_IDENTITY,
+} from '@/features/vehicles/Components/VehicleCatalogFields'
+import { REGISTRATION_COLORS } from '@/features/vehicles/Lib/vehicleCatalog'
 
 interface Vehicle {
   id: string
@@ -66,8 +71,10 @@ export function VehiclePickerDialog({
   const [vehicleSearch, setVehicleSearch] = useState('')
   const [pickerStep, setPickerStep] = useState<'select' | 'create' | 'sale'>('select')
 
-  const [newMake, setNewMake] = useState('')
-  const [newModel, setNewModel] = useState('')
+  const [identity, setIdentity] = useState(EMPTY_VEHICLE_IDENTITY)
+  const { make: newMake, model: newModel } = identity
+  const [newVin, setNewVin] = useState('')
+  const [newColor, setNewColor] = useState('')
   const [newYear, setNewYear] = useState('')
   const [newPlate, setNewPlate] = useState('')
   const [selectedCustomerId, setSelectedCustomerId] = useState('')
@@ -90,8 +97,9 @@ export function VehiclePickerDialog({
   const resetState = () => {
     setPickerStep('select')
     setVehicleSearch('')
-    setNewMake('')
-    setNewModel('')
+    setIdentity(EMPTY_VEHICLE_IDENTITY)
+    setNewVin('')
+    setNewColor('')
     setNewYear('')
     setNewPlate('')
     setSelectedCustomerId('')
@@ -157,8 +165,9 @@ export function VehiclePickerDialog({
 
   const handleQuickCreate = async () => {
     if (!newMake.trim() || !newModel.trim() || !newYear.trim()) return
-    const yearNum = parseInt(newYear, 10)
-    if (isNaN(yearNum) || yearNum < 1900 || yearNum > new Date().getFullYear() + 2) {
+    if (creating) return
+    const yearNum = Number(newYear)
+    if (!Number.isInteger(yearNum) || yearNum < 1900 || yearNum > new Date().getFullYear() + 2) {
       toast.error(t('invalidYear'))
       return
     }
@@ -190,6 +199,15 @@ export function VehiclePickerDialog({
         make: newMake.trim(),
         model: newModel.trim(),
         year: yearNum,
+        ...(!isMarine
+          ? {
+              vin: newVin.trim().toUpperCase() || undefined,
+              color: newColor || undefined,
+              generation: identity.generation || undefined,
+              modification: identity.modification || undefined,
+              engineSize: identity.engineSize || undefined,
+            }
+          : {}),
         licensePlate: newPlate.trim() || undefined,
         customerId,
       })
@@ -211,7 +229,10 @@ export function VehiclePickerDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-md" aria-describedby={undefined}>
+      <DialogContent
+        className="w-[calc(100%-1rem)] max-w-md max-h-[90dvh] overflow-y-auto p-4 sm:p-6"
+        aria-describedby={undefined}
+      >
         {pickerStep === 'select' ? (
           <>
             <DialogHeader>
@@ -402,144 +423,206 @@ export function VehiclePickerDialog({
                 </DialogTitle>
               </div>
             </DialogHeader>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="new-make">{isMarine ? t('makeMarine') : t('make')}</Label>
-                  <Input
-                    id="new-make"
-                    placeholder={isMarine ? 'e.g. Boston Whaler' : 'e.g. Toyota'}
-                    value={newMake}
-                    onChange={(e) => setNewMake(e.target.value)}
-                    autoFocus
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="new-model">{t('model')}</Label>
-                  <Input
-                    id="new-model"
-                    placeholder={isMarine ? 'e.g. Montauk 170' : 'e.g. Camry'}
-                    value={newModel}
-                    onChange={(e) => setNewModel(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="new-year">{t('year')}</Label>
-                  <Input
-                    id="new-year"
-                    type="number"
-                    placeholder={`e.g. ${new Date().getFullYear()}`}
-                    value={newYear}
-                    onChange={(e) => setNewYear(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="new-plate">
-                    {isMarine ? t('licensePlateMarine') : t('licensePlate')}
-                  </Label>
-                  <Input
-                    id="new-plate"
-                    placeholder="e.g. ABC-1234"
-                    value={newPlate}
-                    onChange={(e) => setNewPlate(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label>{t('customer')}</Label>
-                {!showNewCustomer ? (
-                  <Select
-                    value={selectedCustomerId}
-                    onValueChange={(val) => {
-                      if (val === '__new__') {
-                        setShowNewCustomer(true)
-                        setSelectedCustomerId('')
-                      } else {
-                        setSelectedCustomerId(val)
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder={t('selectCustomer')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__new__">
-                        <span className="flex items-center gap-1.5">
-                          <UserPlus className="h-3.5 w-3.5" />
-                          {t('createNewCustomer')}
-                        </span>
-                      </SelectItem>
-                      {customers.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name}
-                          {c.company ? ` (${c.company})` : ''}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <div className="space-y-3 rounded-md border p-3">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium">{t('newCustomer')}</p>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={() => {
-                          setShowNewCustomer(false)
-                          setNewCustomerName('')
-                          setNewCustomerPhone('')
-                        }}
-                      >
-                        {tc('cancel')}
-                      </Button>
+            <form
+              className="space-y-4"
+              onSubmit={(event) => {
+                event.preventDefault()
+                void handleQuickCreate()
+              }}
+            >
+              <fieldset disabled={creating} className="min-w-0 space-y-4">
+                {isMarine ? (
+                  <>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="new-make">{isMarine ? t('makeMarine') : t('make')}</Label>
+                        <Input
+                          id="new-make"
+                          placeholder={isMarine ? 'e.g. Boston Whaler' : 'e.g. Toyota'}
+                          value={newMake}
+                          onChange={(e) =>
+                            setIdentity({ ...EMPTY_VEHICLE_IDENTITY, make: e.target.value })
+                          }
+                          autoFocus
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="new-model">{t('model')}</Label>
+                        <Input
+                          id="new-model"
+                          placeholder={isMarine ? 'e.g. Montauk 170' : 'e.g. Camry'}
+                          value={newModel}
+                          onChange={(e) => setIdentity({ ...identity, model: e.target.value })}
+                        />
+                      </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <Label htmlFor="new-customer-name">{t('customerName')}</Label>
-                        <Input
-                          id="new-customer-name"
-                          placeholder={t('customerNamePlaceholder')}
-                          value={newCustomerName}
-                          onChange={(e) => setNewCustomerName(e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label htmlFor="new-customer-phone">{t('phone')}</Label>
-                        <Input
-                          id="new-customer-phone"
-                          placeholder={t('phonePlaceholder')}
-                          value={newCustomerPhone}
-                          onChange={(e) => setNewCustomerPhone(e.target.value)}
-                        />
-                      </div>
+                  </>
+                ) : (
+                  <VehicleCatalogFields value={identity} onChange={setIdentity} />
+                )}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="new-year">{t('year')}</Label>
+                    <Input
+                      id="new-year"
+                      className="min-h-11 text-base"
+                      inputMode="numeric"
+                      type="number"
+                      placeholder={`e.g. ${new Date().getFullYear()}`}
+                      value={newYear}
+                      onChange={(e) => setNewYear(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="new-plate">
+                      {isMarine ? t('licensePlateMarine') : t('licensePlate')}
+                    </Label>
+                    <Input
+                      id="new-plate"
+                      className="min-h-11 text-base"
+                      placeholder="e.g. ABC-1234"
+                      value={newPlate}
+                      onChange={(e) => setNewPlate(e.target.value)}
+                    />
+                  </div>
+                </div>
+                {!isMarine && (
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="new-vin">{t('catalog.vin')}</Label>
+                      <Input
+                        id="new-vin"
+                        value={newVin}
+                        maxLength={17}
+                        autoCapitalize="characters"
+                        autoCorrect="off"
+                        spellCheck={false}
+                        className="min-h-11 text-base font-mono uppercase"
+                        onChange={(e) => setNewVin(e.target.value.toUpperCase().replace(/\s/g, ''))}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="new-color">{t('catalog.color')}</Label>
+                      <Select
+                        value={newColor || '__none__'}
+                        onValueChange={(color) => setNewColor(color === '__none__' ? '' : color)}
+                      >
+                        <SelectTrigger id="new-color" className="min-h-11 w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__" className="min-h-11">
+                            {t('catalog.noColor')}
+                          </SelectItem>
+                          {REGISTRATION_COLORS.map((color) => (
+                            <SelectItem
+                              key={color}
+                              className="min-h-11"
+                              value={t(`catalog.colors.${color}`)}
+                            >
+                              {t(`catalog.colors.${color}`)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 )}
-              </div>
-              <Button
-                className="w-full"
-                disabled={
-                  creating ||
-                  !newMake.trim() ||
-                  !newModel.trim() ||
-                  !newYear.trim() ||
-                  (showNewCustomer && !newCustomerName.trim())
-                }
-                onClick={handleQuickCreate}
-              >
-                {creating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                    {t('creating')}
-                  </>
-                ) : (
-                  t('createAndContinue')
-                )}
-              </Button>
-            </div>
+                <div className="space-y-1.5">
+                  <Label>{t('customer')}</Label>
+                  {!showNewCustomer ? (
+                    <Select
+                      value={selectedCustomerId}
+                      onValueChange={(val) => {
+                        if (val === '__new__') {
+                          setShowNewCustomer(true)
+                          setSelectedCustomerId('')
+                        } else {
+                          setSelectedCustomerId(val)
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder={t('selectCustomer')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__new__">
+                          <span className="flex items-center gap-1.5">
+                            <UserPlus className="h-3.5 w-3.5" />
+                            {t('createNewCustomer')}
+                          </span>
+                        </SelectItem>
+                        {customers.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name}
+                            {c.company ? ` (${c.company})` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="space-y-3 rounded-md border p-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium">{t('newCustomer')}</p>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => {
+                            setShowNewCustomer(false)
+                            setNewCustomerName('')
+                            setNewCustomerPhone('')
+                          }}
+                        >
+                          {tc('cancel')}
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="new-customer-name">{t('customerName')}</Label>
+                          <Input
+                            id="new-customer-name"
+                            placeholder={t('customerNamePlaceholder')}
+                            value={newCustomerName}
+                            onChange={(e) => setNewCustomerName(e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="new-customer-phone">{t('phone')}</Label>
+                          <Input
+                            id="new-customer-phone"
+                            placeholder={t('phonePlaceholder')}
+                            value={newCustomerPhone}
+                            onChange={(e) => setNewCustomerPhone(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <Button
+                  className="w-full min-h-11"
+                  disabled={
+                    creating ||
+                    !newMake.trim() ||
+                    !newModel.trim() ||
+                    !newYear.trim() ||
+                    (showNewCustomer && !newCustomerName.trim())
+                  }
+                  type="submit"
+                >
+                  {creating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      {t('creating')}
+                    </>
+                  ) : (
+                    t('createAndContinue')
+                  )}
+                </Button>
+              </fieldset>
+            </form>
           </>
         )}
       </DialogContent>

@@ -121,8 +121,11 @@ test.describe('the free plan', () => {
       await expect(page.locator('#new-make')).toBeVisible({ timeout: 2_000 })
     }).toPass({ timeout: 30_000 })
 
-    await page.locator('#new-make').fill('Volvo')
-    await page.locator('#new-model').fill('V70')
+    await page.getByRole('combobox', { name: 'Make *' }).click()
+    await page.getByRole('option', { name: 'Volvo', exact: true }).click()
+    await expect(page.getByRole('status')).toHaveCount(0)
+    await page.getByRole('combobox', { name: 'Model *' }).click()
+    await page.getByRole('option', { name: 'V70', exact: true }).click()
     await page.locator('#new-year').fill('2015')
     await page.getByRole('combobox').filter({ hasText: 'Select a customer (optional)' }).click()
     await page.getByRole('option', { name: 'Create new customer' }).click()

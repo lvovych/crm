@@ -86,7 +86,40 @@
     "partsSaleDescription": "Crie uma fatura sem veículo, para vendas de peças no balcão.",
     "partsSaleDescriptionMarine": "Crie uma fatura sem embarcação, para vendas de peças no balcão.",
     "createSale": "Criar venda",
-    "none": "Nenhum"
+    "none": "Nenhum",
+    "catalog": {
+      "choose": "Select…",
+      "search": "Search…",
+      "searchField": "Search {field}",
+      "empty": "No matches",
+      "notListed": "Not listed — enter manually",
+      "backToList": "Choose from the list",
+      "generation": "Generation (optional)",
+      "modification": "Engine / modification (optional)",
+      "clearDetails": "Clear generation and engine",
+      "loading": "Loading models…",
+      "loadError": "Could not load models. Retry or use manual entry.",
+      "retry": "Retry",
+      "coverage": "Some vehicles may be missing from the catalogue.",
+      "source": "Catalogue source and licence",
+      "vin": "VIN",
+      "color": "Registration colour",
+      "noColor": "Not specified",
+      "invalidVin": "VIN must contain 17 letters or digits, without I, O or Q.",
+      "colors": {
+        "black": "Black",
+        "blue": "Blue",
+        "green": "Green",
+        "beige": "Beige",
+        "red": "Red",
+        "purple": "Purple",
+        "orange": "Orange",
+        "yellow": "Yellow",
+        "white": "White",
+        "brown": "Brown",
+        "gray": "Gray"
+      }
+    }
   },
   "notify": {
     "title": "Notificar {name}",

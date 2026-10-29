@@ -71,7 +71,7 @@ describe('VehiclePickerDialog, automotive', () => {
     renderPicker('automotive')
     fireEvent.click(screen.getByRole('button', { name: 'Add New Vehicle' }))
     expect(screen.getByRole('dialog', { name: 'Add New Vehicle' })).toBeVisible()
-    expect(screen.getByLabelText('Make *')).toHaveAttribute('placeholder', 'e.g. Toyota')
+    expect(screen.getByRole('combobox', { name: 'Make *' })).toBeVisible()
     expect(screen.getByLabelText('License Plate')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Create & Continue' })).toBeInTheDocument()
   })

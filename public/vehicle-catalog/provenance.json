@@ -1,0 +1,8 @@
+{
+  "repository": "https://github.com/gor3a/vehicle-makes-models",
+  "commit": "ee99776470a45214bf524cdfe22e5dbf4bd67f93",
+  "sourceSha256": "f1bdfb03dbd84f74e5111ac1eab06e53ccd3d09aded3c2c98f38187bd561902a",
+  "license": "ODbL-1.0",
+  "makes": 164,
+  "transformation": "Only names, generation years, engine labels and displacement retained. Sorted and duplicate engine labels removed."
+}

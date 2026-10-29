@@ -2,6 +2,8 @@ model Vehicle {
   id                     String               @id @default(cuid())
   make                   String
   model                  String
+  generation             String?
+  modification           String?
   year                   Int
   vin                    String?
   licensePlate           String?
