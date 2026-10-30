@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
 import { PartsEditor } from '../service-edit/PartsEditor'
 import { LaborEditor } from '../service-edit/LaborEditor'
-import { ConcernsSection } from '../service-edit/ConcernsSection'
 import { NotesSection } from '../service-edit/NotesSection'
 import { PaymentsSection } from '../service-detail/PaymentsSection'
 import { InvoiceSummary } from '../service-detail/InvoiceSummary'
@@ -99,21 +98,11 @@ export function DetailsLeftColumn({
   payCode = null,
 }: DetailsLeftColumnProps) {
   const tClock = useTranslations('timeTracking.job')
-  // Which concerns somebody has actually looked at. Counted here rather than
-  // queried, because the findings are already loaded for the section below.
-  const answeredCounts = findings.reduce<Record<string, number>>((counts, finding) => {
-    if (finding.concernId) counts[finding.concernId] = (counts[finding.concernId] ?? 0) + 1
-    return counts
-  }, {})
-
-  const concerns = (
-    <ConcernsSection
-      concerns={formState.concerns}
-      setConcerns={formState.setConcerns}
-      onChange={formState.markDirty}
-      answeredCounts={answeredCounts}
-    />
-  )
+  // TODO: Retire ServiceConcern: existing internal/customer notes replace its UI.
+  // Keep historical rows and form state until a data-preserving removal covers
+  // finding/attachment concernId links, printing, tech API and backup/restore.
+  // Audit customer-facing data before retiring those paths; hiding this editor
+  // does not change historical document output or API visibility.
 
   // The tires that came off the car are standing in the corner while the desk
   // writes the job up, so the offer to store them belongs here rather than
@@ -140,12 +129,6 @@ export function DetailsLeftColumn({
 
   return (
     <div className="space-y-3">
-      {/* First thing on the job, above the work itself: why the car is here,
-          in the customer's words. Above the parts, inside the working column:
-          the tires are the first thing this job needs and the last thing the
-          invoice sidebar cares about, so they belong here rather than spanning
-          both columns. */}
-      {concerns}
       {storeTires}
 
       {tireSet && (

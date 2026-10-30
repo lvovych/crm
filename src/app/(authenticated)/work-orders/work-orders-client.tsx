@@ -352,6 +352,7 @@ export function WorkOrdersClient({
           return (
             <Button
               key={key}
+              aria-pressed={isActive}
               variant={isActive ? 'default' : 'outline'}
               size="sm"
               className="h-9 shrink-0 sm:h-8"

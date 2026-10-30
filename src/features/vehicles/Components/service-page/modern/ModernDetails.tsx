@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Receipt } from 'lucide-react'
 import { AppCard } from '@/components/app-card'
-import { useConfirm } from '@/components/confirm-dialog'
 import { Badge } from '@/components/ui/badge'
 import { SharedLinkCard } from '@/components/shared-link-card'
 import { CustomFieldsForm } from '@/features/custom-fields/Components/CustomFieldsForm'
@@ -21,7 +20,6 @@ import { toast } from 'sonner'
 import { PaymentsSection } from '../../service-detail/PaymentsSection'
 import { ServiceFindingsSection } from '../../service-detail/ServiceFindingsSection'
 import { paymentStatusColors, paymentStatusLabels } from '../../service-detail/types'
-import { ConcernsSection } from '../../service-edit/ConcernsSection'
 import { InvoiceDetailsSection } from '../../service-edit/InvoiceDetailsSection'
 import { LaborEditor } from '../../service-edit/LaborEditor'
 import { NotesSection } from '../../service-edit/NotesSection'
@@ -131,15 +129,16 @@ export function ModernDetails(props: ModernDetailsProps) {
   } = props
   const t = useTranslations('service')
   const tClock = useTranslations('timeTracking.job')
-  const tConcerns = useTranslations('service.concerns')
+  // TODO: Retire ServiceConcern: existing internal/customer notes replace its UI.
+  // Keep historical rows and form state until a data-preserving removal covers
+  // finding/attachment concernId links, printing, tech API and backup/restore.
+  // Audit customer-facing data before retiring those paths; hiding this editor
+  // does not change historical document output or API visibility.
+
   const router = useRouter()
 
   const customer = record.customer ?? record.vehicle?.customer ?? null
 
-  // Closing a job with a concern nobody has confirmed as fixed is how a car
-  // comes back. It is asked about, not refused: a routine service has nothing
-  // to confirm, and a shop may know better than the tick does.
-  const confirmUnconfirmed = useConfirm()
   // Bumped by the bar's "Take payment": the payments form opens and scrolls into view.
   const [paymentSignal, setPaymentSignal] = useState(0)
   // The workshop's own status the job carries. Held here as well as on the
@@ -156,17 +155,6 @@ export function ModernDetails(props: ModernDetailsProps) {
   }, [recordCustomKey]) // eslint-disable-line react-hooks/exhaustive-deps -- see above
 
   const changeStatus = async (next: string, custom: WorkOrderStatusOption | null = null) => {
-    const open = formState.concerns.filter((c) => c.description.trim() && !c.confirmed)
-    if (next === 'completed' && open.length > 0) {
-      const ok = await confirmUnconfirmed({
-        title: tConcerns('unconfirmedTitle'),
-        description: `${tConcerns('unconfirmedBody', { count: open.length })} ${open
-          .map((c) => `"${c.description.trim()}"`)
-          .join(', ')}`,
-        confirmLabel: tConcerns('unconfirmedProceed'),
-      })
-      if (!ok) return
-    }
     // A plain move between stages, with none of the workshop's statuses on
     // either side of it, goes with the form as it always has.
     if (!locked && !custom && !customStatus) {
@@ -232,11 +220,6 @@ export function ModernDetails(props: ModernDetailsProps) {
   useEffect(() => {
     if (scrollToFiles) document.getElementById('files-media')?.scrollIntoView()
   }, [scrollToFiles])
-
-  const answeredCounts = findings.reduce<Record<string, number>>((counts, finding) => {
-    if (finding.concernId) counts[finding.concernId] = (counts[finding.concernId] ?? 0) + 1
-    return counts
-  }, {})
 
   const storeTires =
     tireHotelEnabled && record.vehicle ? (
@@ -332,20 +315,6 @@ export function ModernDetails(props: ModernDetailsProps) {
                 />
 
                 <Lockable locked={locked}>
-                  <ConcernsSection
-                    concerns={formState.concerns}
-                    setConcerns={formState.setConcerns}
-                    onChange={formState.markDirty}
-                    answeredCounts={answeredCounts}
-                    findings={findings}
-                    onAddFinding={props.onAddFindingForConcern}
-                    onEditFinding={props.onEditFinding}
-                    serviceRecordId={record.id}
-                    media={record.attachments}
-                    serverTranscription={props.aiTranscription}
-                    dictationMode={props.dictationMode}
-                  />
-
                   {vehicleId && (
                     <ServiceFindingsSection
                       vehicleId={vehicleId}

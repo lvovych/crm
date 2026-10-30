@@ -1821,3 +1821,26 @@ export async function plantOwnMarkKind(
 export async function removeOwnMarkKind(id: string): Promise<void> {
   await withDb((db) => db.query(`delete from condition_mark_types where id = $1`, [id]))
 }
+
+/** Historic work descriptions remain intact while their editor is retired. */
+export async function seedLegacyConcern(serviceRecordId: string): Promise<string> {
+  return withDb(async (db) => {
+    const id = `e2e-concern-${randomBytes(8).toString('hex')}`
+    await db.query(
+      `insert into service_concerns (id, "serviceRecordId", description, cause, correction, confirmation, "sortOrder", "updatedAt")
+       values ($1, $2, '  Legacy symptom  ', 'Legacy cause', 'Legacy correction', 'Legacy confirmation', 7, now())`,
+      [id, serviceRecordId]
+    )
+    return id
+  })
+}
+
+export async function legacyConcern(id: string) {
+  return withDb(async (db) => {
+    const result = await db.query(
+      `select id, "serviceRecordId", description, cause, correction, confirmation, "confirmedAt", "confirmedById", "sortOrder", "createdAt", "updatedAt" from service_concerns where id = $1`,
+      [id]
+    )
+    return result.rows[0]
+  })
+}

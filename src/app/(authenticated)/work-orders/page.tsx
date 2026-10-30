@@ -29,6 +29,7 @@ export default async function WorkOrdersPage({
   }>
 }) {
   const params = await searchParams
+  const statusFilter = params.status || 'active'
   const sort = await resolveListSort('workOrders', params, {
     sortBy: 'serviceDate',
     sortOrder: 'desc',
@@ -39,7 +40,7 @@ export default async function WorkOrdersPage({
       page: params.page ? parseInt(params.page) : 1,
       pageSize: params.pageSize ? parseInt(params.pageSize) : 20,
       search: params.search,
-      status: params.status,
+      status: statusFilter,
       sortBy: sort.sortBy,
       sortOrder: sort.sortOrder,
       due: params.due,
@@ -90,7 +91,7 @@ export default async function WorkOrdersPage({
           customers={customers}
           currencyCode={currencyCode}
           search={params.search || ''}
-          statusFilter={params.status || 'all'}
+          statusFilter={statusFilter}
           dueFilter={params.due === 'today' ? 'today' : ''}
           columns={columns}
           sortBy={sort.sortBy || ''}
