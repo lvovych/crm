@@ -107,7 +107,9 @@
   "pdfPreview": {
     "title": "PDF-forhåndsvisning",
     "preview": "Forhåndsvisning",
-    "failed": "Kunne ikke generere PDF-forhåndsvisningen."
+    "failed": "Kunne ikke generere PDF-forhåndsvisningen.",
+    "share": "Del PDF",
+    "shareFailed": "Kunne ikke dele PDF-filen. Prøv igjen eller last ned filen."
   },
   "attachPdf": "Legg ved PDF",
   "attachPdfHint": "Slå av for å sende en lenke i stedet, så ser du når kunden åpner den.",

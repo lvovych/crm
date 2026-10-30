@@ -1,4 +1,4 @@
-import { documentFilename, downloadFilename } from '@/lib/document-filename'
+import { documentFilename } from '@/lib/document-filename'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -236,18 +236,13 @@ export function useServiceActions({
   const handleDownloadPDF = async () => {
     setDownloading(true)
     try {
-      const res = await fetch(`/api/protected/services/${record.id}/pdf`)
-      if (!res.ok) throw new Error('Failed')
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
+      // Use a real HTTP attachment, so iOS saves a PDF rather than a blob URL.
       const a = document.createElement('a')
-      a.href = url
-      a.download = downloadFilename(
-        res.headers.get('Content-Disposition'),
-        documentFilename('invoice', record)
-      )
+      a.href = `/api/protected/services/${record.id}/pdf?download=1`
+      a.download = documentFilename('invoice', record)
+      document.body.appendChild(a)
       a.click()
-      URL.revokeObjectURL(url)
+      a.remove()
     } catch {
       modal.open('error', tc('errors.error'), t('payments.failedPdf'))
     }

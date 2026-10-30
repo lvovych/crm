@@ -107,7 +107,9 @@
   "pdfPreview": {
     "title": "Aperçu du PDF",
     "preview": "Aperçu",
-    "failed": "Impossible de générer l'aperçu du PDF."
+    "failed": "Impossible de générer l'aperçu du PDF.",
+    "share": "Partager le PDF",
+    "shareFailed": "Impossible de partager le PDF. Réessayez ou téléchargez le fichier."
   },
   "attachPdf": "Joindre le PDF",
   "attachPdfHint": "Désactivez pour envoyer un lien à la place, afin de voir quand le client l'ouvre.",

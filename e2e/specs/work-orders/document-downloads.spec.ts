@@ -7,6 +7,24 @@ test('invoice and completion act previews download files named after the work or
   context,
   baseURL,
 }) => {
+  await context.addInitScript(() => {
+    Object.defineProperty(navigator, 'canShare', {
+      configurable: true,
+      value: (data: ShareData) => !!data.files?.length,
+    })
+    Object.defineProperty(navigator, 'share', {
+      configurable: true,
+      value: async (data: ShareData) => {
+        const file = data.files?.[0]
+        ;(window as any).__sharedPdf = {
+          keys: Object.keys(data),
+          name: file?.name,
+          type: file?.type,
+          prefix: file ? new TextDecoder().decode((await file.arrayBuffer()).slice(0, 5)) : '',
+        }
+      },
+    })
+  })
   await newWorkOrder(page, await seededVehicleUrl(page), `E2E invoice names ${Date.now()}`)
   await addPart(page, { name: 'Invoice download fixture', quantity: 1, unitPrice: 120 })
   await saveWorkOrder(page)
@@ -23,6 +41,15 @@ test('invoice and completion act previews download files named after the work or
   const invoiceDownload = page.waitForEvent('download')
   await link.click()
   expect((await invoiceDownload).suggestedFilename()).toBe(`invoice-${number}.pdf`)
+  await dialog.getByRole('button', { name: 'Share PDF', exact: true }).click()
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__sharedPdf))
+    .toEqual({
+      keys: ['files'],
+      name: `invoice-${number}.pdf`,
+      type: 'application/pdf',
+      prefix: '%PDF-',
+    })
   // Chromium's embedded PDF viewer may consume Escape; close the outer dialog explicitly.
   await dialog.getByRole('button', { name: 'Close', exact: true }).click()
   await expect(dialog).toBeHidden()
@@ -33,6 +60,15 @@ test('invoice and completion act previews download files named after the work or
   const actDownload = page.waitForEvent('download')
   await link.click()
   expect((await actDownload).suggestedFilename()).toBe(`complete_work-${number}.pdf`)
+  await dialog.getByRole('button', { name: 'Share PDF', exact: true }).click()
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__sharedPdf))
+    .toEqual({
+      keys: ['files'],
+      name: `complete_work-${number}.pdf`,
+      type: 'application/pdf',
+      prefix: '%PDF-',
+    })
   await context.addCookies([
     { name: 'locale', value: 'uk', url: baseURL ?? 'http://127.0.0.1:3100' },
   ])

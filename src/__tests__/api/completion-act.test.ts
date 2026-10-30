@@ -18,8 +18,8 @@ const ctx = {
   isAdmin: true,
   isSuperAdmin: false,
 }
-const request = () =>
-  GET(new Request('https://example.com'), { params: Promise.resolve({ id: 'order-b' }) })
+const request = (query = '') =>
+  GET(new Request(`https://example.com/${query}`), { params: Promise.resolve({ id: 'order-b' }) })
 beforeEach(() => vi.resetAllMocks())
 describe('private completion act route', () => {
   it('requires authentication', async () => {
@@ -54,7 +54,7 @@ describe('private completion act route', () => {
     })
     expect(buildCompletionActPdfBuffer).not.toHaveBeenCalled()
   })
-  it('returns a non-cacheable PDF for an owned record', async () => {
+  it.each(['', '?download=1'])('returns a non-cacheable PDF for an owned record (%s)', async (query) => {
     vi.mocked(getAuthContext).mockResolvedValue(ctx)
     vi.mocked(withAuth).mockImplementation(async (action) => ({
       success: true,
@@ -65,8 +65,9 @@ describe('private completion act route', () => {
       buffer: Buffer.from('%PDF-test'),
       filename: 'complete_work-order-b.pdf',
     })
-    const response = await request()
+    const response = await request(query)
     expect(response.status).toBe(200)
+    expect(response.headers.get('Content-Disposition')).toMatch(query ? /^attachment;/ : /^inline;/)
     expect(response.headers.get('Cache-Control')).toBe('private, no-store')
     expect(response.headers.get('Content-Type')).toBe('application/pdf')
     expect(response.headers.get('Content-Disposition')).toContain(

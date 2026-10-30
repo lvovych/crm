@@ -107,7 +107,9 @@
   "pdfPreview": {
     "title": "Anteprima PDF",
     "preview": "Anteprima",
-    "failed": "Impossibile generare l'anteprima del PDF."
+    "failed": "Impossibile generare l'anteprima del PDF.",
+    "share": "Condividi PDF",
+    "shareFailed": "Impossibile condividere il PDF. Riprova o scarica il file."
   },
   "attachPdf": "Allega PDF",
   "attachPdfHint": "Disattiva per inviare invece un link, così vedi quando il cliente lo apre.",

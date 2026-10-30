@@ -1,3 +1,4 @@
+import { pdfDisposition } from '@/lib/document-filename'
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { getAuthContext } from '@/lib/get-auth-context'
@@ -9,7 +10,7 @@ import { buildWorkOrderPdfBuffer } from '@/features/invoices/Pdf/buildWorkOrderP
  * workshop's design for it, with a line for the customer to sign. Never
  * frozen and never shared; the workshop prints it and files the paper.
  */
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const ctx = await getAuthContext()
     if (!ctx) {
@@ -40,7 +41,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     return new NextResponse(body, {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `inline; filename="${result.filename}"`,
+        'Content-Disposition': pdfDisposition(
+          result.filename,
+          new URL(request.url).searchParams.get('download') === '1' ? 'attachment' : 'inline'
+        ),
       },
     })
   } catch (error) {

@@ -107,7 +107,9 @@
   "pdfPreview": {
     "title": "Vista previa del PDF",
     "preview": "Vista previa",
-    "failed": "No se pudo generar la vista previa del PDF."
+    "failed": "No se pudo generar la vista previa del PDF.",
+    "share": "Compartir PDF",
+    "shareFailed": "No se pudo compartir el PDF. Inténtalo de nuevo o descarga el archivo."
   },
   "attachPdf": "Adjuntar PDF",
   "attachPdfHint": "Desactívalo para enviar un enlace en su lugar y ver cuándo lo abre el cliente.",
