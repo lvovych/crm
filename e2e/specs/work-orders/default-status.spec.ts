@@ -13,30 +13,32 @@ test('work order list defaults to Active, excludes completed jobs and preserves 
     .getByRole('button', { name: /Completed/ })
     .click()
   await saveWorkOrder(page)
+  const number = await page.getByLabel('Invoice Number').inputValue()
 
   await page.goto(`/work-orders?search=${encodeURIComponent(title)}`)
   await settle(page)
+  await expect(page.getByRole('columnheader', { name: 'Title', exact: true })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Active', exact: true })).toHaveAttribute(
     'aria-pressed',
     'true'
   )
-  await expect(page.getByText(title, { exact: true })).toHaveCount(0)
+  await expect(page.getByText(number, { exact: true })).toHaveCount(0)
   await page.getByRole('button', { name: 'All', exact: true }).click()
   await expect(page).toHaveURL(/status=all/)
-  await expect(page.getByText(title, { exact: true }).filter({ visible: true })).toBeVisible()
+  await expect(page.getByText(number, { exact: true }).filter({ visible: true })).toBeVisible()
   await page.reload()
   await settle(page)
   await expect(page.getByRole('button', { name: 'All', exact: true })).toHaveAttribute(
     'aria-pressed',
     'true'
   )
-  await expect(page.getByText(title, { exact: true }).filter({ visible: true })).toBeVisible()
+  await expect(page.getByText(number, { exact: true }).filter({ visible: true })).toBeVisible()
   await page.goto(`/work-orders?status=completed&search=${encodeURIComponent(title)}`)
   await expect(page.getByRole('button', { name: /^Completed/ })).toHaveAttribute(
     'aria-pressed',
     'true'
   )
-  await expect(page.getByText(title, { exact: true }).filter({ visible: true })).toBeVisible()
+  await expect(page.getByText(number, { exact: true }).filter({ visible: true })).toBeVisible()
   await page.goto('/work-orders')
   await expect(page.getByRole('button', { name: 'Active', exact: true })).toHaveAttribute(
     'aria-pressed',
