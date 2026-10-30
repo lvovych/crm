@@ -166,7 +166,7 @@ test.describe('a work order from intake to completion', () => {
     await expect(stage(page, 'Completed')).toHaveAttribute('aria-current', 'step')
   })
 
-  test('the finished job is on the work orders list with its number', async ({ page }) => {
+  test('the finished job is on the All work orders list with its number', async ({ page }) => {
     const number = await (async () => {
       await page.goto(jobUrl)
       return page.getByLabel('Invoice Number').inputValue()
@@ -176,7 +176,7 @@ test.describe('a work order from intake to completion', () => {
     // Found through the list's own search, not by scrolling: the list shows
     // twenty jobs a page, and a workshop with a few hundred of them (or a
     // long-lived e2e database) never has today's job on the first one.
-    await page.goto(`/work-orders?search=${encodeURIComponent(TITLE)}`)
+    await page.goto(`/work-orders?status=all&search=${encodeURIComponent(TITLE)}`)
     // The list draws a card copy for narrow screens beside the table.
     await expect(page.getByText(TITLE).filter({ visible: true }).first()).toBeVisible()
     await expect(page.getByText(number).filter({ visible: true }).first()).toBeVisible()
