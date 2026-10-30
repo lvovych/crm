@@ -31,7 +31,7 @@ export default async function CalendarPage({
   // ring in the next day at 01:00 Oslo time.
   const todayStr = zonedDayKey(new Date(), timeZone)
 
-  const view: CalendarView = isCalendarView(params.view) ? params.view : 'month'
+  const view: CalendarView = isCalendarView(params.view) ? params.view : 'week'
   const date = parseDateKey(params.date) ?? parseDateKey(todayStr) ?? new Date()
 
   const messageChannels = ctx ? await getAvailableChannels(ctx.organizationId) : []
