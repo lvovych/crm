@@ -178,7 +178,6 @@ test.describe('a work order from intake to completion', () => {
     // long-lived e2e database) never has today's job on the first one.
     await page.goto(`/work-orders?status=all&search=${encodeURIComponent(TITLE)}`)
     // The list draws a card copy for narrow screens beside the table.
-    await expect(page.getByText(TITLE).filter({ visible: true }).first()).toBeVisible()
     await expect(page.getByText(number).filter({ visible: true }).first()).toBeVisible()
   })
 })

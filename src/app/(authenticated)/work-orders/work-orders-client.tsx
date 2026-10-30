@@ -518,7 +518,7 @@ export function WorkOrdersClient({
         {/* Low-priority columns drop out at sm/md/lg; the min-width stops what
             is left from being squeezed to a few characters, scrolling the
             table sideways instead (the Table wrapper handles the overflow) */}
-        <Table containerClassName="min-h-0 flex-1" className="min-w-[68rem] table-fixed">
+        <Table containerClassName="min-h-0 flex-1" className="min-w-[53rem] table-fixed">
           <TableHeader sticky>
             <TableRow>
               {shows('invoice') && (
@@ -555,16 +555,6 @@ export function WorkOrdersClient({
                   </button>
                 </TableHead>
               )}
-              <TableHead className="w-[240px]">
-                <button
-                  type="button"
-                  className="flex items-center hover:text-foreground"
-                  onClick={() => handleSort('title')}
-                >
-                  {t('table.title')}
-                  <SortIcon column="title" />
-                </button>
-              </TableHead>
               <TableHead className="w-[150px]">
                 <button
                   type="button"
@@ -627,7 +617,7 @@ export function WorkOrdersClient({
           <TableBody>
             {data.records.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5 + visibleColumns} className="p-0">
+                <TableCell colSpan={4 + visibleColumns} className="p-0">
                   {emptyState(true)}
                 </TableCell>
               </TableRow>
@@ -683,9 +673,6 @@ export function WorkOrdersClient({
                             )}
                           </TableCell>
                         )}
-                        <TableCell className="truncate">
-                          <span className="font-medium">{r.title}</span>
-                        </TableCell>
                         <TableCell>
                           <div className="flex flex-wrap items-center gap-1">
                             <Badge

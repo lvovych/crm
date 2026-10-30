@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { getTorqvoiceLogoDataUri } from '@/lib/torqvoice-branding'
 import { numberInvoicePages } from '@/features/invoices/Pdf/payment-invoice/numberPages'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -231,7 +232,7 @@ describe('Ukrainian payment invoice', () => {
     for (const [name, props] of cases) {
       const raw = await renderToBuffer(
         <Document>
-          <PaymentInvoicePage {...props} />
+          <PaymentInvoicePage {...props} torqvoiceLogoDataUri={await getTorqvoiceLogoDataUri()} />
         </Document>
       )
       const buffer = await numberInvoicePages(raw)

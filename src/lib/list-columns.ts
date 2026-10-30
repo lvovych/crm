@@ -1,7 +1,7 @@
 /**
  * Which optional columns a list shows.
  *
- * A work order table already carries eight columns on a laptop, so anything
+ * A work order table already carries seven columns on a laptop, so anything
  * not everyone needs is off until someone asks for it. The choice is per
  * browser and per list, stored the way the remembered sort is: a cookie, so
  * the server renders the right columns on the first paint instead of the page
