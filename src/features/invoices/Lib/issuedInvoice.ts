@@ -42,6 +42,15 @@ export const issuedInvoiceDataSchema = z
         phone: z.string().default(''),
         email: z.string().default(''),
         slogan: z.string().optional(),
+        paymentProvider: z
+          .object({
+            name: z.string(),
+            address: z.string(),
+            phone: z.string(),
+            code: z.string(),
+            bank: z.string(),
+          })
+          .optional(),
       })
       .passthrough()
       .optional(),

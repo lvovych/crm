@@ -1,3 +1,5 @@
+import { numberInvoicePages } from './payment-invoice/numberPages'
+import { documentFilename } from '@/lib/document-filename'
 /**
  * The one place the invoice sheet becomes a PDF.
  *
@@ -29,11 +31,7 @@ import { getTorqvoiceLogoDataUri } from '@/lib/torqvoice-branding'
 import { resolveCustomerLocale } from '@/i18n/locale-from-request'
 import { loadPrintLabels } from '@/features/invoice-designer/Pdf/printLabels'
 import { visitConditionMapIn } from '@/features/condition-map/Lib/loadMarks.server'
-import {
-  assembleInvoicePrint,
-  type InvoicePrintAssembly,
-  invoiceNumberOf,
-} from '../Lib/assembleInvoicePrint'
+import { assembleInvoicePrint, type InvoicePrintAssembly } from '../Lib/assembleInvoicePrint'
 import { documentCustomerId, telegramQrForPrint } from '@/features/invoices/Lib/telegramQr'
 import { getAppBaseUrl } from '@/lib/app-url'
 
@@ -78,6 +76,7 @@ export async function renderInvoicePdf(
   )
 
   const element = React.createElement(InvoicePDF, {
+    ukrainianLayout: locale === 'uk' && assembly.serviceType === 'automotive',
     data: assembly.data,
     workshop: assembly.workshop,
     invoiceSettings: assembly.invoiceSettings,
@@ -94,7 +93,10 @@ export async function renderInvoicePdf(
     ...attachments,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   }) as any
-  return renderToBuffer(element)
+  const buffer = await renderToBuffer(element)
+  return locale === 'uk' && assembly.serviceType === 'automotive'
+    ? numberInvoicePages(buffer)
+    : buffer
 }
 
 /**
@@ -112,5 +114,5 @@ export async function buildInvoicePdfBuffer(
   const locale = await resolveCustomerLocale(assembly.organizationId, acceptLanguageHeader)
   const buffer = await renderInvoicePdf(assembly, locale)
 
-  return { buffer, filename: `${invoiceNumberOf(assembly.record)}.pdf` }
+  return { buffer, filename: documentFilename('invoice', assembly.record) }
 }

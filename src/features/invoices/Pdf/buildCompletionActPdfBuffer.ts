@@ -1,4 +1,5 @@
 import 'server-only'
+import { documentFilename } from '@/lib/document-filename'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import '@/features/vehicles/Components/invoice-pdf/fonts'
@@ -25,5 +26,5 @@ export async function buildCompletionActPdfBuffer(recordId: string) {
     currency: a.invoiceSettings.currencyCode || 'UAH',
     timezone: a.invoiceSettings.timezone || 'Europe/Kyiv',
   })
-  return { buffer, filename: `completion-act-${recordId.replace(/[^a-zA-Z0-9_-]/g, '')}.pdf` }
+  return { buffer, filename: documentFilename('complete_work', a.data) }
 }

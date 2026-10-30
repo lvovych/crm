@@ -1,3 +1,4 @@
+import { documentFilename, pdfDisposition } from '@/lib/document-filename'
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { getAuthContext } from '@/lib/get-auth-context'
@@ -6,7 +7,7 @@ import { readFile } from 'fs/promises'
 import { PDFDocument } from 'pdf-lib'
 import { resolveUploadPath } from '@/lib/resolve-upload-path'
 import { markInvoiceIssued } from '@/features/onboarding/Lib/markInvoiceIssued'
-import { assembleInvoicePrint, invoiceNumberOf } from '@/features/invoices/Lib/assembleInvoicePrint'
+import { assembleInvoicePrint } from '@/features/invoices/Lib/assembleInvoicePrint'
 import { renderInvoicePdf } from '@/features/invoices/Pdf/buildInvoicePdfBuffer'
 import { isPrintableImage } from '@/features/invoices/Lib/printableImage'
 
@@ -99,7 +100,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       pdfAttachmentNames: pdfAttachments.map((a) => a.fileName),
     })
 
-    const invoiceNum = invoiceNumberOf(record)
+    const filename = documentFilename('invoice', record)
 
     // Merge attached PDF diagnostic reports into the invoice
     let finalBuffer: ArrayBuffer
@@ -131,7 +132,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     return new NextResponse(finalBuffer, {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${invoiceNum}.pdf"`,
+        'Content-Disposition': pdfDisposition(filename),
       },
     })
   } catch (error) {

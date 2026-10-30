@@ -1,3 +1,4 @@
+import { documentFilename, downloadFilename } from '@/lib/document-filename'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -241,9 +242,10 @@ export function useServiceActions({
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download =
-        res.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] ||
-        `invoice-${record.invoiceNumber || record.id}.pdf`
+      a.download = downloadFilename(
+        res.headers.get('Content-Disposition'),
+        documentFilename('invoice', record)
+      )
       a.click()
       URL.revokeObjectURL(url)
     } catch {

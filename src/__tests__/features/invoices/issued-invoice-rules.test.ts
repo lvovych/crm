@@ -95,6 +95,24 @@ describe('wasIssuedBeforeTracking', () => {
 })
 
 describe('readIssuedInvoiceData', () => {
+  it('keeps legal provider details in the issued snapshot and supports older snapshots', () => {
+    const provider = {
+      name: 'Issued legal name',
+      address: 'Issued address',
+      phone: '123',
+      code: '456',
+      bank: 'Issued IBAN',
+    }
+    expect(
+      readIssuedInvoiceData({ version: 1, workshop: { paymentProvider: provider } })?.workshop
+        .paymentProvider
+    ).toEqual(provider)
+    expect(
+      readIssuedInvoiceData({ version: 1, workshop: { name: 'Old issued workshop' } })?.workshop
+        .paymentProvider
+    ).toBeUndefined()
+  })
+
   it('reads a snapshot with fields this version never heard of', () => {
     const data = readIssuedInvoiceData({
       version: 7,
