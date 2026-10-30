@@ -53,7 +53,6 @@ export function useServiceActions({
     selectedVehicleId,
     type,
     status,
-    concerns,
     partItems,
     laborItems,
     laborItemsForSave,
@@ -119,7 +118,6 @@ export function useServiceActions({
       title: getVisible('title') ?? '',
       partItems,
       laborItems,
-      concerns,
     })
     if (problem) {
       toast.error(t(`page.problems.${problem}`))
@@ -165,19 +163,9 @@ export function useServiceActions({
       invoiceNumber: optionalText('invoiceNumber'),
       invoiceDate: optionalText('invoiceDate'),
       invoiceDueDate: optionalText('invoiceDueDate'),
-      // Blank rows are somebody halfway through typing, not a concern.
-      // Only the saved fields: the stamp of who confirmed is the server's.
-      concerns: concerns
-        .filter((c) => c.description.trim())
-        .map((c, index) => ({
-          id: c.id,
-          description: c.description.trim(),
-          sortOrder: index,
-          cause: c.cause ?? null,
-          correction: c.correction ?? null,
-          confirmation: c.confirmation ?? null,
-          confirmed: c.confirmed ?? false,
-        })),
+      // The legacy work-description editor is hidden. Omit concerns entirely:
+      // resubmitting stale form state could trim/reorder history or overwrite
+      // changes from another client. The update action preserves omitted rows.
       partItems: partItems.filter((p) => p.name),
       // A line a technician added while this page was open goes with the save
       // even if the offer to show it was never taken: this action replaces

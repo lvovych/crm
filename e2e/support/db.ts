@@ -1827,8 +1827,8 @@ export async function seedLegacyConcern(serviceRecordId: string): Promise<string
   return withDb(async (db) => {
     const id = `e2e-concern-${randomBytes(8).toString('hex')}`
     await db.query(
-      `insert into service_concerns (id, "serviceRecordId", description, cause, correction, confirmation, "updatedAt")
-       values ($1, $2, 'Legacy symptom', 'Legacy cause', 'Legacy correction', 'Legacy confirmation', now())`,
+      `insert into service_concerns (id, "serviceRecordId", description, cause, correction, confirmation, "sortOrder", "updatedAt")
+       values ($1, $2, '  Legacy symptom  ', 'Legacy cause', 'Legacy correction', 'Legacy confirmation', 7, now())`,
       [id, serviceRecordId]
     )
     return id
@@ -1838,7 +1838,7 @@ export async function seedLegacyConcern(serviceRecordId: string): Promise<string
 export async function legacyConcern(id: string) {
   return withDb(async (db) => {
     const result = await db.query(
-      `select id, "serviceRecordId", description, cause, correction, confirmation, "confirmedAt", "confirmedById", "sortOrder", "createdAt" from service_concerns where id = $1`,
+      `select id, "serviceRecordId", description, cause, correction, confirmation, "confirmedAt", "confirmedById", "sortOrder", "createdAt", "updatedAt" from service_concerns where id = $1`,
       [id]
     )
     return result.rows[0]
