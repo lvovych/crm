@@ -107,7 +107,9 @@
   "pdfPreview": {
     "title": "PDF-Vorschau",
     "preview": "Vorschau",
-    "failed": "Die PDF-Vorschau konnte nicht erstellt werden."
+    "failed": "Die PDF-Vorschau konnte nicht erstellt werden.",
+    "share": "PDF teilen",
+    "shareFailed": "Das PDF konnte nicht geteilt werden. Versuchen Sie es erneut oder laden Sie die Datei herunter."
   },
   "attachPdf": "PDF anhängen",
   "attachPdfHint": "Ausschalten, um stattdessen einen Link zu senden, damit Sie sehen, wann der Kunde ihn öffnet.",

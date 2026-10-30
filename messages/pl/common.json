@@ -107,7 +107,9 @@
   "pdfPreview": {
     "title": "Podgląd PDF",
     "preview": "Podgląd",
-    "failed": "Nie udało się wygenerować podglądu PDF."
+    "failed": "Nie udało się wygenerować podglądu PDF.",
+    "share": "Udostępnij PDF",
+    "shareFailed": "Nie udało się udostępnić pliku PDF. Spróbuj ponownie lub pobierz plik."
   },
   "attachPdf": "Dołącz PDF",
   "attachPdfHint": "Wyłącz, aby wysłać zamiast tego link i widzieć, kiedy klient go otworzy.",

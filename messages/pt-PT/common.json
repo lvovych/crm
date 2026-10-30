@@ -107,7 +107,9 @@
   "pdfPreview": {
     "title": "Pré-visualização do PDF",
     "preview": "Pré-visualizar",
-    "failed": "Não foi possível gerar a pré-visualização do PDF."
+    "failed": "Não foi possível gerar a pré-visualização do PDF.",
+    "share": "Partilhar PDF",
+    "shareFailed": "Não foi possível partilhar o PDF. Tente novamente ou transfira o ficheiro."
   },
   "attachPdf": "Anexar PDF",
   "attachPdfHint": "Desative para enviar um link em vez do anexo e assim saber quando o cliente o abre.",

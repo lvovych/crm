@@ -107,7 +107,9 @@
   "pdfPreview": {
     "title": "PDF preview",
     "preview": "Preview",
-    "failed": "Could not generate the PDF preview."
+    "failed": "Could not generate the PDF preview.",
+    "share": "Share PDF",
+    "shareFailed": "Could not share the PDF. Try again or download the file."
   },
   "attachPdf": "Attach PDF",
   "attachPdfHint": "Turn this off to send a link instead, so you can see when the customer opens it.",

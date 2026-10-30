@@ -6,7 +6,7 @@ import { PermissionAction, PermissionSubject } from '@/lib/permissions'
 import { db } from '@/lib/db'
 import { buildCompletionActPdfBuffer } from '@/features/invoices/Pdf/buildCompletionActPdfBuffer'
 
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!(await getAuthContext()))
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id } = await params
@@ -29,7 +29,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       'Content-Type': 'application/pdf',
-      'Content-Disposition': pdfDisposition(filename, 'inline'),
+      'Content-Disposition': pdfDisposition(
+        filename,
+        new URL(request.url).searchParams.get('download') === '1' ? 'attachment' : 'inline'
+      ),
       'Cache-Control': 'private, no-store',
     },
   })

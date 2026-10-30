@@ -107,7 +107,9 @@
   "pdfPreview": {
     "title": "PDF peržiūra",
     "preview": "Peržiūra",
-    "failed": "Nepavyko sugeneruoti PDF peržiūros."
+    "failed": "Nepavyko sugeneruoti PDF peržiūros.",
+    "share": "Bendrinti PDF",
+    "shareFailed": "Nepavyko bendrinti PDF. Bandykite dar kartą arba atsisiųskite failą."
   },
   "attachPdf": "Pridėti PDF",
   "attachPdfHint": "Išjunkite, kad būtų siunčiama nuoroda, tada matysite, kada klientas ją atidarė.",

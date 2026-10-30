@@ -107,7 +107,9 @@
   "pdfPreview": {
     "title": "PDF-voorbeeld",
     "preview": "Voorbeeld",
-    "failed": "Kon het PDF-voorbeeld niet genereren."
+    "failed": "Kon het PDF-voorbeeld niet genereren.",
+    "share": "PDF delen",
+    "shareFailed": "De PDF kon niet worden gedeeld. Probeer het opnieuw of download het bestand."
   },
   "attachPdf": "Pdf toevoegen",
   "attachPdfHint": "Zet dit uit om in plaats daarvan een link te sturen, zodat je ziet wanneer de klant hem opent.",

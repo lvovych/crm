@@ -107,7 +107,9 @@
   "pdfPreview": {
     "title": "PDF önizleme",
     "preview": "Önizleme",
-    "failed": "PDF önizlemesi oluşturulamadı."
+    "failed": "PDF önizlemesi oluşturulamadı.",
+    "share": "PDF paylaş",
+    "shareFailed": "PDF paylaşılamadı. Tekrar deneyin veya dosyayı indirin."
   },
   "attachPdf": "PDF ekle",
   "attachPdfHint": "Bunun yerine bağlantı göndermek için kapatın; böylece müşterinin ne zaman açtığını görürsünüz.",
