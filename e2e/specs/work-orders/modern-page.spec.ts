@@ -1,6 +1,8 @@
 import { expect, type Locator, type Page, test } from '@playwright/test'
 import {
   deleteTechnicians,
+  seedLegacyConcern,
+  legacyConcern,
   insertTechnician,
   jobAssignment,
   ownerOrganizationId,
@@ -25,8 +27,7 @@ import {
  * `modern-layout.spec.ts` covers the one-copy-of-each-field rule; this file
  * drives the things that exist
  * only here or behave differently here: the job facts and the header's type,
- * the concern story (condition, cause, correction, confirm) and the question
- * before completing a job with a concern nobody confirmed, the files card,
+ * preservation of hidden legacy work descriptions, the files card,
  * the technician list, the notes, and a locked invoice that still takes a
  * status, a payment and an internal note.
  *
@@ -180,90 +181,63 @@ test.describe('the overhauled work order page', () => {
     await expect(page.getByTestId('notes-customer').locator('.ProseMirror')).toContainText(customer)
   })
 
-  test('tells a concern as condition, cause, correction and confirmation', async ({ page }) => {
-    await openModern(page, factsJob)
-
-    const concerns = page.getByTestId('customer-concerns')
-    const story = concerns.getByTestId('concern-story').first()
-    const words = {
-      condition: `Squeal from the front left when braking ${stamp}`,
-      cause: 'Inner pad worn to the backing plate',
-      correction: 'Replaced front pads and cleaned the slides',
-      confirm: 'Test drive, no noise',
+  test('hides legacy work descriptions on desktop and mobile and preserves them when completing the job', async ({
+    page,
+  }) => {
+    const id = await seedLegacyConcern(jobIdOf(factsJob))
+    const before = await legacyConcern(id)
+    for (const viewport of [
+      { width: 1440, height: 1000 },
+      { width: 390, height: 844 },
+    ]) {
+      await page.setViewportSize(viewport)
+      await openModern(page, factsJob)
+      await expect(page.getByTestId('customer-concerns')).toHaveCount(0)
+      await expect(page.getByTestId('notes-internal')).toBeVisible()
+      await expect(page.getByTestId('notes-customer')).toBeVisible()
+      await page.screenshot({
+        path: test.info().outputPath(`work-order-${viewport.width}.png`),
+        fullPage: true,
+      })
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
+      ).toBe(true)
     }
-
-    await fillSettled(
-      story.getByPlaceholder('What the customer reported, or what you observed'),
-      words.condition
-    )
-    await story.getByTestId('concern-step-cause').click()
-    await story.getByPlaceholder('What testing showed the root cause to be').fill(words.cause)
-    await story.getByTestId('concern-step-correction').click()
-    await story.getByPlaceholder('What was done to fix it').fill(words.correction)
-    await story.getByTestId('concern-step-confirm').click()
-    await story
-      .getByPlaceholder('How the fix was checked: test drive, re-scan, symptom gone')
-      .fill(words.confirm)
-    await story.getByTestId('concern-confirmed').click()
-    await expect(story).toContainText('Stamped with your name when you save')
+    await stepper(page)
+      .getByRole('button', { name: /Completed/ })
+      .click()
+    await expect(
+      page.getByRole('alertdialog', { name: 'Complete with unconfirmed concerns?' })
+    ).toHaveCount(0)
+    await expectStatus(page, /Completed/)
     await saveWorkOrder(page)
-
     await page.reload()
     await settle(page)
-    const saved = page.getByTestId('customer-concerns').getByTestId('concern-story').first()
-    await expect(saved.getByTestId('concern-step-condition')).toContainText(words.condition)
-    await expect(saved.getByTestId('concern-step-cause')).toContainText(words.cause)
-    await expect(saved.getByTestId('concern-step-correction')).toContainText(words.correction)
-    await expect(saved.getByTestId('concern-step-confirm')).toContainText(words.confirm)
-    await saved.getByTestId('concern-step-confirm').click()
-    // The stamp is the server's: who ticked it, and when.
-    await expect(saved).toContainText('Confirmed by')
-    await expect(page.getByTestId('concerns-confirmed')).toHaveText('1 of 1 confirmed')
+    await expectStatus(page, /Completed/)
+    await expect(page.getByTestId('customer-concerns')).toHaveCount(0)
+    expect(await legacyConcern(id)).toEqual(before)
   })
 
-  test('asks before completing a job with a concern nobody confirmed', async ({ page }) => {
-    await openModern(page, factsJob)
-
-    const concerns = page.getByTestId('customer-concerns')
-    const stories = concerns.getByTestId('concern-story')
-    const add = concerns.getByRole('button', { name: 'Add another' })
-    // A blank row may already be waiting; otherwise ask for one.
-    if (await add.isEnabled()) {
-      const before = await stories.count()
-      await expect(async () => {
-        await add.click()
-        await expect(stories).toHaveCount(before + 1, { timeout: 2_000 })
-      }).toPass({ timeout: 30_000 })
-    }
-    const open = `Aircon smells musty ${stamp}`
-    await stories
-      .last()
-      .getByPlaceholder('What the customer reported, or what you observed')
-      .fill(open)
+  test('also hides work descriptions in the classic layout without losing old data', async ({
+    page,
+    context,
+    baseURL,
+  }) => {
+    const id = await seedLegacyConcern(jobIdOf(factsJob))
+    const before = await legacyConcern(id)
+    await context.addCookies([
+      { name: 'workOrderLayout', value: 'classic', url: baseURL ?? 'http://127.0.0.1:3100' },
+    ])
+    await page.goto(factsJob)
+    await settle(page)
+    await expect(page.getByTestId('service-layout')).toBeVisible()
+    await expect(page.getByTestId('customer-concerns')).toHaveCount(0)
+    await fillSettled(page.locator('#mileage'), '123457')
     await saveWorkOrder(page)
-
-    const question = page.getByRole('alertdialog', { name: 'Complete with unconfirmed concerns?' })
-    await stepper(page)
-      .getByRole('button', { name: /Completed/ })
-      .click()
-    await expect(question).toContainText(open)
-    await question.getByRole('button', { name: 'Cancel' }).click()
-    await expect(question).toBeHidden()
-    await expect(stepper(page).getByRole('button', { name: /Completed/ })).not.toHaveAttribute(
-      'aria-current',
-      'step'
-    )
-
-    await stepper(page)
-      .getByRole('button', { name: /Completed/ })
-      .click()
-    await question.getByRole('button', { name: 'Complete anyway' }).click()
-    await expectStatus(page, /Completed/)
-    await saveWorkOrder(page)
-
     await page.reload()
     await settle(page)
-    await expectStatus(page, /Completed/)
+    await expect(page.locator('#mileage')).toHaveValue('123457')
+    expect(await legacyConcern(id)).toEqual(before)
   })
 
   test('files photos and video on the job, shown to the customer until hidden', async ({
