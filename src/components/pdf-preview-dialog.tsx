@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { Loader2 } from 'lucide-react'
+import { downloadFilename } from '@/lib/document-filename'
+import { Button } from '@/components/ui/button'
+import { Loader2, Download } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 interface PdfPreviewDialogProps {
@@ -21,6 +23,8 @@ interface PdfPreviewDialogProps {
  */
 export function PdfPreviewDialog({ open, onOpenChange, url }: PdfPreviewDialogProps) {
   const t = useTranslations('common.pdfPreview')
+  const tc = useTranslations('service.attachments')
+  const [filename, setFilename] = useState('document.pdf')
   const [blobUrl, setBlobUrl] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)
 
@@ -37,6 +41,7 @@ export function PdfPreviewDialog({ open, onOpenChange, url }: PdfPreviewDialogPr
         const blob = await res.blob()
         if (cancelled) return
         created = URL.createObjectURL(blob)
+        setFilename(downloadFilename(res.headers.get('Content-Disposition')))
         setBlobUrl(created)
       })
       .catch(() => {
@@ -56,6 +61,14 @@ export function PdfPreviewDialog({ open, onOpenChange, url }: PdfPreviewDialogPr
         <DialogHeader>
           <DialogTitle>{t('title')}</DialogTitle>
         </DialogHeader>
+        {blobUrl && (
+          <Button asChild variant="outline" className="self-start">
+            <a href={blobUrl} download={filename}>
+              <Download className="mr-2 size-4" />
+              {tc('download')}
+            </a>
+          </Button>
+        )}
         <div className="min-h-0 flex-1 overflow-hidden rounded-md border bg-muted">
           {failed ? (
             <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">

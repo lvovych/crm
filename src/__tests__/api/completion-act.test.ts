@@ -63,12 +63,15 @@ describe('private completion act route', () => {
     vi.mocked(db.serviceRecord.findFirst).mockResolvedValue({ id: 'order-b' } as never)
     vi.mocked(buildCompletionActPdfBuffer).mockResolvedValue({
       buffer: Buffer.from('%PDF-test'),
-      filename: 'completion-act-order-b.pdf',
+      filename: 'complete_work-order-b.pdf',
     })
     const response = await request()
     expect(response.status).toBe(200)
     expect(response.headers.get('Cache-Control')).toBe('private, no-store')
     expect(response.headers.get('Content-Type')).toBe('application/pdf')
+    expect(response.headers.get('Content-Disposition')).toContain(
+      'filename="complete_work-order-b.pdf"'
+    )
     expect(await response.text()).toBe('%PDF-test')
   })
 })

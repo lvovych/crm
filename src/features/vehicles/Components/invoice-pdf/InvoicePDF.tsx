@@ -1,7 +1,8 @@
+import { PaymentInvoicePage } from '@/features/invoices/Pdf/payment-invoice/PaymentInvoicePage'
 import { Document, Image, Page, Text, View } from '@react-pdf/renderer'
 import { buildInvoicePrintSpec } from '@/features/invoice-designer/Pdf/buildInvoicePrint'
 import type { VisitConditionMap } from '@/features/condition-map/Lib/print'
-import { pdfFamily } from '@/features/invoice-designer/Pdf/renderPdf'
+import { pdfFamily, RenderNodePdf } from '@/features/invoice-designer/Pdf/renderPdf'
 import { SpecPdfPage } from '@/features/invoice-designer/Pdf/SpecPdf'
 import type {
   ImageAttachment,
@@ -16,7 +17,8 @@ import type {
 /**
  * The printed invoice.
  *
- * The sheet itself is the document the designer edits: the same generator
+ * Ukrainian automotive invoices use the compact payment sheet. Other invoices
+ * use the document the designer edits: the same generator
  * builds the same blocks, laid out by the same engine, so an invoice prints
  * the way the workshop arranged it — hand-placed sections, narrowed widths,
  * spacing and all. This file only maps the job onto that document and
@@ -39,7 +41,9 @@ export function InvoicePDF({
   telegramLabel,
   labels = {},
   conditionMap,
+  ukrainianLayout = false,
 }: {
+  ukrainianLayout?: boolean
   data: InvoiceData
   workshop?: WorkshopInfo
   invoiceSettings?: InvoiceSettingsProps
@@ -81,7 +85,38 @@ export function InvoicePDF({
 
   return (
     <Document>
-      <SpecPdfPage spec={spec} />
+      {ukrainianLayout ? (
+        <PaymentInvoicePage
+          data={data}
+          workshop={workshop}
+          invoiceSettings={invoiceSettings}
+          paymentSummary={paymentSummary}
+          logoDataUri={logoDataUri}
+          signer={signer}
+          portalUrl={portalUrl}
+          telegramQrDataUri={telegramQrDataUri}
+          torqvoiceLogoDataUri={torqvoiceLogoDataUri}
+          labels={labels}
+        />
+      ) : (
+        <SpecPdfPage spec={spec} />
+      )}
+
+      {ukrainianLayout &&
+        spec.blocks
+          .filter((block) => block.id === 'condition_map')
+          .map((block) => (
+            <Page
+              key={block.id}
+              size="A4"
+              style={{ padding: 28, fontFamily: 'Roboto', fontSize: 9 }}
+            >
+              <RenderNodePdf
+                node={block.content}
+                base={{ fontFamily: 'Roboto', fontSize: 9, color: '#17191d' }}
+              />
+            </Page>
+          ))}
 
       {imageAttachments.length > 0 && (
         <Page size="A4" style={{ padding: 40, fontFamily, fontSize: 9, color: '#111827' }}>

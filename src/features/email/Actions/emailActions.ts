@@ -1,5 +1,7 @@
 'use server'
 
+import { documentFilename } from '@/lib/document-filename'
+
 import { resolveCurrencyCode, resolveCurrencyFormat } from '@/lib/currencies'
 import { db } from '@/lib/db'
 import { withAuth } from '@/lib/with-auth'
@@ -329,7 +331,7 @@ export async function sendInvoiceEmail(input: {
         attached: attachPdf,
         attachments: pdfBuffer
           ? [
-              { filename: `${invoiceNum}.pdf`, content: pdfBuffer },
+              { filename: documentFilename('invoice', record), content: pdfBuffer },
               ...(certificate ? [certificate] : []),
             ]
           : undefined,

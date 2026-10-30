@@ -405,6 +405,14 @@ async function assembleLive(
     phone: settingsMap['workshop.phone'] || '',
     email: settingsMap['workshop.email'] || '',
     slogan: settingsMap['workshop.slogan'] || undefined,
+    paymentProvider: {
+      name: settingsMap['completionAct.providerName'] || org?.name || '',
+      address:
+        settingsMap['completionAct.providerAddress'] || settingsMap['workshop.address'] || '',
+      phone: settingsMap['completionAct.providerPhone'] || settingsMap['workshop.phone'] || '',
+      code: settingsMap['completionAct.providerCode'] || invoiceSettings.orgNumber || '',
+      bank: settingsMap['completionAct.providerBank'] || invoiceSettings.bankAccount || '',
+    },
   }
   const serviceType = settingsMap['workshop.serviceType'] === 'marine' ? 'marine' : 'automotive'
   const taxLabel = settingsMap['workshop.taxLabel']?.trim() || undefined

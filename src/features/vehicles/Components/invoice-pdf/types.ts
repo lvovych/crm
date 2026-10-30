@@ -121,6 +121,9 @@ export interface InvoiceData {
 }
 
 export interface WorkshopInfo {
+  /** Legal provider shared with the Ukrainian act; captured when an invoice is issued. */
+  paymentProvider?: { name: string; address: string; phone: string; code: string; bank: string }
+
   name: string
   address: string
   phone: string

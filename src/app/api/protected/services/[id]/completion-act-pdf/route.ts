@@ -1,3 +1,4 @@
+import { pdfDisposition } from '@/lib/document-filename'
 import { NextResponse } from 'next/server'
 import { getAuthContext } from '@/lib/get-auth-context'
 import { withAuth } from '@/lib/with-auth'
@@ -28,7 +29,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `inline; filename="${filename}"`,
+      'Content-Disposition': pdfDisposition(filename, 'inline'),
       'Cache-Control': 'private, no-store',
     },
   })

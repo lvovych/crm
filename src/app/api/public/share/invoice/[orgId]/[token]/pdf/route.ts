@@ -1,3 +1,4 @@
+import { pdfDisposition } from '@/lib/document-filename'
 import { NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 import { db } from '@/lib/db'
@@ -49,7 +50,7 @@ export async function GET(
       {
         headers: {
           'Content-Type': 'application/pdf',
-          'Content-Disposition': `attachment; filename="${result.filename}"`,
+          'Content-Disposition': pdfDisposition(result.filename),
           'X-Robots-Tag': 'noindex, nofollow',
         },
       }
