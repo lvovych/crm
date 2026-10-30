@@ -12,12 +12,10 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
-import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { SidebarTrigger } from '@/components/ui/sidebar'
-import { AlertTriangle, Search, X, Zap } from 'lucide-react'
+import { AlertTriangle, Search, X } from 'lucide-react'
 import { openPlateLookup, usePlateLookupAccess } from '@/components/plate-lookup-context'
-import { useShowWhiteLabelCta } from '@/components/white-label-cta-context'
 import { useLicenseExpiry } from '@/components/license-expiry-context'
 import { BANNER_PRIORITY, useBannerSlot } from '@/components/banner-slot'
 import { QuickCreateMenu } from '@/components/quick-create-menu'
@@ -195,7 +193,6 @@ const marineBreadcrumbKeys: Record<string, string> = {
 
 export function PageHeader() {
   const pathname = usePathname()
-  const showWhiteLabelCta = useShowWhiteLabelCta()
   const { daysUntilExpiry, unverifiedDaysLeft, dismissed, dismiss } = useLicenseExpiry()
   // Weeks of warning before a licence lapses, so this waits behind anything
   // happening right now rather than adding a second bar beneath it. A licence
@@ -311,14 +308,6 @@ export function PageHeader() {
           <PlateTrigger />
           <SearchTrigger />
           <QuickCreateMenu />
-          {showWhiteLabelCta && (
-            <Button asChild variant="outline" size="sm" className="hidden sm:inline-flex">
-              <Link href="/settings/license">
-                <Zap className="mr-2 h-3 w-3" />
-                {tn('purchaseWhiteLabel')}
-              </Link>
-            </Button>
-          )}
         </div>
       </header>
       {showLicenceNotice && showUnverifiedNotice && (
