@@ -38,6 +38,8 @@ model Organization {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
+  counterparties              Counterparty[]
+  supplierImportRuns          SupplierImportRun[]
   members                     OrganizationMember[]
   roles                       Role[]
   vehicles                    Vehicle[]

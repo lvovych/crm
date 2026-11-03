@@ -478,6 +478,8 @@ export async function POST(request: NextRequest) {
         Vehicle: () => tx.vehicle.deleteMany({ where: { organizationId } }),
         CustomFieldDefinition: () =>
           tx.customFieldDefinition.deleteMany({ where: { organizationId } }),
+        Counterparty: () => tx.counterparty.deleteMany({ where: { organizationId } }),
+        SupplierImportRun: () => tx.supplierImportRun.deleteMany({ where: { organizationId } }),
         InventoryPart: () => tx.inventoryPart.deleteMany({ where: { organizationId } }),
         Technician: () => tx.technician.deleteMany({ where: { organizationId } }),
         WorkBay: () => tx.workBay.deleteMany({ where: { organizationId } }),
@@ -770,6 +772,44 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // Supplier directory must precede parts. Re-scope every nested row to the destination.
+      if (data.counterparties) {
+        for (const raw of data.counterparties as Record<string, unknown>[]) {
+          const { supplierProfile, contacts, bankAccounts, sourceLinks, ...fields } = raw
+          await tx.counterparty.create({
+            data: columnsOf(fields, { organizationId, createdById: ctx.userId }) as never,
+          })
+          const scope = { organizationId, counterpartyId: raw.id }
+          if (supplierProfile)
+            await tx.supplierProfile.create({
+              data: columnsOf(supplierProfile as Record<string, unknown>, scope) as never,
+            })
+          for (const c of (contacts ?? []) as Record<string, unknown>[])
+            await tx.counterpartyContact.create({ data: columnsOf(c, scope) as never })
+          for (const b of (bankAccounts ?? []) as Record<string, unknown>[])
+            await tx.counterpartyBankAccount.create({ data: columnsOf(b, scope) as never })
+          for (const l of (sourceLinks ?? []) as Record<string, unknown>[])
+            await tx.counterpartySourceLink.create({ data: columnsOf(l, scope) as never })
+        }
+      }
+      if (data.supplierImportRuns) {
+        for (const raw of data.supplierImportRuns as Record<string, unknown>[]) {
+          const { items, ...fields } = raw
+          await tx.supplierImportRun.create({
+            data: columnsOf(fields, { organizationId, createdById: ctx.userId }) as never,
+          })
+          for (const item of (items ?? []) as Record<string, unknown>[])
+            await tx.supplierImportItem.create({
+              data: columnsOf(item, {
+                organizationId,
+                runId: raw.id,
+                evidence: item.evidence,
+                conflicts: item.conflicts,
+                payload: item.payload,
+              }) as never,
+            })
+        }
+      }
       // 5. Insert inventory parts
       if (data.inventoryParts?.length) {
         await tx.inventoryPart.createMany({
@@ -785,6 +825,7 @@ export async function POST(request: NextRequest) {
               unit: (p.unit as string) || null,
               unitCost: (p.unitCost as number) || 0,
               sellPrice: (p.sellPrice as number) || 0,
+              preferredSupplierId: (p.preferredSupplierId as string) || null,
               supplier: (p.supplier as string) || null,
               supplierPhone: (p.supplierPhone as string) || null,
               supplierEmail: (p.supplierEmail as string) || null,

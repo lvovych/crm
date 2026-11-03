@@ -20,6 +20,10 @@ import { allReferencedSuffixes, FILE_REFERENCES, referencedSuffixes } from '@/li
 /** Columns that look as if they could hold a file and do not, and why. */
 const NOT_FILES: Record<string, string> = {
   'AuditLog.metadata': 'history of what happened; never a live use of a file',
+  'SupplierImportRun.summary': 'import counts and coverage; no managed attachments',
+  'SupplierImportItem.payload': 'supplier identity/contact snapshot; no managed attachments',
+  'SupplierImportItem.evidence': 'external document IDs, kinds and dates',
+  'SupplierImportItem.conflicts': 'identity-match candidates; no managed attachments',
   'DashboardWidget.config': 'widget settings',
   'DocumentDesign.documentType': 'invoice or quote',
   'DocumentDesign.layout': 'section order and switches; the logo is in `template`',

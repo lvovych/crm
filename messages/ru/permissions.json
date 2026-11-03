@@ -15,7 +15,8 @@
     "time_tracking": "Учёт времени",
     "work_board": "Доска работ",
     "ai_assistant": "ИИ-помощник",
-    "settings": "Настройки"
+    "settings": "Настройки",
+    "suppliers": "Suppliers"
   },
   "actions": {
     "create": "Создание",

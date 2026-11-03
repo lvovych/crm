@@ -129,6 +129,7 @@ export function AppSidebar({
   activeOrgId,
   isSuperAdmin,
   features,
+  supplierDirectoryEnabled = false,
   tireHotelEnabled = false,
   aiEnabled = false,
   isAdminOrOwner = false,
@@ -138,6 +139,7 @@ export function AppSidebar({
   isTechnician = false,
   ...props
 }: React.ComponentProps<typeof Sidebar> & {
+  supplierDirectoryEnabled?: boolean
   companyLogo?: string
   organizations?: OrgInfo[]
   activeOrgId?: string
@@ -251,6 +253,12 @@ export function AppSidebar({
   const businessItems: NavItem[] = [
     { titleKey: 'sidebar.quotes' as const, url: '/quotes', icon: FileText, subject: 'quotes' },
     { titleKey: 'sidebar.billing' as const, url: '/billing', icon: Receipt, subject: 'billing' },
+    ...(supplierDirectoryEnabled ? [{
+      titleKey: 'sidebar.suppliers' as const,
+      url: '/suppliers',
+      icon: Building2,
+      subject: 'suppliers',
+    }] : []),
     {
       titleKey: 'sidebar.inventory' as const,
       url: '/inventory',

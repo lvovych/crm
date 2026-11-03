@@ -15,7 +15,8 @@
     "time_tracking": "Rilevazione tempi",
     "work_board": "Bacheca lavori",
     "ai_assistant": "Assistente IA",
-    "settings": "Impostazioni"
+    "settings": "Impostazioni",
+    "suppliers": "Suppliers"
   },
   "actions": {
     "create": "Creare",

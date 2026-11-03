@@ -192,7 +192,12 @@
     "settings_markType_create": "Pridėtas žymos tipas",
     "settings_markType_update": "Pakeistas žymos tipas",
     "settings_markType_remove": "Pašalintas žymos tipas",
-    "settings_markType_reorder": "Pakeista žymų tipų tvarka"
+    "settings_markType_reorder": "Pakeista žymų tipų tvarka",
+    "supplier_import_preview": "Supplier import preview",
+    "supplier_create": "Created supplier",
+    "supplier_update": "Updated supplier",
+    "supplier_archive": "Archived supplier",
+    "supplier_restore": "Restored supplier"
   },
   "summary": {
     "customField_create": "Sukurtas pasirinktinis laukas „{name}“",

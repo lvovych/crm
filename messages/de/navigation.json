@@ -141,6 +141,7 @@
       "workOrders": "{count} offene Arbeitsaufträge",
       "inspections": "{count} laufende Inspektionen",
       "reminders": "{count} fällige Erinnerungen"
-    }
+    },
+    "suppliers": "Suppliers"
   }
 }

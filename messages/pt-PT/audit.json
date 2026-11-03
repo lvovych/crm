@@ -192,7 +192,12 @@
     "settings_markType_create": "Tipo de marca adicionado",
     "settings_markType_update": "Tipo de marca alterado",
     "settings_markType_remove": "Tipo de marca removido",
-    "settings_markType_reorder": "Tipos de marca reordenados"
+    "settings_markType_reorder": "Tipos de marca reordenados",
+    "supplier_import_preview": "Supplier import preview",
+    "supplier_create": "Created supplier",
+    "supplier_update": "Updated supplier",
+    "supplier_archive": "Archived supplier",
+    "supplier_restore": "Restored supplier"
   },
   "summary": {
     "customField_create": "Campo personalizado \"{name}\" criado",

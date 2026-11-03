@@ -192,7 +192,12 @@
     "settings_markType_create": "Dodano rodzaj oznaczenia",
     "settings_markType_update": "Zmieniono rodzaj oznaczenia",
     "settings_markType_remove": "Usunięto rodzaj oznaczenia",
-    "settings_markType_reorder": "Zmieniono kolejność rodzajów oznaczeń"
+    "settings_markType_reorder": "Zmieniono kolejność rodzajów oznaczeń",
+    "supplier_import_preview": "Supplier import preview",
+    "supplier_create": "Created supplier",
+    "supplier_update": "Updated supplier",
+    "supplier_archive": "Archived supplier",
+    "supplier_restore": "Restored supplier"
   },
   "summary": {
     "customField_create": "Utworzono pole niestandardowe „{name}”",

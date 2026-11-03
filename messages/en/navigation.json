@@ -141,6 +141,7 @@
       "workOrders": "{count} open work orders",
       "inspections": "{count} inspections in progress",
       "reminders": "{count} reminders due"
-    }
+    },
+    "suppliers": "Suppliers"
   }
 }

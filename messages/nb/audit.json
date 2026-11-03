@@ -192,7 +192,12 @@
     "settings_markType_create": "La til en merketype",
     "settings_markType_update": "Endret en merketype",
     "settings_markType_remove": "Fjernet en merketype",
-    "settings_markType_reorder": "Endret rekkefølgen på merketypene"
+    "settings_markType_reorder": "Endret rekkefølgen på merketypene",
+    "supplier_import_preview": "Supplier import preview",
+    "supplier_create": "Created supplier",
+    "supplier_update": "Updated supplier",
+    "supplier_archive": "Archived supplier",
+    "supplier_restore": "Restored supplier"
   },
   "summary": {
     "customField_create": "Opprettet egendefinert felt «{name}»",

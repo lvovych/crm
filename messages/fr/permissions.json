@@ -15,7 +15,8 @@
     "time_tracking": "Suivi du temps",
     "work_board": "Tableau d’atelier",
     "ai_assistant": "Assistant IA",
-    "settings": "Paramètres"
+    "settings": "Paramètres",
+    "suppliers": "Suppliers"
   },
   "actions": {
     "create": "Créer",

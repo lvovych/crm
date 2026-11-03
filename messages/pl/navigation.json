@@ -141,6 +141,7 @@
       "workOrders": "{count} otwarte zlecenia",
       "inspections": "{count} przeglądy w toku",
       "reminders": "{count} zaległe przypomnienia"
-    }
+    },
+    "suppliers": "Suppliers"
   }
 }

@@ -22,6 +22,8 @@ export const HIDDEN_COLUMNS: readonly string[] = [
   'createdById',
   'concernId',
   'telegramChatId',
+  // Supplier directory has separate permissions; inventory access must not expose its IDs.
+  'preferredSupplierId',
 ]
 
 export const TABLE_COLUMNS: Readonly<Record<string, readonly string[]>> = {

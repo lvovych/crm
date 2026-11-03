@@ -13,6 +13,7 @@ export const createInventoryPartSchema = z.object({
   unit: z.string().max(20).optional(),
   unitCost: z.coerce.number().min(0, 'Unit cost must be 0 or more').default(0),
   sellPrice: z.coerce.number().min(0, 'Sell price must be 0 or more').default(0),
+  preferredSupplierId: z.string().min(1).nullable().optional(),
   supplier: z.string().optional(),
   supplierPhone: z.string().optional(),
   supplierEmail: z.string().optional(),

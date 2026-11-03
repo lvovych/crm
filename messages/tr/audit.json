@@ -192,7 +192,12 @@
     "settings_markType_create": "İşaret türü eklendi",
     "settings_markType_update": "İşaret türü değiştirildi",
     "settings_markType_remove": "İşaret türü kaldırıldı",
-    "settings_markType_reorder": "İşaret türleri yeniden sıralandı"
+    "settings_markType_reorder": "İşaret türleri yeniden sıralandı",
+    "supplier_import_preview": "Supplier import preview",
+    "supplier_create": "Created supplier",
+    "supplier_update": "Updated supplier",
+    "supplier_archive": "Archived supplier",
+    "supplier_restore": "Restored supplier"
   },
   "summary": {
     "customField_create": "\"{name}\" özel alanı oluşturuldu",

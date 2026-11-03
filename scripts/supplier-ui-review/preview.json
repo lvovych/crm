@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "source": "carbook",
+  "sourceAccountId": "synthetic-only",
+  "periodStart": "2023-11-03T00:00:00+02:00",
+  "snapshotAt": "2026-11-03T12:00:00+02:00",
+  "coverage": {
+    "suppliers": true,
+    "goods": true,
+    "services": true,
+    "returns": true,
+    "payments": true
+  },
+  "suppliers": [
+    {
+      "externalId": "test-1",
+      "data": {
+        "name": "Тестова майстерня"
+      }
+    },
+    {
+      "externalId": "test-2",
+      "data": {
+        "name": "Тестова майстерня"
+      }
+    },
+    {
+      "externalId": "test-3",
+      "data": {
+        "name": "Старий постачальник"
+      },
+      "hasOutstandingBalance": true
+    }
+  ],
+  "movements": [
+    {
+      "externalId": "doc-1",
+      "supplierId": "test-1",
+      "kind": "service_receipt",
+      "date": "2026-10-01T12:00:00+03:00",
+      "status": "posted",
+      "amount": 500
+    },
+    {
+      "externalId": "doc-2",
+      "supplierId": "test-2",
+      "kind": "payment",
+      "date": "2024-10-01T12:00:00+03:00",
+      "status": "posted",
+      "amount": 100
+    }
+  ]
+}

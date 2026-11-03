@@ -1,3 +1,4 @@
+import { supplierDirectoryEnabled } from '@/features/suppliers/Lib/enabled'
 import { redirect } from 'next/navigation'
 import { NoAccess } from './no-access'
 import { AppSidebar } from '@/components/app-sidebar'
@@ -336,6 +337,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
                               activeOrgId={data.organizationId}
                               isSuperAdmin={data.isSuperAdmin}
                               features={features}
+                              supplierDirectoryEnabled={supplierDirectoryEnabled(data.organizationId)}
                               tireHotelEnabled={tireHotelEnabled}
                               aiEnabled={aiEnabled}
                               visibleSubjects={visibleSubjects}

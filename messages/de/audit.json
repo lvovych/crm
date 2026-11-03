@@ -192,7 +192,12 @@
     "settings_markType_create": "Markierungsart hinzugefügt",
     "settings_markType_update": "Markierungsart geändert",
     "settings_markType_remove": "Markierungsart entfernt",
-    "settings_markType_reorder": "Markierungsarten neu geordnet"
+    "settings_markType_reorder": "Markierungsarten neu geordnet",
+    "supplier_import_preview": "Supplier import preview",
+    "supplier_create": "Created supplier",
+    "supplier_update": "Updated supplier",
+    "supplier_archive": "Archived supplier",
+    "supplier_restore": "Restored supplier"
   },
   "summary": {
     "customField_create": "Benutzerdefiniertes Feld „{name}“ erstellt",

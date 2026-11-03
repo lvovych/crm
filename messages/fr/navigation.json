@@ -141,6 +141,7 @@
       "workOrders": "{count} ordres de travail ouverts",
       "inspections": "{count} inspections en cours",
       "reminders": "{count} rappels à échéance"
-    }
+    },
+    "suppliers": "Suppliers"
   }
 }
