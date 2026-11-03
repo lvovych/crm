@@ -192,7 +192,12 @@
     "settings_markType_create": "Markeringstype toegevoegd",
     "settings_markType_update": "Markeringstype gewijzigd",
     "settings_markType_remove": "Markeringstype verwijderd",
-    "settings_markType_reorder": "Markeringstypen herschikt"
+    "settings_markType_reorder": "Markeringstypen herschikt",
+    "supplier_import_preview": "Supplier import preview",
+    "supplier_create": "Created supplier",
+    "supplier_update": "Updated supplier",
+    "supplier_archive": "Archived supplier",
+    "supplier_restore": "Restored supplier"
   },
   "summary": {
     "customField_create": "Aangepast veld \"{name}\" aangemaakt",

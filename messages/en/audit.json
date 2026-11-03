@@ -192,7 +192,12 @@
     "settings_markType_create": "Added a kind of mark",
     "settings_markType_update": "Changed a kind of mark",
     "settings_markType_remove": "Removed a kind of mark",
-    "settings_markType_reorder": "Reordered the kinds of mark"
+    "settings_markType_reorder": "Reordered the kinds of mark",
+    "supplier_import_preview": "Supplier import preview",
+    "supplier_create": "Created supplier",
+    "supplier_update": "Updated supplier",
+    "supplier_archive": "Archived supplier",
+    "supplier_restore": "Restored supplier"
   },
   "summary": {
     "customField_create": "Created custom field \"{name}\"",

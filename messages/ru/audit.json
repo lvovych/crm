@@ -192,7 +192,12 @@
     "settings_markType_create": "Добавлен тип отметки",
     "settings_markType_update": "Изменён тип отметки",
     "settings_markType_remove": "Удалён тип отметки",
-    "settings_markType_reorder": "Изменён порядок типов отметок"
+    "settings_markType_reorder": "Изменён порядок типов отметок",
+    "supplier_import_preview": "Supplier import preview",
+    "supplier_create": "Created supplier",
+    "supplier_update": "Updated supplier",
+    "supplier_archive": "Archived supplier",
+    "supplier_restore": "Restored supplier"
   },
   "summary": {
     "customField_create": "Создано настраиваемое поле «{name}»",

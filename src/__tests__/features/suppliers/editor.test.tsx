@@ -10,6 +10,7 @@ beforeEach(() => {
 })
 it('keeps empty payment terms distinct from zero when creating a supplier', async () => {
   render(<SupplierEditor />)
+  expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
   fireEvent.change(screen.getByLabelText('Display name'), {
     target: { value: 'Workshop supplier' },
   })

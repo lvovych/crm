@@ -14,15 +14,7 @@ export async function listSuppliers(input: unknown = {}) {
       const p = supplierListSchema.parse(input)
       const where = {
         organizationId,
-        supplierProfile: {
-          is: {
-            ...(p.type === 'parts'
-              ? { suppliesParts: true }
-              : p.type === 'services'
-                ? { suppliesServices: true }
-                : {}),
-          },
-        },
+        supplierProfile: { isNot: null },
         ...(p.archived === 'all' ? {} : { isArchived: p.archived === 'archived' }),
         ...(p.source === 'carbook'
           ? { sourceLinks: { some: { source: 'carbook' } } }
@@ -100,15 +92,7 @@ export async function saveSupplier(input: unknown, id?: string, expectedUpdatedA
     async ({ organizationId, userId }) => {
       assertSupplierDirectoryEnabled(organizationId)
       const parsed = supplierSchema.parse(input)
-      const {
-        contacts,
-        bankAccounts,
-        suppliesParts,
-        suppliesServices,
-        paymentTermDays,
-        paymentTerms,
-        ...fields
-      } = parsed
+      const { contacts, bankAccounts, paymentTermDays, paymentTerms, ...fields } = parsed
       const result = await db.$transaction(async (tx) => {
         const data = { ...fields, taxId: normalizeTaxId(fields.taxId) || null }
         let counterpartyId: string
@@ -134,12 +118,10 @@ export async function saveSupplier(input: unknown, id?: string, expectedUpdatedA
           create: {
             organizationId,
             counterpartyId,
-            suppliesParts,
-            suppliesServices,
             paymentTermDays,
             paymentTerms,
           },
-          update: { suppliesParts, suppliesServices, paymentTermDays, paymentTerms },
+          update: { paymentTermDays, paymentTerms },
         })
         if (contacts.length)
           await tx.counterpartyContact.createMany({

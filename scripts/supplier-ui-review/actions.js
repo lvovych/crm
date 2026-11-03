@@ -8,7 +8,7 @@ function store(data) {
   sessionStorage.setItem("supplier-fixtures", JSON.stringify(data));
 }
 function decorate(s) {
-  return { ...s, updatedAt: new Date(s.updatedAt), supplierProfile: { suppliesParts: s.suppliesParts, suppliesServices: s.suppliesServices, paymentTermDays: s.paymentTermDays, paymentTerms: s.paymentTerms }, contacts: s.contacts.map((c, i) => ({ ...c, id: "c" + i })), bankAccounts: s.bankAccounts.map((b, i) => ({ ...b, id: "b" + i })), sourceLinks: [], preferredParts: [{ id: "test-part", name: "\u0422\u0435\u0441\u0442\u043E\u0432\u0430 \u0437\u0430\u043F\u0447\u0430\u0441\u0442\u0438\u043D\u0430", partNumber: "TEST-001" }] };
+  return { ...s, updatedAt: new Date(s.updatedAt), supplierProfile: { paymentTermDays: s.paymentTermDays, paymentTerms: s.paymentTerms }, contacts: s.contacts.map((c, i) => ({ ...c, id: "c" + i })), bankAccounts: s.bankAccounts.map((b, i) => ({ ...b, id: "b" + i })), sourceLinks: [], preferredParts: [{ id: "test-part", name: "\u0422\u0435\u0441\u0442\u043E\u0432\u0430 \u0437\u0430\u043F\u0447\u0430\u0441\u0442\u0438\u043D\u0430", partNumber: "TEST-001" }] };
 }
 async function supplierDirectoryAvailable() {
   return { success: true, data: true };
@@ -17,7 +17,7 @@ async function getSupplierCapabilities() {
   return { success: true, data: { create: true, update: true, archive: true, import: true } };
 }
 async function listSuppliers(p = {}) {
-  let items = load().filter((s) => (p.archived === "all" || s.isArchived === (p.archived === "archived")) && (!p.search || JSON.stringify(s).toLowerCase().includes(p.search.toLowerCase())) && (p.type !== "services" || s.suppliesServices) && (p.type !== "parts" || s.suppliesParts) && p.source !== "carbook");
+  let items = load().filter((s) => (p.archived === "all" || s.isArchived === (p.archived === "archived")) && (!p.search || JSON.stringify(s).toLowerCase().includes(p.search.toLowerCase())) && p.source !== "carbook");
   let page = Number(p.page ?? 1);
   return { success: true, data: { items: items.slice((page - 1) * 25, page * 25).map(decorate), total: items.length, page } };
 }

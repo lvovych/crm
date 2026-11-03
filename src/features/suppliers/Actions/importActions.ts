@@ -28,6 +28,18 @@ export async function previewSupplierImport(raw: string) {
       })
       const preview = buildSupplierPreview(snapshot, existing)
       const checksum = createHash('sha256').update(JSON.stringify(snapshot)).digest('hex')
+      const runKey = { organizationId, sourceAccountId: snapshot.sourceAccountId, checksum }
+      const previousRun = await db.supplierImportRun.findUnique({
+        where: { organizationId_sourceAccountId_checksum: runKey },
+      })
+      // Re-preview must never replace the evidence of an executed import.
+      if (previousRun && previousRun.status !== 'preview')
+        return {
+          ...preview,
+          runId: previousRun.id,
+          periodStart: snapshot.periodStart,
+          snapshotAt: snapshot.snapshotAt,
+        }
       const assessedItems = preview.items.map((i) => ({
         organizationId,
         externalSupplierId: i.externalSupplierId,
@@ -52,11 +64,10 @@ export async function previewSupplierImport(raw: string) {
       // A preview writes staging rows only, never counterparties, inventory or balances.
       const run = await db.supplierImportRun.upsert({
         where: {
-          organizationId_sourceAccountId_checksum: {
-            organizationId,
-            sourceAccountId: snapshot.sourceAccountId,
-            checksum,
-          },
+          organizationId_sourceAccountId_checksum: runKey,
+          // A concurrent apply can win after the read above. In that case the
+          // unique constraint rejects creation instead of rewriting its history.
+          status: 'preview',
         },
         create: {
           organizationId,

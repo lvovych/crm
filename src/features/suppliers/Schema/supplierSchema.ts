@@ -4,7 +4,7 @@ export const supplierSchema = z
   .object({
     name: z.string().trim().min(1).max(200),
     legalName: text,
-    kind: z.enum(['company', 'entrepreneur', 'person']).default('company'),
+    kind: z.enum(['company', 'entrepreneur', 'person', 'unknown']).default('unknown'),
     country: z
       .string()
       .trim()
@@ -24,8 +24,6 @@ export const supplierSchema = z
       ])
       .default(''),
     notes: text,
-    suppliesParts: z.boolean().default(true),
-    suppliesServices: z.boolean().default(false),
     paymentTermDays: z.number().int().min(0).max(3650).nullable().default(null),
     paymentTerms: text,
     contacts: z
@@ -55,7 +53,6 @@ export const supplierSchema = z
       .max(20)
       .default([]),
   })
-  .refine((v) => v.suppliesParts || v.suppliesServices, 'Select a supplier type')
   .refine((v) => v.contacts.filter((c) => c.isPrimary).length <= 1, 'Only one primary contact')
   .refine(
     (v) => v.bankAccounts.filter((c) => c.isPrimary).length <= 1,
@@ -66,6 +63,5 @@ export const supplierListSchema = z.object({
   search: z.string().trim().max(200).default(''),
   page: z.coerce.number().int().min(1).max(100000).default(1),
   archived: z.enum(['active', 'archived', 'all']).default('active'),
-  type: z.enum(['all', 'parts', 'services']).default('all'),
   source: z.enum(['all', 'carbook', 'manual']).default('all'),
 })

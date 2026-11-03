@@ -192,7 +192,12 @@
     "settings_markType_create": "Додано тип позначки",
     "settings_markType_update": "Змінено тип позначки",
     "settings_markType_remove": "Видалено тип позначки",
-    "settings_markType_reorder": "Змінено порядок типів міток"
+    "settings_markType_reorder": "Змінено порядок типів міток",
+    "supplier_import_preview": "Перевірка перенесення постачальників",
+    "supplier_create": "Створено постачальника",
+    "supplier_update": "Змінено постачальника",
+    "supplier_archive": "Архівовано постачальника",
+    "supplier_restore": "Відновлено постачальника"
   },
   "summary": {
     "customField_create": "Створено поле налаштування «.{name}»",

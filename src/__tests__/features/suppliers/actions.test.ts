@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
     supplierProfile: { upsert: vi.fn() },
     counterpartyContact: { deleteMany: vi.fn(), createMany: vi.fn() },
     counterpartyBankAccount: { deleteMany: vi.fn(), createMany: vi.fn() },
-    supplierImportRun: { upsert: vi.fn() },
+    supplierImportRun: { upsert: vi.fn(), findUnique: vi.fn() },
     auditLog: { findMany: vi.fn() },
     $transaction: vi.fn(),
   },
@@ -46,8 +46,30 @@ beforeEach(() => {
   mocks.db.counterparty.findMany.mockResolvedValue([])
   mocks.db.counterparty.count.mockResolvedValue(0)
   mocks.db.auditLog.findMany.mockResolvedValue([])
+  mocks.db.supplierImportRun.findUnique.mockResolvedValue(null)
 })
 describe('Supplier actions', () => {
+  it('does not restrict suppliers by obsolete parts/services filters', async () => {
+    await listSuppliers({ type: 'parts' })
+    expect(mocks.db.counterparty.findMany.mock.calls[0][0].where.supplierProfile).toEqual({
+      isNot: null,
+    })
+    await listSuppliers({ type: 'services' })
+    expect(mocks.db.counterparty.findMany.mock.calls[1][0].where.supplierProfile).toEqual({
+      isNot: null,
+    })
+  })
+  it('ignores obsolete specialization flags when saving a universal supplier', async () => {
+    mocks.db.counterparty.create.mockResolvedValue({ id: 'universal' })
+    expect(
+      (await saveSupplier({ name: 'Universal', suppliesParts: false, suppliesServices: false }))
+        .success
+    ).toBe(true)
+    const profile = mocks.db.supplierProfile.upsert.mock.calls[0][0]
+    expect(profile.create).not.toHaveProperty('suppliesParts')
+    expect(profile.create).not.toHaveProperty('suppliesServices')
+    expect(profile.update).not.toHaveProperty('suppliesParts')
+  })
   it('gates rollout before database access', async () => {
     vi.stubEnv('SUPPLIER_DIRECTORY_ORGANIZATIONS', '')
     expect((await listSuppliers({})).success).toBe(false)
@@ -144,5 +166,23 @@ describe('Supplier actions', () => {
       subject: 'suppliers',
     })
     vi.useRealTimers()
+  })
+  it('preserves completed import history when previewing the same snapshot', async () => {
+    mocks.db.supplierImportRun.findUnique.mockResolvedValue({ id: 'completed', status: 'applied' })
+    const r = await previewSupplierImport(
+      JSON.stringify({
+        version: 1,
+        source: 'carbook',
+        sourceAccountId: 'source-shop',
+        periodStart: '2023-11-02T22:00:00Z',
+        snapshotAt: '2026-11-03T12:00:00Z',
+        coverage: { suppliers: true, goods: true, services: true, returns: true, payments: true },
+        suppliers: [],
+        movements: [],
+      })
+    )
+    expect(r.success).toBe(true)
+    expect(r.data?.runId).toBe('completed')
+    expect(mocks.db.supplierImportRun.upsert).not.toHaveBeenCalled()
   })
 })

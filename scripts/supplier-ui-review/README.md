@@ -25,8 +25,10 @@ used. Open a fresh tab for a clean fixture set. Do not deploy this harness.
   visible, editor has no page-wide horizontal overflow.
 - Final clean desktop list has no browser console errors.
 
-The browser review found and fixed table overflow/pagination visibility, wrapping
-of editor type controls and missing picker loading/error/contact feedback. Picker
+The browser review found and fixed table overflow/pagination visibility and
+missing picker loading/error/contact feedback. Supplier specialization controls,
+table column and filter were subsequently removed: every supplier can provide
+both parts and services. The final list/form were checked again in the browser. Picker
 regression tests cover rejected searches, archived selection and disabled rollout.
 
 This checks interface behavior with mocked actions, not deployed Next.js routing,

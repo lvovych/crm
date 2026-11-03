@@ -31,7 +31,9 @@ export default async function SuppliersPage({
     '/suppliers?' +
     new URLSearchParams({
       ...Object.fromEntries(
-        Object.entries(p).filter((v): v is [string, string] => v[1] !== undefined)
+        Object.entries(p).filter(
+          (v): v is [string, string] => v[1] !== undefined && v[0] !== 'type'
+        )
       ),
       page: String(n),
     }).toString()
@@ -76,18 +78,6 @@ export default async function SuppliersPage({
               ))}
             </select>
             <select
-              aria-label={t('kind')}
-              name="type"
-              defaultValue={p.type ?? 'all'}
-              className="rounded-md border bg-background p-2"
-            >
-              {['all', 'parts', 'services'].map((v) => (
-                <option key={v} value={v}>
-                  {t(v)}
-                </option>
-              ))}
-            </select>
-            <select
               aria-label={t('source')}
               name="source"
               defaultValue={p.source ?? 'all'}
@@ -104,19 +94,13 @@ export default async function SuppliersPage({
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-background">
                 <tr className="border-b text-left">
-                  {[
-                    'name',
-                    'kind',
-                    'phone',
-                    'email',
-                    'taxId',
-                    'paymentTermDays',
-                    'lastActivity',
-                  ].map((k) => (
-                    <th key={k} className="whitespace-nowrap p-3">
-                      {t(k)}
-                    </th>
-                  ))}
+                  {['name', 'phone', 'email', 'taxId', 'paymentTermDays', 'lastActivity'].map(
+                    (k) => (
+                      <th key={k} className="whitespace-nowrap p-3">
+                        {t(k)}
+                      </th>
+                    )
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -135,14 +119,6 @@ export default async function SuppliersPage({
                         {s.isArchived && (
                           <span className="ml-2 text-muted-foreground">{t('archived')}</span>
                         )}
-                      </td>
-                      <td className="p-3">
-                        {[
-                          s.supplierProfile?.suppliesParts ? t('parts') : '',
-                          s.supplierProfile?.suppliesServices ? t('services') : '',
-                        ]
-                          .filter(Boolean)
-                          .join(', ')}
                       </td>
                       <td className="p-3">{c?.phone || '—'}</td>
                       <td className="p-3">{c?.email || '—'}</td>

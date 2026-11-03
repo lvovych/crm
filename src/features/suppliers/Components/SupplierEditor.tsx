@@ -85,7 +85,7 @@ export function SupplierEditor({
               value={data.kind}
               onChange={(e) => setData({ ...data, kind: e.target.value as SupplierInput['kind'] })}
             >
-              {['company', 'entrepreneur', 'person'].map((v) => (
+              {['unknown', 'company', 'entrepreneur', 'person'].map((v) => (
                 <option key={v} value={v}>
                   {t(v)}
                 </option>
@@ -107,18 +107,6 @@ export function SupplierEditor({
               }
             />
           </label>
-        </div>
-        <div className="flex flex-wrap gap-6">
-          {(['suppliesParts', 'suppliesServices'] as const).map((k) => (
-            <label key={k} className="flex gap-2">
-              <input
-                type="checkbox"
-                checked={data[k]}
-                onChange={(e) => setData({ ...data, [k]: e.target.checked })}
-              />
-              {t(k)}
-            </label>
-          ))}
         </div>
         <section className="space-y-3">
           <h2 className="font-semibold">{t('contacts')}</h2>

@@ -5,7 +5,7 @@ model Counterparty {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   name String
   legalName String?
-  kind String @default("company")
+  kind String @default("unknown")
   country String @default("UA")
   taxId String?
   address String?
@@ -30,8 +30,6 @@ model SupplierProfile {
   organizationId String
   counterpartyId String @unique
   counterparty Counterparty @relation(fields: [organizationId, counterpartyId], references: [organizationId, id], onDelete: Cascade)
-  suppliesParts Boolean @default(true)
-  suppliesServices Boolean @default(false)
   paymentTermDays Int?
   paymentTerms String?
   @@unique([organizationId, counterpartyId])
