@@ -39,10 +39,10 @@ export default async function SuppliersPage({
     <>
       <PageHeader />
       <ListPage>
-        <div className="space-y-5">
+        <div className="flex min-h-0 flex-1 flex-col gap-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h1 className="text-2xl font-semibold">{t('title')}</h1>
-            <div className="flex gap-4">
+            <div className="flex flex-wrap gap-4">
               {cap.data?.import && (
                 <Link className="underline" href="/suppliers/import">
                   {t('importTitle')}
@@ -55,7 +55,7 @@ export default async function SuppliersPage({
               )}
             </div>
           </div>
-          <form className="flex flex-wrap gap-3">
+          <form className="flex shrink-0 flex-wrap gap-3">
             <input
               aria-label={t('search')}
               name="search"
@@ -100,9 +100,9 @@ export default async function SuppliersPage({
             <button className="rounded-md border px-4 py-2">{t('choose')}</button>
           </form>
           <p className="text-sm text-muted-foreground">{t('total', { count: total })}</p>
-          <div className="overflow-x-auto rounded-lg border">
+          <div className="min-h-0 flex-1 overflow-auto rounded-lg border">
             <table className="w-full text-sm">
-              <thead>
+              <thead className="sticky top-0 bg-background">
                 <tr className="border-b text-left">
                   {[
                     'name',
@@ -113,7 +113,7 @@ export default async function SuppliersPage({
                     'paymentTermDays',
                     'lastActivity',
                   ].map((k) => (
-                    <th key={k} className="p-3">
+                    <th key={k} className="whitespace-nowrap p-3">
                       {t(k)}
                     </th>
                   ))}
@@ -156,7 +156,7 @@ export default async function SuppliersPage({
             </table>
             {!items.length && <p className="p-6">{t('empty')}</p>}
           </div>
-          <nav className="flex gap-4">
+          <nav className="flex shrink-0 flex-wrap gap-4">
             {page > 1 && <Link href={pageUrl(page - 1)}>{t('previous')}</Link>}
             {page * 25 < total && <Link href={pageUrl(page + 1)}>{t('next')}</Link>}
           </nav>

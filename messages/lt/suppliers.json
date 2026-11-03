@@ -80,5 +80,6 @@
   "fileTooLarge": "File must be at most 8 MiB",
   "previewOnly": "Review only. Actual transfer requires separate approval.",
   "outstanding": "Outstanding balance in source",
-  "noEvidence": "No qualifying operations in the supplied period"
+  "noEvidence": "No qualifying operations in the supplied period",
+  "loading": "Loading…"
 }

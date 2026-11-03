@@ -108,7 +108,7 @@ export function SupplierEditor({
             />
           </label>
         </div>
-        <div className="flex gap-6">
+        <div className="flex flex-wrap gap-6">
           {(['suppliesParts', 'suppliesServices'] as const).map((k) => (
             <label key={k} className="flex gap-2">
               <input

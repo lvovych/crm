@@ -17,10 +17,17 @@ export function SupplierPicker({
   }, [])
   const t = useTranslations('suppliers')
   const [search, setSearch] = useState(''),
-    [items, setItems] = useState<{ id: string; name: string }[]>([]),
+    [items, setItems] = useState<
+      {
+        id: string
+        name: string
+        contacts: { phone: string | null; email: string | null; isPrimary: boolean }[]
+      }[]
+    >([]),
     [current, setCurrent] = useState(''),
     [open, setOpen] = useState(false),
-    [error, setError] = useState('')
+    [error, setError] = useState(''),
+    [loading, setLoading] = useState(false)
   useEffect(() => {
     let live = true
     if (!enabled || !value) {
@@ -40,14 +47,24 @@ export function SupplierPicker({
   useEffect(() => {
     if (!open) return
     let live = true
+    setLoading(true)
+    setItems([])
     const timer = setTimeout(() => {
-      void listSuppliers({ search }).then((r) => {
-        if (!live) return
-        if (r.data) {
-          setItems(r.data.items)
-          setError('')
-        } else setError(r.error ?? t('error'))
-      })
+      void listSuppliers({ search })
+        .then((r) => {
+          if (!live) return
+          if (r.data) {
+            setItems(r.data.items)
+            setError('')
+          } else setError(r.error ?? t('error'))
+          setLoading(false)
+        })
+        .catch(() => {
+          if (live) {
+            setError(t('error'))
+            setLoading(false)
+          }
+        })
     }, 200)
     return () => {
       live = false
@@ -91,11 +108,18 @@ export function SupplierPicker({
                   }}
                 >
                   {s.name}
+                  <span className="block text-xs text-muted-foreground">
+                    {(() => {
+                      const c = s.contacts.find((c) => c.isPrimary) ?? s.contacts[0]
+                      return [c?.phone, c?.email].filter(Boolean).join(' · ')
+                    })()}
+                  </span>
                 </button>
               </li>
             ))}
           </ul>
-          {!items.length && !error && <p>{t('empty')}</p>}
+          {loading && <p role="status">{t('loading')}</p>}
+          {!loading && !items.length && !error && <p>{t('empty')}</p>}
         </div>
       )}
     </div>

@@ -49,6 +49,12 @@ The preview is not a general accounting import and does not import balances.
   uniqueness checked with rejected invalid inserts.
 - Full repository typecheck currently has unrelated account-settings and generated
   `.next` / local `tmp` errors. Supplier code must introduce no additional errors.
-- Production PostgreSQL rehearsal, deployed browser acceptance and complete Carbook
-  extraction remain release gates. Live supplier data and credentials must not be
-  included in the repository or PR.
+- All 150 Carbook supplier cards were reviewed read-only for the 2023-11-03 to
+  2026-11-03 period. The private review workbook contains movement evidence and
+  duplicate candidates; approval is pending. It is not an executable import snapshot.
+- Local browser acceptance on synthetic data covers list pagination/filtering,
+  create/edit, contacts/accounts, archive/restore, picker and staging preview at
+  desktop and 390 px widths. See `scripts/supplier-ui-review/README.md` for scope.
+- Production PostgreSQL rehearsal, deployed browser acceptance, backup round-trip,
+  approved source decisions and a validated execution snapshot remain release gates.
+  Live supplier data and credentials must not be included in the repository or PR.
