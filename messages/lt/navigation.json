@@ -141,6 +141,7 @@
       "workOrders": "{count} atviri darbo užsakymai",
       "inspections": "{count} vykdomos apžiūros",
       "reminders": "{count} priminimai, kurių terminas suėjo"
-    }
+    },
+    "suppliers": "Suppliers"
   }
 }

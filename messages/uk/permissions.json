@@ -15,7 +15,8 @@
     "time_tracking": "Облік часу",
     "work_board": "Дошка робіт",
     "ai_assistant": "ШІ-помічник",
-    "settings": "Налаштування"
+    "settings": "Налаштування",
+    "suppliers": "Постачальники"
   },
   "actions": {
     "create": "Створення",

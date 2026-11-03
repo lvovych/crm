@@ -15,7 +15,8 @@
     "time_tracking": "Rejestracja czasu",
     "work_board": "Tablica pracy",
     "ai_assistant": "Asystent AI",
-    "settings": "Ustawienia"
+    "settings": "Ustawienia",
+    "suppliers": "Suppliers"
   },
   "actions": {
     "create": "Tworzyć",

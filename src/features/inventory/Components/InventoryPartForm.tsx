@@ -1,5 +1,7 @@
 'use client'
 
+import { SupplierPicker } from '@/features/suppliers/Components/SupplierPicker'
+
 import { interactiveRow } from '@/lib/interactive-row'
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
@@ -78,6 +80,7 @@ interface InventoryPartFormProps {
     unit: string | null
     unitCost: number
     sellPrice: number
+    preferredSupplierId?: string | null
     supplier: string | null
     supplierPhone: string | null
     supplierEmail: string | null
@@ -112,6 +115,9 @@ export function InventoryPartForm({
   const [fetching, setFetching] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
+  const [supplierSelectionChanged, setSupplierSelectionChanged] = useState(false)
+  const [preferredSupplierId, setPreferredSupplierId] = useState<string | null>(part?.preferredSupplierId ?? null)
+  const supplierT = useTranslations('suppliers')
   const [supplierUrl, setSupplierUrl] = useState(part?.supplierUrl ?? '')
   const [brandId, setBrandId] = useState(part?.brandId ?? 'brand_unknown')
   const [category, setCategory] = useState(part?.category ?? '')
@@ -141,6 +147,8 @@ export function InventoryPartForm({
   useEffect(() => {
     if (open) {
       uploadedUrlsRef.current = []
+      setSupplierSelectionChanged(false)
+      setPreferredSupplierId(part?.preferredSupplierId ?? null)
       setSupplierUrl(part?.supplierUrl ?? '')
       setCategory(part?.category ?? '')
       setBrandId(part?.brandId ?? 'brand_unknown')
@@ -369,6 +377,7 @@ export function InventoryPartForm({
       unit: unit.trim(),
       unitCost: Number(formData.get('unitCost')) || 0,
       sellPrice: Number(formData.get('sellPrice')) || 0,
+      ...(supplierSelectionChanged ? { preferredSupplierId } : {}),
       supplier: optional(formData.get('supplier')),
       supplierPhone: optional(formData.get('supplierPhone')),
       supplierEmail: optional(formData.get('supplierEmail')),
@@ -828,6 +837,8 @@ export function InventoryPartForm({
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
             <div className="space-y-2">
+              <SupplierPicker value={preferredSupplierId} onChange={(id) => { setPreferredSupplierId(id); setSupplierSelectionChanged(true) }}/>
+              <p className="mt-4 text-sm text-muted-foreground">{supplierT('legacy')}</p>
               <Label htmlFor="supplier">{t('form.supplier')}</Label>
               <Input
                 id="supplier"

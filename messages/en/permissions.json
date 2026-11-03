@@ -15,7 +15,8 @@
     "time_tracking": "Time tracking",
     "work_board": "Work board",
     "ai_assistant": "AI assistant",
-    "settings": "Settings"
+    "settings": "Settings",
+    "suppliers": "Suppliers"
   },
   "actions": {
     "create": "Create",

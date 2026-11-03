@@ -141,6 +141,7 @@
       "workOrders": "{count} открытых заказ-нарядов",
       "inspections": "{count} проверок в работе",
       "reminders": "{count} напоминаний просрочено"
-    }
+    },
+    "suppliers": "Suppliers"
   }
 }

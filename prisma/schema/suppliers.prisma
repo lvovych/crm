@@ -1,0 +1,110 @@
+// Release 1: directory only. No opening balances or accounting postings.
+model Counterparty {
+  id String @id @default(cuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name String
+  legalName String?
+  kind String @default("company")
+  country String @default("UA")
+  taxId String?
+  address String?
+  website String?
+  notes String?
+  isArchived Boolean @default(false)
+  createdById String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  supplierProfile SupplierProfile?
+  contacts CounterpartyContact[]
+  bankAccounts CounterpartyBankAccount[]
+  sourceLinks CounterpartySourceLink[]
+  preferredParts InventoryPart[]
+  @@unique([organizationId, id])
+  @@index([organizationId, isArchived, name])
+  @@index([organizationId, taxId])
+  @@map("counterparties")
+}
+model SupplierProfile {
+  id String @id @default(cuid())
+  organizationId String
+  counterpartyId String @unique
+  counterparty Counterparty @relation(fields: [organizationId, counterpartyId], references: [organizationId, id], onDelete: Cascade)
+  suppliesParts Boolean @default(true)
+  suppliesServices Boolean @default(false)
+  paymentTermDays Int?
+  paymentTerms String?
+  @@unique([organizationId, counterpartyId])
+  @@map("supplier_profiles")
+}
+model CounterpartyContact {
+  id String @id @default(cuid())
+  organizationId String
+  counterpartyId String
+  counterparty Counterparty @relation(fields: [organizationId, counterpartyId], references: [organizationId, id], onDelete: Cascade)
+  name String?
+  role String?
+  phone String?
+  email String?
+  isPrimary Boolean @default(false)
+  @@index([organizationId, counterpartyId])
+  @@map("counterparty_contacts")
+}
+model CounterpartyBankAccount {
+  id String @id @default(cuid())
+  organizationId String
+  counterpartyId String
+  counterparty Counterparty @relation(fields: [organizationId, counterpartyId], references: [organizationId, id], onDelete: Cascade)
+  accountNumber String
+  bankName String?
+  currency String @default("UAH")
+  isPrimary Boolean @default(false)
+  @@index([organizationId, counterpartyId])
+  @@map("counterparty_bank_accounts")
+}
+model CounterpartySourceLink {
+  id String @id @default(cuid())
+  organizationId String
+  counterpartyId String
+  counterparty Counterparty @relation(fields: [organizationId, counterpartyId], references: [organizationId, id], onDelete: Cascade)
+  source String
+  sourceAccountId String
+  externalSupplierId String
+  checksum String
+  importedAt DateTime @default(now())
+  lastActivityAt DateTime?
+  snapshotAt DateTime
+  @@unique([organizationId, source, sourceAccountId, externalSupplierId])
+  @@map("counterparty_source_links")
+}
+model SupplierImportRun {
+  id String @id @default(cuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  source String @default("carbook")
+  sourceAccountId String
+  periodStart DateTime
+  snapshotAt DateTime
+  checksum String
+  status String @default("preview")
+  createdById String
+  createdAt DateTime @default(now())
+  summary Json
+  items SupplierImportItem[]
+  @@unique([organizationId, id])
+  @@unique([organizationId, sourceAccountId, checksum])
+  @@map("supplier_import_runs")
+}
+model SupplierImportItem {
+  id String @id @default(cuid())
+  organizationId String
+  runId String
+  run SupplierImportRun @relation(fields: [organizationId, runId], references: [organizationId, id], onDelete: Cascade)
+  externalSupplierId String
+  decision String
+  payload Json
+  evidence Json
+  conflicts Json
+  @@unique([runId, externalSupplierId])
+  @@map("supplier_import_items")
+}

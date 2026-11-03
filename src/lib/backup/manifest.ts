@@ -51,6 +51,50 @@ export interface BackupEntity {
 }
 
 export const BACKUP_ENTITIES: readonly BackupEntity[] = [
+  {
+    model: 'Counterparty',
+    key: 'counterparties',
+    option: 'inventory',
+    restore: 'replace',
+    clearOrder: 63,
+  },
+  {
+    model: 'SupplierProfile',
+    option: 'inventory',
+    nestedUnder: 'Counterparty',
+    restore: 'replace',
+  },
+  {
+    model: 'CounterpartyContact',
+    option: 'inventory',
+    nestedUnder: 'Counterparty',
+    restore: 'replace',
+  },
+  {
+    model: 'CounterpartyBankAccount',
+    option: 'inventory',
+    nestedUnder: 'Counterparty',
+    restore: 'replace',
+  },
+  {
+    model: 'CounterpartySourceLink',
+    option: 'inventory',
+    nestedUnder: 'Counterparty',
+    restore: 'replace',
+  },
+  {
+    model: 'SupplierImportRun',
+    key: 'supplierImportRuns',
+    option: 'inventory',
+    restore: 'replace',
+    clearOrder: 61,
+  },
+  {
+    model: 'SupplierImportItem',
+    option: 'inventory',
+    nestedUnder: 'SupplierImportRun',
+    restore: 'replace',
+  },
   { model: 'AppSetting', key: 'settings', option: 'settings', restore: 'replace', clearOrder: 90 },
   // Named designs go with settings, which is where their default lives.
   // Cleared before settings and after everything that points at them.

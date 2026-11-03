@@ -15,7 +15,8 @@
     "time_tracking": "Laiko apskaita",
     "work_board": "Darbų lenta",
     "ai_assistant": "DI asistentas",
-    "settings": "Nustatymai"
+    "settings": "Nustatymai",
+    "suppliers": "Suppliers"
   },
   "actions": {
     "create": "Kurti",

@@ -76,6 +76,9 @@ model InventoryPart {
   unit          String?
   unitCost      Float   @default(0)
   sellPrice     Float   @default(0)
+  /// Directory preference, never provenance for existing stock.
+  preferredSupplierId String?
+  preferredSupplier Counterparty? @relation(fields: [organizationId, preferredSupplierId], references: [organizationId, id], onDelete: Restrict)
   supplier      String?
   supplierPhone String?
   supplierEmail String?
@@ -105,6 +108,7 @@ model InventoryPart {
   @@unique([organizationId, barcode])
   @@index([brandId])
   @@index([organizationId])
+  @@index([organizationId, preferredSupplierId], map: "inventory_preferred_supplier_idx")
   @@map("inventory_parts")
 }
 

@@ -141,6 +141,7 @@
       "workOrders": "{count} ordens de serviço abertas",
       "inspections": "{count} inspeções em curso",
       "reminders": "{count} lembretes pendentes"
-    }
+    },
+    "suppliers": "Suppliers"
   }
 }

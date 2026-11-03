@@ -141,6 +141,7 @@
       "workOrders": "{count} åpne arbeidsordrer",
       "inspections": "{count} pågående inspeksjoner",
       "reminders": "{count} forfalte påminnelser"
-    }
+    },
+    "suppliers": "Suppliers"
   }
 }

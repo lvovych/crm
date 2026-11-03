@@ -51,6 +51,7 @@ export default getRequestConfig(async () => {
   const calendar = (await import(`../../messages/${locale}/calendar.json`)).default
   const scheduledMessages = (await import(`../../messages/${locale}/scheduledMessages.json`))
     .default
+  const suppliers = (await import(`../../messages/${locale}/suppliers.json`)).default
   const inventory = (await import(`../../messages/${locale}/inventory.json`)).default
   const reports = (await import(`../../messages/${locale}/reports.json`)).default
   const settings = (await import(`../../messages/${locale}/settings.json`)).default
@@ -101,6 +102,7 @@ export default getRequestConfig(async () => {
       calendar,
       scheduledMessages,
       inventory,
+      suppliers,
       reports,
       settings,
       admin,

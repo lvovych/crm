@@ -15,7 +15,8 @@
     "time_tracking": "Controle de tempo",
     "work_board": "Quadro de trabalho",
     "ai_assistant": "Assistente de IA",
-    "settings": "Configurações"
+    "settings": "Configurações",
+    "suppliers": "Suppliers"
   },
   "actions": {
     "create": "Criar",

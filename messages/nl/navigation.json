@@ -141,6 +141,7 @@
       "workOrders": "{count} open werkorders",
       "inspections": "{count} lopende inspecties",
       "reminders": "{count} herinneringen vervallen"
-    }
+    },
+    "suppliers": "Suppliers"
   }
 }

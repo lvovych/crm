@@ -15,7 +15,8 @@
     "time_tracking": "Tidsregistrering",
     "work_board": "Arbeidstavle",
     "ai_assistant": "AI-assistent",
-    "settings": "Innstillinger"
+    "settings": "Innstillinger",
+    "suppliers": "Suppliers"
   },
   "actions": {
     "create": "Opprette",

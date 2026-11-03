@@ -1,5 +1,8 @@
 'use server'
 
+import { assertSupplierDirectoryEnabled } from '@/features/suppliers/Lib/enabled'
+import { assertLegacySupplierChange } from '@/features/suppliers/Lib/inventorySupplier'
+
 import { assertSelectableBrand } from '../Lib/brands.server'
 import { db } from '@/lib/db'
 import { assertOwnUploads } from '@/lib/upload-url'
@@ -145,6 +148,7 @@ export async function createInventoryPart(input: unknown) {
   return withAuth(
     async ({ userId, organizationId }) => {
       const data = createInventoryPartSchema.parse(input)
+      await assertPreferredSupplier(organizationId, data.preferredSupplierId)
       await assertSelectableBrand(data.brandId)
       assertOwnUploads(data, organizationId)
       const { gallery, ...rest } = data
@@ -211,9 +215,11 @@ export async function updateInventoryPart(input: unknown) {
       // gallery rows are keyed by the part alone.
       const owned = await db.inventoryPart.findFirst({
         where: { id, organizationId },
-        select: { id: true, brandId: true },
+        select: { id: true, brandId: true, preferredSupplierId: true, supplier: true, supplierPhone: true, supplierEmail: true },
       })
       if (!owned) throw new Error('Part not found')
+      assertLegacySupplierChange(owned, data)
+      await assertPreferredSupplier(organizationId, data.preferredSupplierId, owned.preferredSupplierId)
       if (data.brandId !== undefined && data.brandId !== owned.brandId)
         await assertSelectableBrand(data.brandId)
 
@@ -512,4 +518,12 @@ export async function hasAnyReorderPoint() {
       ],
     }
   )
+}
+
+async function assertPreferredSupplier(organizationId: string, supplierId?: string | null, currentId?: string | null) {
+  if (supplierId === undefined || supplierId === currentId) return
+  assertSupplierDirectoryEnabled(organizationId)
+  if (!supplierId) return
+  const supplier = await db.counterparty.findFirst({where:{id:supplierId,organizationId,supplierProfile:{isNot:null}}})
+  if (!supplier || (supplier.isArchived && supplierId !== currentId)) throw new Error('Supplier is unavailable or archived')
 }
