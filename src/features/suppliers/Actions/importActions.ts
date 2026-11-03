@@ -7,7 +7,7 @@ import { PermissionAction as A, PermissionSubject as S } from '@/lib/permissions
 import { supplierSnapshotSchema, buildSupplierPreview } from '../Lib/preview'
 import { zonedParts, zonedDate } from '@/lib/timezone'
 import { workshopTimeZone } from '@/lib/workshop-timezone'
-// Deliberately no apply/import action in this PR: the owner must review the real list first.
+// Staging only. Approval is recorded separately; execution requires a validated plan.
 export async function previewSupplierImport(raw: string) {
   return withAuth(
     async ({ organizationId, userId }) => {

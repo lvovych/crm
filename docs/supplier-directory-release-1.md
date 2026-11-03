@@ -51,10 +51,52 @@ The preview is not a general accounting import and does not import balances.
   `.next` / local `tmp` errors. Supplier code must introduce no additional errors.
 - All 150 Carbook supplier cards were reviewed read-only for the 2023-11-03 to
   2026-11-03 period. The private review workbook contains movement evidence and
-  duplicate candidates; approval is pending. It is not an executable import snapshot.
+  duplicate candidates. The owner approved 84 active suppliers, excluding both own
+  sole-proprietor cards and retaining possible duplicates as separate cards.
+  The private approval manifest contains the exact IDs and names. It is not an
+  executable import snapshot.
 - Local browser acceptance on synthetic data covers list pagination/filtering,
   create/edit, contacts/accounts, archive/restore, picker and staging preview at
   desktop and 390 px widths. See `scripts/supplier-ui-review/README.md` for scope.
 - Production PostgreSQL rehearsal, deployed browser acceptance, backup round-trip,
-  approved source decisions and a validated execution snapshot remain release gates.
+  a validated execution snapshot remain release gates.
   Live supplier data and credentials must not be included in the repository or PR.
+
+## Approved migration preparation
+
+The approved selection is 84 of 150 reviewed cards. Exclude 57 without qualifying
+movement, 7 inactive cards with movement and 2 own sole-proprietor cards. Preserve
+each remaining Carbook ID as a separate supplier, including the four possible
+duplicate pairs. Approval does not authorize merging with an existing CRM record.
+
+`approvedPlan.ts` validates an exact private approval manifest against a normalized
+snapshot. It rejects missing approved IDs, contradictory exclusions and mismatched
+source accounts/periods; inactive cards, renamed cards, missing movement evidence,
+CRM conflicts and ambiguous mappings block readiness. Extra source cards are never
+selected. Existing source mappings are skipped, never overwritten. Checksums bind
+the plan to the parsed snapshot and approval content.
+
+For an offline preparation (no database connection or writes):
+
+```sh
+node --import tsx scripts/prepare-supplier-import.ts snapshot.json approved-84.json ORGANIZATION_ID plan.json
+```
+
+The output is created exclusively with owner-only permissions. Offline output
+always requires a target-database check and cannot declare execution readiness.
+The library's `ready` flag means its supplied inputs pass preparation checks; it
+is not an authorization token. A future executor must load target records scoped
+to the authenticated organization, recompute the plan within its transaction and
+enforce database uniqueness for source identities. Do not trust a client plan.
+
+The reviewed document examples prove selection, not complete transaction history.
+Do not mark complete historical coverage or synthesize missing quantities. Seven
+approved cards currently have goods-document evidence whose quantity still needs
+extraction. Confirm supplier type and available legal/contact/bank fields during
+snapshot preparation; do not infer these from default schema values or names.
+Keep unknown payment terms null. Do not import balances, stock or payments.
+
+Before execution: finish those source fields, select the target organization,
+rehearse on a PostgreSQL copy with backup/restore, check CRM conflicts and source
+links, and compare create/skip counts with the 84 approved IDs. The current PR
+provides read-only plan preparation; no production apply endpoint is exposed.
