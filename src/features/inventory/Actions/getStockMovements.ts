@@ -52,6 +52,7 @@ export async function getStockMovementsPaginated(params: {
             reason: true,
             note: true,
             createdAt: true,
+            receiptLine: {select:{receiptId:true}},
             serviceRecordLabel: true,
             user: { select: { name: true } },
             serviceRecord: {
@@ -78,6 +79,7 @@ export async function getStockMovementsPaginated(params: {
           reason: m.reason,
           note: m.note,
           createdAt: m.createdAt.toISOString(),
+          receiptId:m.receiptLine?.receiptId??null,
           userName: m.user?.name ?? null,
           // Present only while the job still exists; the label below outlives it.
           serviceRecordId: m.serviceRecord?.id ?? null,

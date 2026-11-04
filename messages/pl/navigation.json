@@ -142,6 +142,7 @@
       "inspections": "{count} przeglądy w toku",
       "reminders": "{count} zaległe przypomnienia"
     },
+    "receipts": "Przyjęcia dostaw",
     "suppliers": "Suppliers"
   }
 }

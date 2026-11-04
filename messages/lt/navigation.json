@@ -142,6 +142,7 @@
       "inspections": "{count} vykdomos apžiūros",
       "reminders": "{count} priminimai, kurių terminas suėjo"
     },
+    "receipts": "Tiekėjų pristatymai",
     "suppliers": "Suppliers"
   }
 }

@@ -142,6 +142,7 @@
       "inspections": "{count} перевірок у роботі",
       "reminders": "{count} нагадувань прострочено"
     },
+    "receipts": "Надходження",
     "suppliers": "Постачальники"
   }
 }

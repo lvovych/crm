@@ -1,3 +1,4 @@
+import {receiptAccess} from '@/features/receipts/actions'
 import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
 import { PageHeader } from '@/components/page-header'
@@ -20,6 +21,7 @@ export default async function SupplierPage({ params }: { params: Promise<{ id: s
       </>
     )
   const { supplier: s, history } = r.data
+  const receipts=await receiptAccess()
   return (
     <>
       <PageHeader />
@@ -34,7 +36,7 @@ export default async function SupplierPage({ params }: { params: Promise<{ id: s
           )}
           {cap.data?.archive && <ArchiveSupplier id={id} archived={s.isArchived} />}
         </div>
-        <p className="text-muted-foreground">{t('sourceOnly')}</p>
+         {receipts.read?<Link className="underline" href={'/receipts?supplierId='+id}>Накладні постачальника</Link>:<p className="text-muted-foreground">{t('sourceOnly')}</p>}
         <dl className="grid max-w-4xl gap-4 sm:grid-cols-2">
           {(['legalName', 'kind', 'country', 'taxId', 'address', 'website', 'notes'] as const).map(
             (k) => (

@@ -142,6 +142,7 @@
       "inspections": "{count} pågående inspeksjoner",
       "reminders": "{count} forfalte påminnelser"
     },
+    "receipts": "Varemottak",
     "suppliers": "Suppliers"
   }
 }

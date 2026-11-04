@@ -142,6 +142,7 @@
       "inspections": "{count} inspections in progress",
       "reminders": "{count} reminders due"
     },
+    "receipts": "Supplier receipts",
     "suppliers": "Suppliers"
   }
 }
