@@ -30,6 +30,7 @@ import { formatQuantity } from '@/lib/format-quantity'
 import { ArrowLeft, ArrowUpRight, Pencil } from 'lucide-react'
 
 interface Movement {
+  receiptId?:string|null
   id: string
   delta: number
   quantityAfter: number
@@ -103,6 +104,8 @@ export function PartDetailClient({
 
   const reasonLabel = (value: string) => {
     switch (value) {
+      case 'supplier_receipt': return 'Надходження від постачальника'
+      case 'supplier_receipt_cancelled': return 'Скасування надходження'
       case 'service_record':
         return t('history.reasons.service_record')
       case 'service_record_deleted':
@@ -213,7 +216,7 @@ export function PartDetailClient({
               <div key={m.id} className="rounded-lg border bg-card p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    {m.serviceRecordId ? (
+                    {m.receiptId ? <Link className="underline" href={'/receipts/'+m.receiptId}>{m.note??'Накладна'}</Link> : m.serviceRecordId ? (
                       <Link
                         href={
                           m.vehicleId
@@ -305,7 +308,7 @@ export function PartDetailClient({
                       {formatQuantity(m.quantityAfter, part.unit)}
                     </TableCell>
                     <TableCell>
-                      {m.serviceRecordId ? (
+                      {m.receiptId ? <Link className="underline" href={'/receipts/'+m.receiptId}>{m.note??'Накладна'}</Link> : m.serviceRecordId ? (
                         <Link
                           href={
                             m.vehicleId

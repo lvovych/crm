@@ -142,6 +142,7 @@
       "inspections": "{count} lopende inspecties",
       "reminders": "{count} herinneringen vervallen"
     },
+    "receipts": "Goederenontvangsten",
     "suppliers": "Suppliers"
   }
 }

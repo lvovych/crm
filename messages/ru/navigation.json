@@ -142,6 +142,7 @@
       "inspections": "{count} проверок в работе",
       "reminders": "{count} напоминаний просрочено"
     },
+    "receipts": "Поступления",
     "suppliers": "Suppliers"
   }
 }

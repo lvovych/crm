@@ -1,0 +1,44 @@
+model SupplierReceipt {
+  id String @id @default(cuid())
+  organizationId String
+  supplierId String
+  supplier Counterparty @relation(fields: [organizationId, supplierId], references: [organizationId, id], onDelete: Restrict)
+  number String
+  documentDate DateTime @db.Date
+  receivedDate DateTime @db.Date
+  currency String @default("UAH")
+  status String @default("draft")
+  version Int @default(1)
+  createdById String
+  createdAt DateTime @default(now())
+  postedById String?
+  postedAt DateTime?
+  cancelledById String?
+  cancelledAt DateTime?
+  cancelReason String?
+  source String @default("manual")
+  sourceAccount String?
+  externalId String?
+  lines SupplierReceiptLine[]
+  @@unique([organizationId, supplierId, number, documentDate])
+  @@unique([organizationId, source, sourceAccount, externalId])
+  @@index([organizationId, receivedDate])
+  @@map("supplier_receipts")
+}
+model SupplierReceiptLine {
+  id String @id @default(cuid())
+  receiptId String
+  receipt SupplierReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  position Int
+  kind String
+  name String
+  unit String
+  quantity Decimal @db.Decimal(14,3)
+  unitPrice Decimal @db.Decimal(14,4)
+  amount Decimal @db.Decimal(18,2)
+  partId String?
+  part InventoryPart? @relation(fields: [partId], references: [id], onDelete: Restrict)
+  movements StockMovement[]
+  @@unique([receiptId,position])
+  @@map("supplier_receipt_lines")
+}

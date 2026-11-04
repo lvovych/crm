@@ -104,6 +104,7 @@ model InventoryPart {
 
   gallery   StoredImage[]   @relation("InventoryPartImages")
   movements StockMovement[]
+  receiptLines SupplierReceiptLine[]
 
   @@unique([organizationId, barcode])
   @@index([brandId])
@@ -119,6 +120,9 @@ model InventoryPart {
 /// captured from the atomic `UPDATE ... RETURNING`, giving an exact running
 /// balance even under concurrent writes.
 model StockMovement {
+  receiptLineId String?
+  receiptLine SupplierReceiptLine? @relation(fields: [receiptLineId], references: [id], onDelete: Restrict)
+  @@unique([receiptLineId, reason])
   id String @id @default(cuid())
 
   /// Signed change in stock units (fractional allowed, e.g. 0.5 l).

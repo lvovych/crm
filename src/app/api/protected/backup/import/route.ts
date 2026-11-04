@@ -478,6 +478,7 @@ export async function POST(request: NextRequest) {
         Vehicle: () => tx.vehicle.deleteMany({ where: { organizationId } }),
         CustomFieldDefinition: () =>
           tx.customFieldDefinition.deleteMany({ where: { organizationId } }),
+        SupplierReceipt: () => tx.supplierReceipt.deleteMany({ where: { organizationId } }),
         Counterparty: () => tx.counterparty.deleteMany({ where: { organizationId } }),
         SupplierImportRun: () => tx.supplierImportRun.deleteMany({ where: { organizationId } }),
         InventoryPart: () => tx.inventoryPart.deleteMany({ where: { organizationId } }),
@@ -498,6 +499,12 @@ export async function POST(request: NextRequest) {
           tx.documentAssetSnapshot.deleteMany({ where: { organizationId } }),
       }
 
+      if (data.supplierReceipts) {
+        await tx.stockMovement.deleteMany({
+          where: { organizationId, receiptLineId: { not: null } },
+        })
+      }
+      const restoredReceiptLines = new Map<unknown, unknown>()
       for (const model of clearPlanFor(Object.keys(data))) {
         const clear = clearable[model]
         if (clear) await clear()
@@ -852,6 +859,28 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      if (data.supplierReceipts) {
+        const restoredParts = new Set((data.inventoryParts ?? []).map((p: { id: string }) => p.id))
+        for (const raw of data.supplierReceipts as Record<string, unknown>[]) {
+          const { lines, ...fields } = raw
+          await tx.supplierReceipt.create({
+            data: columnsOf(fields, {
+              organizationId,
+              createdById: ctx.userId,
+              postedById: fields.postedById ? ctx.userId : null,
+              cancelledById: fields.cancelledById ? ctx.userId : null,
+            }) as never,
+          })
+          for (const line of lines as Record<string, unknown>[]) {
+            if (line.partId && !restoredParts.has(line.partId))
+              throw new Error('Invalid receipt part reference')
+            restoredReceiptLines.set(line.id, line.partId)
+            await tx.supplierReceiptLine.create({
+              data: columnsOf(line, { receiptId: raw.id }) as never,
+            })
+          }
+        }
+      }
       // Resolve work day start time from imported settings for backfilling service record times
       const workDayStartSetting = (data.settings as Record<string, unknown>[] | undefined)?.find(
         (s) => s.key === 'workboard.workDayStart'
@@ -1068,13 +1097,20 @@ export async function POST(request: NextRequest) {
       // service record is still to come.
       if (data.inventoryParts?.length) {
         for (const part of data.inventoryParts as Record<string, unknown>[]) {
+          for (const movement of (part.movements ?? []) as Record<string, unknown>[]) {
+            if (
+              movement.receiptLineId &&
+              restoredReceiptLines.get(movement.receiptLineId) !== part.id
+            )
+              throw new Error('Invalid receipt movement reference')
+          }
           // The importing user owns the history: the person who moved the
           // stock has no account on this instance.
           await restoreRows(
             'stock movements',
             (rows) => tx.stockMovement.createMany({ data: rows as never }),
             part.movements,
-            { organizationId, userId: ctx.userId }
+            { organizationId, inventoryPartId: part.id, userId: ctx.userId }
           )
         }
       }

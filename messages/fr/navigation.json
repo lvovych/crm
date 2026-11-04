@@ -142,6 +142,7 @@
       "inspections": "{count} inspections en cours",
       "reminders": "{count} rappels à échéance"
     },
+    "receipts": "Réceptions fournisseurs",
     "suppliers": "Suppliers"
   }
 }

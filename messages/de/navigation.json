@@ -142,6 +142,7 @@
       "inspections": "{count} laufende Inspektionen",
       "reminders": "{count} fällige Erinnerungen"
     },
+    "receipts": "Wareneingänge",
     "suppliers": "Suppliers"
   }
 }

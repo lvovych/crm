@@ -20,6 +20,7 @@ model Counterparty {
   bankAccounts CounterpartyBankAccount[]
   sourceLinks CounterpartySourceLink[]
   preferredParts InventoryPart[]
+  receipts SupplierReceipt[]
   @@unique([organizationId, id])
   @@index([organizationId, isArchived, name])
   @@index([organizationId, taxId])
