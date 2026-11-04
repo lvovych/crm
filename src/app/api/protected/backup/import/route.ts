@@ -850,6 +850,12 @@ export async function POST(request: NextRequest) {
 
         for (const part of data.inventoryParts as Record<string, unknown>[]) {
           await restoreRows(
+            'supplier articles',
+            (rows) => tx.supplierArticle.createMany({ data: rows as never }),
+            part.supplierArticles,
+            { organizationId, partId: part.id }
+          )
+          await restoreRows(
             'inventory images',
             (rows) => tx.storedImage.createMany({ data: rows as never }),
             part.gallery,

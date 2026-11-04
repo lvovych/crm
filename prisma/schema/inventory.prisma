@@ -105,6 +105,7 @@ model InventoryPart {
   gallery   StoredImage[]   @relation("InventoryPartImages")
   movements StockMovement[]
   receiptLines SupplierReceiptLine[]
+  supplierArticles SupplierArticle[]
 
   @@unique([organizationId, barcode])
   @@index([brandId])

@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto'
-import { receiptOptions } from '@/features/receipts/actions'
+import { receiptOptions, receiptAccess } from '@/features/receipts/actions'
 import ReceiptForm from '@/features/receipts/ReceiptForm'
 export default async function Page() {
-  const r = await receiptOptions()
+  const [r, access] = await Promise.all([receiptOptions(), receiptAccess()])
   if (!r.data) return <p role="alert">{r.error}</p>
   const day = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/Kyiv',
@@ -15,6 +15,7 @@ export default async function Page() {
       <h1 className="text-2xl font-semibold">Нова накладна</h1>
       <ReceiptForm
         options={r.data}
+        canPost={access.post}
         initial={{
           id: randomUUID(),
           version: 0,
@@ -23,7 +24,15 @@ export default async function Page() {
           documentDate: day,
           receivedDate: day,
           lines: [
-            { kind: 'part', partId: null, name: '', unit: 'шт', quantity: '1', unitPrice: '0' },
+            {
+              kind: 'part',
+              article: '',
+              partId: null,
+              name: '',
+              unit: 'шт',
+              quantity: '1',
+              unitPrice: '0',
+            },
           ],
         }}
       />

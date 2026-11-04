@@ -23,10 +23,12 @@ export default async function Page({
           <h1>Редагування чернетки {d.number}</h1>
           <ReceiptForm
             options={o.data}
+            canPost={access.post}
             initial={{
               ...d,
               lines: d.lines.map((l) => ({
                 ...l,
+                article: l.article ?? '',
                 kind: l.kind === 'service' ? 'service' : 'part',
               })),
             }}
@@ -50,7 +52,7 @@ export default async function Page({
         <table className="w-full text-left">
           <thead>
             <tr>
-              {['Позиція', 'Тип', 'Кількість', 'Ціна, грн', 'Сума, грн'].map((s) => (
+              {['Позиція', 'Артикул', 'Тип', 'Кількість', 'Ціна, грн', 'Сума, грн'].map((s) => (
                 <th key={s}>{s}</th>
               ))}
             </tr>
@@ -67,6 +69,7 @@ export default async function Page({
                     l.name
                   )}
                 </td>
+                <td>{l.article || '—'}</td>
                 <td>{l.kind === 'part' ? 'Запчастина' : 'Послуга'}</td>
                 <td>
                   {l.quantity} {l.unit}

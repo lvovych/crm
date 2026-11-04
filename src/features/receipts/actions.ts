@@ -8,14 +8,15 @@ import { draftSchema, transitionReceipt } from './ledger'
 import { onInventoryChanged } from '@/features/inventory/Lib/onInventoryChanged'
 
 import { getCachedMembership } from '@/lib/cached-session'
+import { articleKey, matchArticle } from './articles'
 import { receiptsEnabled } from './enabled'
-function authorized<T>(action: A, fn: (ctx: AuthContext) => Promise<T>) {
+function authorized<T>(action: A | A[], fn: (ctx: AuthContext) => Promise<T>) {
   return withAuth(
     async (ctx) => {
       if (!receiptsEnabled(ctx.organizationId)) throw new Error('Надходження вимкнено.')
       return fn(ctx)
     },
-    { requiredPermissions: [{ action, subject: S.RECEIPTS }] }
+    { requiredPermissions: [action].flat().map((a) => ({ action: a, subject: S.RECEIPTS })) }
   )
 }
 export async function receiptAccess() {
@@ -44,6 +45,7 @@ export async function receiptOptions() {
       select: {
         id: true,
         name: true,
+        supplierArticles: { select: { supplierId: true, normalized: true } },
         partNumber: true,
         barcode: true,
         unit: true,
@@ -83,6 +85,7 @@ export async function receiptList(
       number: r.number,
       supplier: r.supplier.name,
       status: r.status,
+      version: r.version,
       documentDate: r.documentDate.toISOString().slice(0, 10),
       receivedDate: r.receivedDate.toISOString().slice(0, 10),
       total: r.lines.reduce((s, l) => s.plus(l.amount), new Prisma.Decimal(0)).toFixed(2),
@@ -118,10 +121,10 @@ export async function receiptDetail(id: string) {
     }
   })
 }
-export async function saveDraft(input: unknown) {
-  return authorized(A.CREATE, async ({ organizationId, userId }) => {
+export async function saveDraft(input: unknown, post = false) {
+  return authorized(post ? [A.CREATE, A.UPDATE] : A.CREATE, async ({ organizationId, userId }) => {
     const d = draftSchema.parse(input)
-    return db.$transaction(async (tx) => {
+    const result = await db.$transaction(async (tx) => {
       const supplier = await tx.counterparty.findFirst({
         where: {
           id: d.supplierId,
@@ -163,27 +166,77 @@ export async function saveDraft(input: unknown) {
         where: {
           organizationId,
           isArchived: false,
-          id: { in: d.lines.flatMap((l) => (l.partId ? [l.partId] : [])) },
         },
-        select: { id: true, unit: true },
+        select: {
+          id: true,
+          unit: true,
+          partNumber: true,
+          supplierArticles: {
+            where: { supplierId: d.supplierId },
+            select: { supplierId: true, normalized: true },
+          },
+        },
       })
-      const lines = d.lines.map((line, position) => {
-        const part = parts.find((p) => p.id === line.partId)
-        if (line.kind === 'part' && line.partId && (!part || (part.unit || 'шт') !== line.unit))
-          throw new Error('Оберіть складську картку з відповідною одиницею.')
-        return {
+      const lines = []
+      for (const [position, line] of d.lines.entries()) {
+        let partId: string | null = null
+        const article = line.kind === 'part' ? line.article?.trim() : null
+        if (line.kind === 'part') {
+          if (!article || !articleKey(article)) throw new Error('Вкажіть артикул кожного товару.')
+          const matches = matchArticle(parts, d.supplierId, article)
+          const selected =
+            matches.length === 1 ? matches[0] : parts.find((p) => p.id === line.partId)
+          if (
+            selected &&
+            ((line.partId && selected.id !== line.partId) ||
+              (matches.length > 1 && !matches.includes(selected)) ||
+              (selected.unit || 'шт') !== line.unit)
+          )
+            throw new Error('Зіставлення товару змінилося. Перевірте рядок.')
+          if (selected) {
+            const normalized = articleKey(article)
+            const mapping = await tx.supplierArticle.upsert({
+              where: {
+                organizationId_supplierId_normalized: {
+                  organizationId,
+                  supplierId: d.supplierId,
+                  normalized,
+                },
+              },
+              create: {
+                organizationId,
+                supplierId: d.supplierId,
+                normalized,
+                article,
+                partId: selected.id,
+              },
+              update: {},
+              select: { partId: true },
+            })
+            if (mapping.partId !== selected.id)
+              throw new Error('Артикул уже пов’язаний з іншою карткою.')
+            partId = selected.id
+          }
+        }
+        lines.push({
           ...line,
-          partId: line.kind === 'part' ? line.partId : null,
+          article,
+          partId,
           receiptId: d.id,
           position,
           amount: new Prisma.Decimal(line.quantity)
             .times(line.unitPrice)
             .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
-        }
-      })
+        })
+      }
       await tx.supplierReceiptLine.createMany({ data: lines })
+      if (post)
+        await transitionReceipt(tx, organizationId, userId, d.id, d.version + 1, 'posted', '')
       return { id: d.id, duplicate: false }
     })
+    if (post && !result.duplicate) await onInventoryChanged(organizationId)
+    revalidatePath('/receipts')
+    return result
   })
 }
 export async function changeReceipt(

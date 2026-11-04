@@ -1,4 +1,5 @@
 'use client'
+import { matchArticle } from './articles'
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -9,6 +10,7 @@ import { Input } from '@/components/ui/input'
 
 type Options = NonNullable<Awaited<ReturnType<typeof receiptOptions>>['data']>
 type Line = {
+  article: string
   kind: 'part' | 'service'
   name: string
   partId: string | null
@@ -27,6 +29,7 @@ type Draft = {
 }
 const blank = (): Line => ({
   kind: 'part',
+  article: '',
   name: '',
   partId: null,
   quantity: '1',
@@ -48,7 +51,15 @@ function cents(line: Line) {
     return BigInt(0)
   return (scaled(line.quantity, 3) * scaled(line.unitPrice, 4) + BigInt(50000)) / BigInt(100000)
 }
-export default function ReceiptForm({ options, initial }: { options: Options; initial: Draft }) {
+export default function ReceiptForm({
+  options,
+  initial,
+  canPost,
+}: {
+  options: Options
+  initial: Draft
+  canPost: boolean
+}) {
   const router = useRouter()
   const [doc, setDoc] = useState(initial)
   const [parts, setParts] = useState(options.parts)
@@ -63,13 +74,25 @@ export default function ReceiptForm({ options, initial }: { options: Options; in
     }))
   }
   function field(key: 'number' | 'supplierId' | 'documentDate' | 'receivedDate', value: string) {
-    setDoc((d) => ({ ...d, [key]: value }))
+    setDoc((d) => ({
+      ...d,
+      [key]: value,
+      lines:
+        key === 'supplierId'
+          ? d.lines.map((l) => (l.kind === 'part' ? resolve(l, value) : l))
+          : d.lines,
+    }))
   }
-  function save() {
+  function resolve(l: Line, supplierId: string): Line {
+    const matches = matchArticle(parts, supplierId, l.article)
+    const part = matches.length === 1 ? matches[0] : null
+    return { ...l, partId: part?.id ?? null, name: part?.name ?? '', unit: part?.unit || 'шт' }
+  }
+  function save(post: boolean) {
     start(async () => {
       setError('')
       setDuplicate('')
-      const r = await saveDraft(doc)
+      const r = await saveDraft(doc, post)
       if (!r.data) {
         setError(r.error || 'Помилка збереження')
         return
@@ -84,16 +107,25 @@ export default function ReceiptForm({ options, initial }: { options: Options; in
   }
   function newPart(index: number, l: Line) {
     start(async () => {
+      if (!doc.supplierId || !l.article.trim()) {
+        setError('Оберіть постачальника та вкажіть артикул.')
+        return
+      }
       if (!l.name.trim()) {
         setError('Введіть назву нової запчастини.')
         return
       }
-      const r = await createInventoryPart({ name: l.name, unit: l.unit, quantity: 0 })
+      const r = await createInventoryPart({
+        name: l.name,
+        partNumber: l.article,
+        unit: l.unit,
+        quantity: 0,
+      })
       if (!r.data) {
         setError(r.error || 'Помилка створення')
         return
       }
-      setParts((p) => [...p, { ...r.data!, brand: { name: '---' } }])
+      setParts((p) => [...p, { ...r.data!, supplierArticles: [], brand: { name: '---' } }])
       setQueries((q) => ({ ...q, [index]: '' }))
       patch(index, { partId: r.data.id })
       setError('')
@@ -104,7 +136,8 @@ export default function ReceiptForm({ options, initial }: { options: Options; in
       className="space-y-5"
       onSubmit={(e) => {
         e.preventDefault()
-        save()
+        const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null
+        save(submitter?.value === 'post')
       }}
     >
       <fieldset disabled={busy} className="space-y-5">
@@ -179,6 +212,8 @@ export default function ReceiptForm({ options, initial }: { options: Options; in
                     patch(i, {
                       kind: e.target.value as Line['kind'],
                       partId: null,
+                      article: '',
+                      name: '',
                       unit: e.target.value === 'service' ? 'посл.' : 'шт',
                     })
                   }
@@ -190,43 +225,67 @@ export default function ReceiptForm({ options, initial }: { options: Options; in
               {l.kind === 'part' && (
                 <>
                   <label>
-                    Пошук за назвою, брендом, артикулом або штрихкодом
+                    Артикул постачальника
                     <Input
-                      value={queries[i] || ''}
-                      onChange={(e) => setQueries({ ...queries, [i]: e.target.value })}
+                      required
+                      maxLength={120}
+                      value={l.article}
+                      placeholder="Наприклад, FE 12345"
+                      onChange={(e) =>
+                        patch(i, resolve({ ...l, article: e.target.value }, doc.supplierId))
+                      }
                     />
                   </label>
-                  <label>
-                    Складська картка
-                    <select
-                      className={selectClass}
-                      value={l.partId ?? ''}
-                      onChange={(e) => {
-                        const p = parts.find((p) => p.id === e.target.value)
-                        patch(i, {
-                          partId: p?.id ?? null,
-                          name: p?.name ?? '',
-                          unit: p?.unit || 'шт',
-                        })
-                      }}
-                    >
-                      <option value="">Зіставити перед проведенням</option>
-                      {parts
-                        .filter(
-                          (p) =>
-                            p.id === l.partId ||
-                            [p.name, p.brand.name, p.partNumber, p.barcode]
-                              .join(' ')
-                              .toLowerCase()
-                              .includes((queries[i] || '').toLowerCase())
-                        )
-                        .map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name} · {p.brand.name} {p.partNumber} {p.barcode}
-                          </option>
-                        ))}
-                    </select>
-                  </label>
+                  {l.partId ? (
+                    <p aria-live="polite">
+                      Складська картка
+                      <br />
+                      <strong>{parts.find((p) => p.id === l.partId)?.name}</strong>
+                    </p>
+                  ) : (
+                    doc.supplierId &&
+                    l.article.trim() && (
+                      <div className="space-y-2">
+                        <p>
+                          {matchArticle(parts, doc.supplierId, l.article).length > 1
+                            ? 'Знайдено кілька товарів. Уточніть картку за брендом.'
+                            : 'Новий артикул. Прив’яжіть його до товару один раз.'}
+                        </p>
+                        <Input
+                          aria-label="Пошук товару для прив’язки"
+                          placeholder="Назва, бренд або основний артикул"
+                          value={queries[i] || ''}
+                          onChange={(e) => setQueries({ ...queries, [i]: e.target.value })}
+                        />
+                        <select
+                          aria-label="Прив’язати до товару"
+                          className={selectClass}
+                          value=""
+                          onChange={(e) => {
+                            const p = parts.find((p) => p.id === e.target.value)
+                            if (p) patch(i, { partId: p.id, name: p.name, unit: p.unit || 'шт' })
+                          }}
+                        >
+                          <option value="">Оберіть товар для цього артикула</option>
+                          {(matchArticle(parts, doc.supplierId, l.article).length > 1
+                            ? matchArticle(parts, doc.supplierId, l.article)
+                            : parts
+                          )
+                            .filter((p) =>
+                              [p.name, p.brand.name, p.partNumber, p.barcode]
+                                .join(' ')
+                                .toLowerCase()
+                                .includes((queries[i] || '').toLowerCase())
+                            )
+                            .map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.name} · {p.brand.name} {p.partNumber}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+                    )
+                  )}
                 </>
               )}
             </div>
@@ -276,11 +335,15 @@ export default function ReceiptForm({ options, initial }: { options: Options; in
                 {money(cents(l))}
               </p>
             </div>
-            {l.kind === 'part' && !l.partId && (
-              <Button type="button" variant="outline" onClick={() => newPart(i, l)}>
-                Створити складську картку з нульовим залишком
-              </Button>
-            )}
+            {l.kind === 'part' &&
+              !!doc.supplierId &&
+              !!l.article.trim() &&
+              !l.partId &&
+              matchArticle(parts, doc.supplierId, l.article).length === 0 && (
+                <Button type="button" variant="outline" onClick={() => newPart(i, l)}>
+                  Створити складську картку з нульовим залишком
+                </Button>
+              )}
           </section>
         ))}
         <Button
@@ -293,7 +356,16 @@ export default function ReceiptForm({ options, initial }: { options: Options; in
         <p className="text-xl font-semibold">
           Разом {money(doc.lines.reduce((s, l) => s + cents(l), BigInt(0)))} грн
         </p>
-        <Button type="submit">Зберегти чернетку</Button>
+        <div className="flex gap-3">
+          <Button type="submit" variant="outline" value="draft">
+            Зберегти чернетку
+          </Button>
+          {canPost && (
+            <Button type="submit" value="post">
+              Зберегти й провести
+            </Button>
+          )}
+        </div>
       </fieldset>
       {error && <p role="alert">{error}</p>}
       {duplicate && (

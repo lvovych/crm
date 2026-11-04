@@ -1,3 +1,4 @@
+import { Transition } from '@/features/receipts/Transition'
 import Link from 'next/link'
 import { receiptList, receiptAccess } from '@/features/receipts/actions'
 import { Input } from '@/components/ui/input'
@@ -64,6 +65,7 @@ export default async function Page({
                 'Дата приймання',
                 'Статус',
                 'Сума, грн',
+                'Дії',
               ].map((s) => (
                 <th className="p-2" key={s}>
                   {s}
@@ -84,6 +86,23 @@ export default async function Page({
                 <td>{r.receivedDate}</td>
                 <td>{statuses[r.status]}</td>
                 <td>{r.total}</td>
+                <td className="p-2">
+                  <div className="flex items-center gap-3">
+                    <Link
+                      className="underline"
+                      href={
+                        '/receipts/' +
+                        r.id +
+                        (r.status === 'draft' && access.create ? '?edit=1' : '')
+                      }
+                    >
+                      {r.status === 'draft' && access.create ? 'Редагувати' : 'Переглянути'}
+                    </Link>
+                    {r.status === 'draft' && access.post && (
+                      <Transition id={r.id} version={r.version} posting />
+                    )}
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>

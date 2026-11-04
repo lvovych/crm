@@ -158,6 +158,12 @@ export const BACKUP_ENTITIES: readonly BackupEntity[] = [
     restore: 'replace',
     clearOrder: 62,
   },
+  {
+    model: 'SupplierArticle',
+    option: 'inventory',
+    nestedUnder: 'InventoryPart',
+    restore: 'replace',
+  },
   { model: 'StockMovement', option: 'inventory', nestedUnder: 'InventoryPart', restore: 'replace' },
   { model: 'Vehicle', key: 'vehicles', option: 'vehicles', restore: 'replace', clearOrder: 50 },
   { model: 'ServiceRequest', option: 'vehicles', nestedUnder: 'Vehicle', restore: 'replace' },

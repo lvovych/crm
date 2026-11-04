@@ -180,7 +180,7 @@ export async function POST(request: NextRequest) {
       db.inventoryPart
         .findMany({
           where: { organizationId: ctx.organizationId },
-          include: { movements: true, gallery: true },
+          include: { movements: true, gallery: true, supplierArticles: true },
         })
         .then((result) => {
           data.inventoryParts = result

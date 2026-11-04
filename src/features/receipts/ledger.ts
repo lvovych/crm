@@ -16,6 +16,7 @@ export const draftSchema = z.object({
   lines: z
     .array(
       z.object({
+        article: z.string().trim().max(120).optional(),
         kind: z.enum(['part', 'service']),
         name: z.string().trim().min(1).max(250),
         unit: z.string().trim().min(1).max(30),
@@ -67,6 +68,7 @@ export async function transitionReceipt(
   if (!changed.count) throw new Error('Документ змінився. Оновіть сторінку.')
   for (const line of receipt.lines) {
     if (line.kind === 'service') continue
+    if (posting && !line.article?.trim()) throw new Error('Додайте артикул товару в чернетці.')
     if (!line.partId) throw new Error('Зіставте усі запчастини зі складом.')
     const delta = posting ? line.quantity : line.quantity.negated()
     // Lock rows in stable part order. The guarded update reads the current balance even

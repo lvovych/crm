@@ -36,9 +36,24 @@ model SupplierReceiptLine {
   quantity Decimal @db.Decimal(14,3)
   unitPrice Decimal @db.Decimal(14,4)
   amount Decimal @db.Decimal(18,2)
+  article String?
   partId String?
   part InventoryPart? @relation(fields: [partId], references: [id], onDelete: Restrict)
   movements StockMovement[]
   @@unique([receiptId,position])
   @@map("supplier_receipt_lines")
+}
+
+model SupplierArticle {
+  id String @id @default(cuid())
+  organizationId String
+  supplierId String
+  supplier Counterparty @relation(fields:[organizationId,supplierId], references:[organizationId,id], onDelete:Cascade)
+  article String
+  normalized String
+  partId String
+  part InventoryPart @relation(fields:[partId],references:[id],onDelete:Cascade)
+  @@unique([organizationId,supplierId,normalized])
+  @@index([partId])
+  @@map("supplier_articles")
 }

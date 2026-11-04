@@ -43,7 +43,7 @@ async function check() {
         create: [
           ...parts.map((part, position) => ({
             position,
-            kind: 'part',
+            kind: 'part',article:'TEST',
             partId: part.id,
             name: part.name,
             unit: 'l',
