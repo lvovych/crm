@@ -153,6 +153,16 @@ export async function POST(request: NextRequest) {
 
   if (options.inventory) {
     queries.push(
+      db.supplierEntry
+        .findMany({
+          where: { organizationId: ctx.organizationId },
+          include: { credits: true, termChanges: true },
+        })
+        .then((rows) => {
+          data.supplierEntries = rows
+        })
+    )
+    queries.push(
       db.supplierReceipt
         .findMany({ where: { organizationId: ctx.organizationId }, include: { lines: true } })
         .then((rows) => {

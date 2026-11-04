@@ -1,4 +1,5 @@
 'use client'
+import { lineCents } from './money'
 import { matchArticle } from './articles'
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
@@ -41,16 +42,6 @@ const money = (cents: bigint) =>
   (cents / BigInt(100)).toLocaleString('uk-UA') +
   ',' +
   (cents % BigInt(100)).toString().padStart(2, '0')
-// Scale the input strings before multiplication to match PostgreSQL decimal rounding.
-function cents(line: Line) {
-  const scaled = (s: string, places: number) => {
-    const [i, f = ''] = s.split('.')
-    return BigInt((i || '0') + f.padEnd(places, '0'))
-  }
-  if (!/^\d{1,9}(\.\d{1,3})?$/.test(line.quantity) || !/^\d{1,9}(\.\d{1,4})?$/.test(line.unitPrice))
-    return BigInt(0)
-  return (scaled(line.quantity, 3) * scaled(line.unitPrice, 4) + BigInt(50000)) / BigInt(100000)
-}
 export default function ReceiptForm({
   options,
   initial,
@@ -332,7 +323,7 @@ export default function ReceiptForm({
               <p>
                 Сума, грн
                 <br />
-                {money(cents(l))}
+                {money(lineCents(l) ?? BigInt(0))}
               </p>
             </div>
             {l.kind === 'part' &&
@@ -354,7 +345,7 @@ export default function ReceiptForm({
           Додати рядок
         </Button>
         <p className="text-xl font-semibold">
-          Разом {money(doc.lines.reduce((s, l) => s + cents(l), BigInt(0)))} грн
+          Разом {money(doc.lines.reduce((s, l) => s + (lineCents(l) ?? BigInt(0)), BigInt(0)))} грн
         </p>
         <div className="flex gap-3">
           <Button type="submit" variant="outline" value="draft">

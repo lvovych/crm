@@ -1,9 +1,12 @@
+import { Account } from '@/features/settlements/Account'
+import { workshopDay } from '@/features/settlements/amounts'
+import { settlementAccess, settlementReport } from '@/features/settlements/actions'
 import Link from 'next/link'
 import { receiptOptions, receiptDetail, receiptAccess } from '@/features/receipts/actions'
 import ReceiptForm from '@/features/receipts/ReceiptForm'
 import { Transition } from '@/features/receipts/Transition'
 import { statuses } from '@/features/receipts/status'
-import { Prisma } from '@/generated/prisma/client'
+import { receiptTotal } from '@/features/receipts/money'
 export default async function Page({
   params,
   searchParams,
@@ -36,6 +39,11 @@ export default async function Page({
         </>
       )
   }
+  const rights = await settlementAccess()
+  const account =
+    rights.read && d.status === 'posted'
+      ? (await settlementReport(workshopDay(), d.supplierId)).data?.[0]
+      : null
   return (
     <>
       <h1 className="text-2xl font-semibold">Накладна № {d.number}</h1>
@@ -81,9 +89,13 @@ export default async function Page({
           </tbody>
         </table>
       </div>
-      <p className="text-xl font-semibold">
-        Разом {d.lines.reduce((s, l) => s.plus(l.amount), new Prisma.Decimal(0)).toFixed(2)} грн
-      </p>
+      <p className="text-xl font-semibold">Разом {receiptTotal(d.lines)} грн</p>
+      {account && (
+        <section>
+          <h2 className="font-semibold">Оплата накладної</h2>
+          <Account account={account} rights={rights} receiptId={id} live />
+        </section>
+      )}
       <p>Створено · {d.creator}</p>
       {d.postedAt && (
         <p>

@@ -1,4 +1,5 @@
 import { Transition } from '@/features/receipts/Transition'
+import { settlementAccess } from '@/features/settlements/actions'
 import Link from 'next/link'
 import { receiptList, receiptAccess } from '@/features/receipts/actions'
 import { Input } from '@/components/ui/input'
@@ -11,9 +12,17 @@ export default async function Page({
 }) {
   const p = await searchParams,
     page = Math.max(1, Math.floor(Number(p.page) || 1))
-  const [list, access] = await Promise.all([
-    receiptList(p.q || '', p.status || '', p.supplierId || '', p.date || '', page),
+  const labels: Record<string, string> = {
+    unverified: 'Розрахунки не звірено',
+    paid: 'Оплачено',
+    partial: 'Частково оплачено',
+    unpaid: 'Не оплачено',
+    late: 'Прострочено',
+  }
+  const [list, access, finance] = await Promise.all([
+    receiptList(p.q || '', p.status || '', p.supplierId || '', p.date || '', page, p.payment),
     receiptAccess(),
+    settlementAccess(),
   ])
   if (!list.data) return <p role="alert">{list.error}</p>
   const pageUrl = (n: number) => '/receipts?' + new URLSearchParams({ ...p, page: String(n) })
@@ -21,6 +30,11 @@ export default async function Page({
     <>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Надходження</h1>
+        {finance.read && (
+          <Link className="underline" href="/settlements">
+            Розрахунки з постачальниками
+          </Link>
+        )}
         {access.create && (
           <Link className="underline" href="/receipts/new">
             Нова накладна
@@ -52,6 +66,19 @@ export default async function Page({
             ))}
           </select>
         </label>
+        {finance.read && (
+          <label>
+            Оплата
+            <select className="block rounded border p-2" name="payment" defaultValue={p.payment}>
+              <option value="">Усі</option>
+              {Object.entries(labels).map(([k, v]) => (
+                <option key={k} value={k}>
+                  {v}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <Button>Знайти</Button>
       </form>
       <div className="overflow-auto">
@@ -65,6 +92,7 @@ export default async function Page({
                 'Дата приймання',
                 'Статус',
                 'Сума, грн',
+                ...(finance.read ? ['Зараховано', 'До сплати', 'Строк', 'Оплата'] : []),
                 'Дії',
               ].map((s) => (
                 <th className="p-2" key={s}>
@@ -86,6 +114,16 @@ export default async function Page({
                 <td>{r.receivedDate}</td>
                 <td>{statuses[r.status]}</td>
                 <td>{r.total}</td>
+                {finance.read && (
+                  <>
+                    <td>{r.status === 'posted' ? (r.paid ?? '—') : '—'}</td>
+                    <td>{r.status === 'posted' ? (r.open ?? '—') : '—'}</td>
+                    <td>{r.due ?? '—'}</td>
+                    <td>
+                      {labels[r.state]} {r.late && '· Прострочено'}
+                    </td>
+                  </>
+                )}
                 <td className="p-2">
                   <div className="flex items-center gap-3">
                     <Link
@@ -98,6 +136,14 @@ export default async function Page({
                     >
                       {r.status === 'draft' && access.create ? 'Редагувати' : 'Переглянути'}
                     </Link>
+                    {finance.read && r.status === 'posted' && r.state !== 'paid' && (
+                      <Link
+                        className="underline"
+                        href={'/settlements?supplier=' + r.supplierId + '&receipt=' + r.id}
+                      >
+                        {r.state === 'unverified' ? 'Звірити' : 'Розрахунки й оплата'}
+                      </Link>
+                    )}
                     {r.status === 'draft' && access.post && (
                       <Transition id={r.id} version={r.version} posting />
                     )}

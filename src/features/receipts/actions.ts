@@ -3,10 +3,12 @@ import { revalidatePath } from 'next/cache'
 import { db } from '@/lib/db'
 import { withAuth, type AuthContext } from '@/lib/with-auth'
 import { PermissionAction as A, PermissionSubject as S } from '@/lib/permissions'
-import { Prisma } from '@/generated/prisma/client'
+import { receiptTotal, storedLineAmount } from './money'
 import { draftSchema, transitionReceipt } from './ledger'
 import { onInventoryChanged } from '@/features/inventory/Lib/onInventoryChanged'
 
+import { settlementAccess } from '@/features/settlements/actions'
+import { day, hryvnia, kopecks, remaining, workshopDay } from '@/features/settlements/amounts'
 import { getCachedMembership } from '@/lib/cached-session'
 import { articleKey, matchArticle } from './articles'
 import { receiptsEnabled } from './enabled'
@@ -60,7 +62,8 @@ export async function receiptList(
   status: string,
   supplierId: string,
   date: string,
-  page: number
+  page: number,
+  paymentFilter = ''
 ) {
   return authorized(A.READ, async ({ organizationId }) => {
     const where = {
@@ -73,23 +76,60 @@ export async function receiptList(
         { supplier: { name: { contains: q, mode: 'insensitive' as const } } },
       ],
     }
+    const visible = (await settlementAccess()).read
+    const filter = visible ? paymentFilter : ''
     const rows = await db.supplierReceipt.findMany({
       where,
-      include: { supplier: { select: { name: true } }, lines: { select: { amount: true } } },
+      include: {
+        settlement: { include: { debits: true } },
+        supplier: { select: { name: true } },
+        lines: { select: { amount: true } },
+      },
       orderBy: [{ receivedDate: 'desc' }, { id: 'desc' }],
-      skip: (page - 1) * 50,
-      take: 51,
+      ...(filter ? {} : { skip: (page - 1) * 50, take: 51 }),
     })
-    return rows.map((r) => ({
-      id: r.id,
-      number: r.number,
-      supplier: r.supplier.name,
-      status: r.status,
-      version: r.version,
-      documentDate: r.documentDate.toISOString().slice(0, 10),
-      receivedDate: r.receivedDate.toISOString().slice(0, 10),
-      total: r.lines.reduce((s, l) => s.plus(l.amount), new Prisma.Decimal(0)).toFixed(2),
-    }))
+    const result = rows.map((r) => {
+      const entry = visible ? r.settlement : null
+      const open = entry ? remaining(entry, entry.debits, workshopDay()) : null
+      const total = receiptTotal(r.lines)
+      const paid = open === null ? null : kopecks(total) - open
+      const state =
+        r.status !== 'posted'
+          ? ''
+          : !entry
+            ? 'unverified'
+            : open === BigInt(0)
+              ? 'paid'
+              : paid === BigInt(0)
+                ? 'unpaid'
+                : 'partial'
+      return {
+        supplierId: r.supplierId,
+        state,
+        open: open === null ? null : hryvnia(open),
+        paid: paid === null ? null : hryvnia(paid),
+        due: entry?.due ? day(entry.due) : null,
+        late:
+          r.status === 'posted' &&
+          open !== null &&
+          open > 0 &&
+          !!entry?.due &&
+          day(entry.due) < workshopDay(),
+        id: r.id,
+        number: r.number,
+        supplier: r.supplier.name,
+        status: r.status,
+        version: r.version,
+        documentDate: r.documentDate.toISOString().slice(0, 10),
+        receivedDate: r.receivedDate.toISOString().slice(0, 10),
+        total,
+      }
+    })
+    return filter
+      ? result
+          .filter((r) => (filter === 'late' ? r.late : r.state === filter))
+          .slice((page - 1) * 50, page * 50 + 1)
+      : result
   })
 }
 export async function receiptDetail(id: string) {
@@ -224,9 +264,7 @@ export async function saveDraft(input: unknown, post = false) {
           partId,
           receiptId: d.id,
           position,
-          amount: new Prisma.Decimal(line.quantity)
-            .times(line.unitPrice)
-            .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
+          amount: storedLineAmount(line),
         })
       }
       await tx.supplierReceiptLine.createMany({ data: lines })

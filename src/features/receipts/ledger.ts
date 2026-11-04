@@ -1,3 +1,10 @@
+import {
+  addReceiptDebt,
+  lockSupplier,
+  reverseEntry,
+  settlementsEnabled,
+} from '@/features/settlements/ledger'
+import { workshopDay } from '@/features/settlements/amounts'
 import { z } from 'zod'
 import { Prisma } from '@/generated/prisma/client'
 import type { TxClient } from '@/lib/db'
@@ -55,6 +62,7 @@ export async function transitionReceipt(
     }))
   )
     throw new Error('Постачальника архівовано.')
+  await lockSupplier(tx, organizationId, receipt.supplierId)
   const changed = await tx.supplierReceipt.updateMany({
     where: { id, organizationId, status: posting ? 'draft' : 'posted', version },
     data: {
@@ -106,5 +114,12 @@ export async function transitionReceipt(
         quantityAfter: rows[0].quantity,
       },
     })
+  }
+  if (posting && settlementsEnabled(organizationId)) {
+    await addReceiptDebt(tx, organizationId, userId, id, new Date(workshopDay() + 'T00:00:00Z'))
+  } else if (!posting) {
+    const entry = await tx.supplierEntry.findUnique({ where: { receiptId: id } })
+    if (entry && !entry.reversedAt)
+      await reverseEntry(tx, organizationId, receipt.supplierId, entry.id, userId, reason)
   }
 }

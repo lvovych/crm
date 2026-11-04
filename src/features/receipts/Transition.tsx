@@ -32,6 +32,9 @@ export function Transition({
       {!posting && (
         <label>
           Причина скасування
+          <small className="block">
+            Зараховані на накладну оплати повернуться у вільний аванс.
+          </small>
           <Input required value={reason} onChange={(e) => setReason(e.target.value)} />
         </label>
       )}

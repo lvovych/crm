@@ -478,6 +478,7 @@ export async function POST(request: NextRequest) {
         Vehicle: () => tx.vehicle.deleteMany({ where: { organizationId } }),
         CustomFieldDefinition: () =>
           tx.customFieldDefinition.deleteMany({ where: { organizationId } }),
+        SupplierEntry: () => tx.supplierEntry.deleteMany({ where: { organizationId } }),
         SupplierReceipt: () => tx.supplierReceipt.deleteMany({ where: { organizationId } }),
         Counterparty: () => tx.counterparty.deleteMany({ where: { organizationId } }),
         SupplierImportRun: () => tx.supplierImportRun.deleteMany({ where: { organizationId } }),
@@ -886,6 +887,46 @@ export async function POST(request: NextRequest) {
             })
           }
         }
+      }
+      if (data.supplierEntries) {
+        const entries = data.supplierEntries as Record<string, unknown>[]
+        const owners = new Map(entries.map((e) => [e.id, e.supplierId]))
+        const receipts = new Map(
+          (data.supplierReceipts ?? []).map((r: { id: string; supplierId: string }) => [
+            r.id,
+            r.supplierId,
+          ])
+        )
+        for (const raw of entries) {
+          if (raw.receiptId && receipts.get(raw.receiptId) !== raw.supplierId)
+            throw new Error('Invalid settlement receipt')
+          const { credits, termChanges, ...fields } = raw
+          await tx.supplierEntry.create({
+            data: columnsOf(fields, {
+              organizationId,
+              createdById: ctx.userId,
+              reversedById: raw.reversedAt ? ctx.userId : null,
+            }) as never,
+          })
+        }
+        for (const raw of entries)
+          for (const t of (raw.termChanges ?? []) as Record<string, unknown>[]) {
+            await tx.supplierTermChange.create({
+              data: columnsOf(t, { entryId: raw.id, changedById: ctx.userId }) as never,
+            })
+          }
+        for (const raw of entries)
+          for (const link of (raw.credits ?? []) as Record<string, unknown>[]) {
+            if (owners.get(link.debitId) !== raw.supplierId)
+              throw new Error('Invalid settlement allocation')
+            await tx.supplierAllocation.create({
+              data: columnsOf(link, {
+                creditId: raw.id,
+                createdById: ctx.userId,
+                reversedById: link.reversedAt ? ctx.userId : null,
+              }) as never,
+            })
+          }
       }
       // Resolve work day start time from imported settings for backfilling service record times
       const workDayStartSetting = (data.settings as Record<string, unknown>[] | undefined)?.find(
