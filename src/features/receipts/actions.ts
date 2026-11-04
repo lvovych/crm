@@ -3,7 +3,7 @@ import { revalidatePath } from 'next/cache'
 import { db } from '@/lib/db'
 import { withAuth, type AuthContext } from '@/lib/with-auth'
 import { PermissionAction as A, PermissionSubject as S } from '@/lib/permissions'
-import { Prisma } from '@/generated/prisma/client'
+import { receiptTotal, storedLineAmount } from './money'
 import { draftSchema, transitionReceipt } from './ledger'
 import { onInventoryChanged } from '@/features/inventory/Lib/onInventoryChanged'
 
@@ -88,7 +88,7 @@ export async function receiptList(
       version: r.version,
       documentDate: r.documentDate.toISOString().slice(0, 10),
       receivedDate: r.receivedDate.toISOString().slice(0, 10),
-      total: r.lines.reduce((s, l) => s.plus(l.amount), new Prisma.Decimal(0)).toFixed(2),
+      total: receiptTotal(r.lines),
     }))
   })
 }
@@ -224,9 +224,7 @@ export async function saveDraft(input: unknown, post = false) {
           partId,
           receiptId: d.id,
           position,
-          amount: new Prisma.Decimal(line.quantity)
-            .times(line.unitPrice)
-            .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
+          amount: storedLineAmount(line),
         })
       }
       await tx.supplierReceiptLine.createMany({ data: lines })

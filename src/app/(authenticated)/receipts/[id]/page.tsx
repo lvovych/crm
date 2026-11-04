@@ -3,7 +3,7 @@ import { receiptOptions, receiptDetail, receiptAccess } from '@/features/receipt
 import ReceiptForm from '@/features/receipts/ReceiptForm'
 import { Transition } from '@/features/receipts/Transition'
 import { statuses } from '@/features/receipts/status'
-import { Prisma } from '@/generated/prisma/client'
+import { receiptTotal } from '@/features/receipts/money'
 export default async function Page({
   params,
   searchParams,
@@ -81,9 +81,7 @@ export default async function Page({
           </tbody>
         </table>
       </div>
-      <p className="text-xl font-semibold">
-        Разом {d.lines.reduce((s, l) => s.plus(l.amount), new Prisma.Decimal(0)).toFixed(2)} грн
-      </p>
+      <p className="text-xl font-semibold">Разом {receiptTotal(d.lines)} грн</p>
       <p>Створено · {d.creator}</p>
       {d.postedAt && (
         <p>
