@@ -114,6 +114,7 @@ async function check() {
       await tx.stockMovement.deleteMany({
         where: { organizationId, inventoryPartId: { in: parts.map((p) => p.id) } },
       })
+      await tx.supplierEntry.deleteMany({where:{organizationId,supplierId:supplier.id}})
       await tx.supplierReceipt.delete({ where: { id: doc.id } })
       await tx.inventoryPart.deleteMany({
         where: { organizationId, id: { in: parts.map((p) => p.id) } },

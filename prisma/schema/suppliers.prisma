@@ -21,6 +21,7 @@ model Counterparty {
   sourceLinks CounterpartySourceLink[]
   preferredParts InventoryPart[]
   receipts SupplierReceipt[]
+  settlements SupplierEntry[]
   supplierArticles SupplierArticle[]
   @@unique([organizationId, id])
   @@index([organizationId, isArchived, name])

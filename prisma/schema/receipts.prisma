@@ -20,6 +20,7 @@ model SupplierReceipt {
   sourceAccount String?
   externalId String?
   lines SupplierReceiptLine[]
+  settlement SupplierEntry?
   @@unique([organizationId, supplierId, number, documentDate])
   @@unique([organizationId, source, sourceAccount, externalId])
   @@index([organizationId, receivedDate])

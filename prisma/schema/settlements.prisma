@@ -1,0 +1,55 @@
+// Debit entries are open obligations, credit entries are available advances.
+model SupplierEntry {
+  id String @id @default(cuid())
+  organizationId String
+  supplierId String
+  supplier Counterparty @relation(fields:[organizationId,supplierId],references:[organizationId,id],onDelete:Restrict)
+  receiptId String? @unique
+  receipt SupplierReceipt? @relation(fields:[receiptId],references:[id],onDelete:Restrict)
+  kind String
+  amount Decimal @db.Decimal(22,2)
+  date DateTime @db.Date
+  due DateTime? @db.Date
+  method String?
+  reference String?
+  note String?
+  createdById String
+  createdAt DateTime @default(now())
+  reversedAt DateTime?
+  reversedById String?
+  reason String?
+  termChanges SupplierTermChange[]
+  credits SupplierAllocation[] @relation("credit")
+  debits SupplierAllocation[] @relation("debit")
+  @@index([organizationId,supplierId,date])
+  @@map("supplier_entries")
+}
+model SupplierAllocation {
+  id String @id @default(cuid())
+  creditId String
+  debitId String
+  credit SupplierEntry @relation("credit",fields:[creditId],references:[id],onDelete:Cascade)
+  debit SupplierEntry @relation("debit",fields:[debitId],references:[id],onDelete:Cascade)
+  amount Decimal @db.Decimal(22,2)
+  date DateTime @db.Date
+  createdById String
+  createdAt DateTime @default(now())
+  reversedAt DateTime?
+  reversedById String?
+  reason String?
+  @@index([creditId])
+  @@index([debitId])
+  @@map("supplier_allocations")
+}
+
+model SupplierTermChange {
+  id String @id @default(cuid())
+  entryId String
+  entry SupplierEntry @relation(fields:[entryId],references:[id],onDelete:Cascade)
+  previous DateTime? @db.Date
+  due DateTime @db.Date
+  changedAt DateTime @default(now())
+  changedById String
+  @@index([entryId,changedAt])
+  @@map("supplier_term_changes")
+}

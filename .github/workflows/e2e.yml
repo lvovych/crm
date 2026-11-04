@@ -159,6 +159,13 @@ jobs:
         if: ${{ steps.gate.outputs.run == 'true' }}
         run: npx playwright test ${{ matrix.shard && format('--shard={0}', matrix.shard) || '' }}
 
+      - name: Verify supplier payments on PostgreSQL
+        if: ${{ matrix.id == 'shard-1' }}
+        env:
+          DATABASE_URL: ${{ env.E2E_DATABASE_URL }}
+          SUPPLIER_SETTLEMENT_ORGANIZATIONS: '*'
+        run: node --import tsx scripts/check-supplier-settlements.ts
+
       # The blob carries the results with their traces, screenshots and videos;
       # the report job turns every job's blob into one HTML report.
       - name: Upload the blob report
