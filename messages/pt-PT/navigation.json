@@ -143,6 +143,7 @@
       "reminders": "{count} lembretes pendentes"
     },
     "receipts": "Supplier receipts",
-    "suppliers": "Suppliers"
+    "suppliers": "Suppliers",
+    "directories": "Directories"
   }
 }

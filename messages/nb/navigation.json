@@ -143,6 +143,7 @@
       "reminders": "{count} forfalte påminnelser"
     },
     "receipts": "Varemottak",
-    "suppliers": "Suppliers"
+    "suppliers": "Suppliers",
+    "directories": "Directories"
   }
 }

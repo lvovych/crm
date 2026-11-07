@@ -143,6 +143,7 @@
       "reminders": "{count} rappels à échéance"
     },
     "receipts": "Réceptions fournisseurs",
-    "suppliers": "Suppliers"
+    "suppliers": "Suppliers",
+    "directories": "Directories"
   }
 }

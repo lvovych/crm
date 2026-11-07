@@ -143,6 +143,7 @@
       "reminders": "{count} vadesi gelen hatırlatma"
     },
     "receipts": "Tedarikçi teslimatları",
-    "suppliers": "Suppliers"
+    "suppliers": "Suppliers",
+    "directories": "Directories"
   }
 }

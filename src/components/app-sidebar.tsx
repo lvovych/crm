@@ -178,12 +178,6 @@ export function AppSidebar({
 
   const clientItems: NavItem[] = [
     {
-      titleKey: 'sidebar.customers' as const,
-      url: '/customers',
-      icon: Users,
-      subject: 'customers',
-    },
-    {
       titleKey: 'sidebar.messages' as const,
       url: '/messages',
       icon: MessageSquare,
@@ -191,15 +185,9 @@ export function AppSidebar({
       count: counts?.messages,
       countKey: 'sidebar.badges.messages',
     },
-  ].filter((item) => canAccess(item.subject))
+  ].filter((item) => !item.subject || canAccess(item.subject))
 
   const workshopItems: NavItem[] = [
-    {
-      titleKey: isMarine ? ('sidebar.vessels' as const) : ('sidebar.vehicles' as const),
-      url: '/vehicles',
-      icon: isMarine ? Ship : Car,
-      subject: 'vehicles',
-    },
     {
       titleKey: 'sidebar.reminders' as const,
       url: '/reminders',
@@ -250,29 +238,39 @@ export function AppSidebar({
           },
         ]
       : []),
-  ].filter((item) => canAccess(item.subject))
+  ].filter((item) => !item.subject || canAccess(item.subject))
 
   const businessItems: NavItem[] = [
+    ...(['customers', 'vehicles', 'labor_presets', 'inventory'].some(canAccess)
+      ? [{ titleKey: 'sidebar.directories', url: '/directories', icon: Layers, subject: '' }]
+      : []),
     { titleKey: 'sidebar.quotes' as const, url: '/quotes', icon: FileText, subject: 'quotes' },
     { titleKey: 'sidebar.billing' as const, url: '/billing', icon: Receipt, subject: 'billing' },
-    ...(receiptsEnabled ? [{titleKey:'sidebar.receipts' as const,url:'/receipts',icon:Receipt,subject:'receipts'}] : []),
-    ...(supplierDirectoryEnabled ? [{
-      titleKey: 'sidebar.suppliers' as const,
-      url: '/suppliers',
-      icon: Building2,
-      subject: 'suppliers',
-    }] : []),
+    ...(receiptsEnabled
+      ? [
+          {
+            titleKey: 'sidebar.receipts' as const,
+            url: '/receipts',
+            icon: Receipt,
+            subject: 'receipts',
+          },
+        ]
+      : []),
+    ...(supplierDirectoryEnabled
+      ? [
+          {
+            titleKey: 'sidebar.suppliers' as const,
+            url: '/suppliers',
+            icon: Building2,
+            subject: 'suppliers',
+          },
+        ]
+      : []),
     {
       titleKey: 'sidebar.inventory' as const,
       url: '/inventory',
       icon: Package,
       subject: 'inventory',
-    },
-    {
-      titleKey: 'sidebar.laborPresets' as const,
-      url: '/labor-presets',
-      icon: Layers,
-      subject: 'labor_presets',
     },
     ...(features?.reports !== false && canAccess('reports')
       ? [
@@ -308,7 +306,7 @@ export function AppSidebar({
       icon: History,
       subject: 'settings',
     },
-  ].filter((item) => canAccess(item.subject))
+  ].filter((item) => !item.subject || canAccess(item.subject))
 
   const closeMobileSidebar = () => {
     if (isMobile) setOpenMobile(false)
@@ -361,7 +359,11 @@ export function AppSidebar({
 
   const renderNavGroup = (items: NavItem[]) =>
     items.map((item) => {
-      const isActive = pathname === item.url || (item.url !== '/' && pathname.startsWith(item.url))
+      const isActive =
+        (item.url === '/directories' &&
+          ['/customers', '/vehicles', '/labor-presets'].some((p) => pathname === p)) ||
+        pathname === item.url ||
+        (item.url !== '/' && pathname.startsWith(item.url))
       const count = item.count ?? 0
       const row = (highlighted: boolean) => (
         <SidebarMenuItem key={item.titleKey}>

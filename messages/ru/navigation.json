@@ -143,6 +143,7 @@
       "reminders": "{count} напоминаний просрочено"
     },
     "receipts": "Поступления",
-    "suppliers": "Suppliers"
+    "suppliers": "Suppliers",
+    "directories": "Directories"
   }
 }

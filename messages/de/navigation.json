@@ -143,6 +143,7 @@
       "reminders": "{count} fällige Erinnerungen"
     },
     "receipts": "Wareneingänge",
-    "suppliers": "Suppliers"
+    "suppliers": "Suppliers",
+    "directories": "Directories"
   }
 }

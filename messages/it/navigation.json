@@ -143,6 +143,7 @@
       "reminders": "{count} promemoria in scadenza"
     },
     "receipts": "Ricevimenti fornitori",
-    "suppliers": "Suppliers"
+    "suppliers": "Suppliers",
+    "directories": "Directories"
   }
 }
