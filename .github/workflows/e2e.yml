@@ -166,6 +166,13 @@ jobs:
           SUPPLIER_SETTLEMENT_ORGANIZATIONS: '*'
         run: node --import tsx scripts/check-supplier-settlements.ts
 
+      - name: Verify receipt transfers on PostgreSQL
+        if: ${{ matrix.id == 'shard-1' }}
+        env:
+          DATABASE_URL: ${{ env.E2E_DATABASE_URL }}
+          SUPPLIER_SETTLEMENT_ORGANIZATIONS: '*'
+        run: npx tsx --tsconfig scripts/tsconfig.receipt-check.json scripts/check-receipt-transfer.ts
+
       # The blob carries the results with their traces, screenshots and videos;
       # the report job turns every job's blob into one HTML report.
       - name: Upload the blob report

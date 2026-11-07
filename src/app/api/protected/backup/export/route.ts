@@ -164,7 +164,10 @@ export async function POST(request: NextRequest) {
     )
     queries.push(
       db.supplierReceipt
-        .findMany({ where: { organizationId: ctx.organizationId }, include: { lines: true } })
+        .findMany({
+          where: { organizationId: ctx.organizationId },
+          include: { lines: { include: { transfers: true } } },
+        })
         .then((rows) => {
           data.supplierReceipts = rows
         })

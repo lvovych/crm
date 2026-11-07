@@ -1,3 +1,5 @@
+import { TransferGoods } from '@/features/receipts/TransferGoods'
+import { receiptTransferOptions } from '@/features/receipts/transfer-actions'
 import { Account } from '@/features/settlements/Account'
 import { workshopDay } from '@/features/settlements/amounts'
 import { settlementAccess, settlementReport } from '@/features/settlements/actions'
@@ -39,6 +41,7 @@ export default async function Page({
         </>
       )
   }
+  const transfers = d.status === 'posted' ? (await receiptTransferOptions(id)).data : null
   const rights = await settlementAccess()
   const account =
     rights.read && d.status === 'posted'
@@ -61,7 +64,7 @@ export default async function Page({
       <section className="rounded-xl border-2 border-border p-5 space-y-4">
         <h2 className="text-lg font-semibold">Товари та послуги</h2>
         <div className="overflow-auto">
-          <table className="w-full text-left">
+          <table className="w-full text-left [&_td]:px-2 [&_td]:py-3 [&_td]:whitespace-nowrap">
             <thead className="bg-muted">
               <tr>
                 {['Позиція', 'Артикул', 'Тип', 'Кількість', 'Ціна, грн', 'Сума, грн'].map((s) => (
@@ -97,6 +100,7 @@ export default async function Page({
         </div>
         <p className="text-xl font-semibold">Разом {receiptTotal(d.lines)} грн</p>
       </section>
+      {transfers && <TransferGoods receiptId={id} data={transfers} />}
       {account && (
         <section className="rounded-xl border-2 border-border bg-muted/30 p-5 space-y-4">
           <h2 className="font-semibold">Оплата накладної</h2>
