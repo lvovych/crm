@@ -134,7 +134,8 @@ test.describe('a workshop that picks Marine', () => {
     await settle(page)
     await expect(serviceTypeSelect(page)).toHaveText('Automotive')
     expect(await workshopSetting(organizationId, SERVICE_TYPE), 'nothing stored yet').toBeNull()
-    await expect(sidebar(page).getByRole('link', { name: /^Vehicles/ })).toBeVisible()
+    await sidebar(page).getByRole('link', { name: 'Directories', exact: true }).click()
+    await expect(page.getByRole('main').getByRole('link', { name: /^Vehicles/ })).toBeVisible()
   })
 
   test('keeps the choice once saved', async ({ page }) => {
@@ -145,14 +146,15 @@ test.describe('a workshop that picks Marine', () => {
     await expect(serviceTypeSelect(page)).toHaveText('Marine')
   })
 
-  test('lists vessels in the sidebar', async ({ page }) => {
-    await page.goto('/vehicles')
+  test('lists vessels in Directories', async ({ page }) => {
+    await page.goto('/directories')
     await settle(page)
-    await expect(sidebar(page).getByRole('link', { name: /^Vessels/ })).toHaveAttribute(
+    await expect(page.getByRole('main').getByRole('link', { name: /^Vessels/ })).toHaveAttribute(
       'href',
       '/vehicles'
     )
-    await expect(sidebar(page).getByRole('link', { name: /^Vehicles/ })).toHaveCount(0)
+    await expect(page.getByRole('main').getByRole('link', { name: /^Vehicles/ })).toHaveCount(0)
+    await expect(sidebar(page).locator('a[href="/vehicles"]')).toHaveCount(0)
   })
 
   test('asks for what a boat has when one is added', async ({ page }) => {
@@ -318,8 +320,9 @@ test.describe('a workshop that picks Marine', () => {
     await page.keyboard.press('Escape')
     await dialog.getByRole('button', { name: 'Cancel' }).click()
 
-    await expect(sidebar(page).getByRole('link', { name: /^Vehicles/ })).toBeVisible()
-    await expect(sidebar(page).getByRole('link', { name: /^Vessels/ })).toHaveCount(0)
+    await sidebar(page).getByRole('link', { name: 'Directories', exact: true }).click()
+    await expect(page.getByRole('main').getByRole('link', { name: /^Vehicles/ })).toBeVisible()
+    await expect(page.getByRole('main').getByRole('link', { name: /^Vessels/ })).toHaveCount(0)
 
     // The same pages, back in car words, and the registry connected earlier is
     // offered again.

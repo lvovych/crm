@@ -40,6 +40,7 @@ model SupplierReceiptLine {
   article String?
   partId String?
   part InventoryPart? @relation(fields: [partId], references: [id], onDelete: Restrict)
+  transfers ReceiptTransfer[]
   movements StockMovement[]
   @@unique([receiptId,position])
   @@map("supplier_receipt_lines")
@@ -57,4 +58,25 @@ model SupplierArticle {
   @@unique([organizationId,supplierId,normalized])
   @@index([partId])
   @@map("supplier_articles")
+}
+
+/// Immutable history of goods sent from a receipt to a work order.
+/// Work-order identifiers are snapshots, retained even if the order is deleted.
+model ReceiptTransfer {
+  id String @id @default(cuid())
+  lineId String
+  line SupplierReceiptLine @relation(fields: [lineId], references: [id], onDelete: Cascade)
+  requestId String
+  requestHash String
+  serviceRecordId String
+  serviceRecordLabel String
+  vehicleId String?
+  servicePartId String
+  quantity Decimal @db.Decimal(14,3)
+  unitPrice Decimal @db.Decimal(14,4)
+  createdById String
+  createdAt DateTime @default(now())
+  @@unique([requestId, lineId])
+  @@index([lineId])
+  @@map("receipt_transfers")
 }

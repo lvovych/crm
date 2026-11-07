@@ -74,6 +74,10 @@ export async function transitionReceipt(
     },
   })
   if (!changed.count) throw new Error('Документ змінився. Оновіть сторінку.')
+  if (!posting && (await tx.receiptTransfer.count({ where: { line: { receiptId: id } } })))
+    throw new Error(
+      'Накладна має передавання в наряди. Скасування потребує окремої звірки руху товарів.'
+    )
   for (const line of receipt.lines) {
     if (line.kind === 'service') continue
     if (posting && !line.article?.trim()) throw new Error('Додайте артикул товару в чернетці.')

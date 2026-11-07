@@ -1,3 +1,5 @@
+import { TransferGoods } from '@/features/receipts/TransferGoods'
+import { receiptTransferOptions } from '@/features/receipts/transfer-actions'
 import { Account } from '@/features/settlements/Account'
 import { workshopDay } from '@/features/settlements/amounts'
 import { settlementAccess, settlementReport } from '@/features/settlements/actions'
@@ -39,6 +41,7 @@ export default async function Page({
         </>
       )
   }
+  const transfers = d.status === 'posted' ? (await receiptTransferOptions(id)).data : null
   const rights = await settlementAccess()
   const account =
     rights.read && d.status === 'posted'
@@ -46,52 +49,60 @@ export default async function Page({
       : null
   return (
     <>
-      <h1 className="text-2xl font-semibold">Накладна № {d.number}</h1>
-      <p>
-        {statuses[d.status]} ·{' '}
-        <Link className="underline" href={'/suppliers/' + d.supplierId}>
-          {d.supplier.name}
-        </Link>
-      </p>
-      <p>
-        Дата документа {d.documentDate} · Дата приймання {d.receivedDate}
-      </p>
-      <div className="overflow-auto">
-        <table className="w-full text-left">
-          <thead>
-            <tr>
-              {['Позиція', 'Артикул', 'Тип', 'Кількість', 'Ціна, грн', 'Сума, грн'].map((s) => (
-                <th key={s}>{s}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {d.lines.map((l) => (
-              <tr className="border-t" key={l.id}>
-                <td className="py-2">
-                  {l.partId ? (
-                    <Link className="underline" href={'/inventory/' + l.partId}>
-                      {l.name}
-                    </Link>
-                  ) : (
-                    l.name
-                  )}
-                </td>
-                <td>{l.article || '—'}</td>
-                <td>{l.kind === 'part' ? 'Запчастина' : 'Послуга'}</td>
-                <td>
-                  {l.quantity} {l.unit}
-                </td>
-                <td>{l.unitPrice}</td>
-                <td>{l.amount}</td>
+      <section className="rounded-xl border-2 border-border bg-muted/30 p-5 space-y-3">
+        <h1 className="text-2xl font-semibold">Накладна № {d.number}</h1>
+        <p>
+          {statuses[d.status]} ·{' '}
+          <Link className="underline" href={'/suppliers/' + d.supplierId}>
+            {d.supplier.name}
+          </Link>
+        </p>
+        <p>
+          Дата документа {d.documentDate} · Дата приймання {d.receivedDate}
+        </p>
+      </section>
+      <section className="rounded-xl border-2 border-border p-5 space-y-4">
+        <h2 className="text-lg font-semibold">Товари та послуги</h2>
+        <div className="overflow-auto">
+          <table className="w-full text-left [&_td]:px-2 [&_td]:py-3 [&_td]:whitespace-nowrap">
+            <thead className="bg-muted">
+              <tr>
+                {['Позиція', 'Артикул', 'Тип', 'Кількість', 'Ціна, грн', 'Сума, грн'].map((s) => (
+                  <th className="px-2 py-3" key={s}>
+                    {s}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <p className="text-xl font-semibold">Разом {receiptTotal(d.lines)} грн</p>
+            </thead>
+            <tbody>
+              {d.lines.map((l) => (
+                <tr className="border-t" key={l.id}>
+                  <td className="py-2">
+                    {l.partId ? (
+                      <Link className="underline" href={'/inventory/' + l.partId}>
+                        {l.name}
+                      </Link>
+                    ) : (
+                      l.name
+                    )}
+                  </td>
+                  <td>{l.article || '—'}</td>
+                  <td>{l.kind === 'part' ? 'Запчастина' : 'Послуга'}</td>
+                  <td>
+                    {l.quantity} {l.unit}
+                  </td>
+                  <td>{l.unitPrice}</td>
+                  <td>{l.amount}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xl font-semibold">Разом {receiptTotal(d.lines)} грн</p>
+      </section>
+      {transfers && <TransferGoods receiptId={id} data={transfers} />}
       {account && (
-        <section>
+        <section className="rounded-xl border-2 border-border bg-muted/30 p-5 space-y-4">
           <h2 className="font-semibold">Оплата накладної</h2>
           <Account account={account} rights={rights} receiptId={id} live />
         </section>

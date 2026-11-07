@@ -882,9 +882,15 @@ export async function POST(request: NextRequest) {
             if (line.partId && !restoredParts.has(line.partId))
               throw new Error('Invalid receipt part reference')
             restoredReceiptLines.set(line.id, line.partId)
+            const { transfers, ...lineFields } = line
             await tx.supplierReceiptLine.create({
-              data: columnsOf(line, { receiptId: raw.id }) as never,
+              data: columnsOf(lineFields, { receiptId: raw.id }) as never,
             })
+            for (const transfer of (transfers ?? []) as Record<string, unknown>[]) {
+              await tx.receiptTransfer.create({
+                data: columnsOf(transfer, { lineId: line.id, createdById: ctx.userId }) as never,
+              })
+            }
           }
         }
       }
