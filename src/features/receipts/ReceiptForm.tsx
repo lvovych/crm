@@ -131,7 +131,7 @@ export default function ReceiptForm({
         save(submitter?.value === 'post')
       }}
     >
-      <fieldset disabled={busy} className="space-y-5">
+      <fieldset disabled={busy} className="min-w-0 space-y-5">
         <section className="rounded-xl border-2 border-border bg-muted/30 p-5 space-y-4">
           <h2 className="text-lg font-semibold">1. Дані накладної</h2>
           <p className="text-sm text-muted-foreground">

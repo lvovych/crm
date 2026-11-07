@@ -43,7 +43,6 @@ import {
   Bell,
   Building2,
   CalendarDays,
-  Car,
   Check,
   ChevronsUpDown,
   ClipboardCheck,
@@ -64,10 +63,8 @@ import {
   Plus,
   Receipt,
   Settings,
-  Ship,
   ShieldCheck,
   Timer,
-  Users,
   UserRound,
   Sparkles,
 } from 'lucide-react'

@@ -6,6 +6,13 @@ import { Users, Car, Layers, Package } from 'lucide-react'
 
 const directories = [
   {
+    title: 'Бренди',
+    description: 'Виробники товарів та їх доступність для вибору.',
+    href: '/directories/brands',
+    subject: 'inventory',
+    icon: Package,
+  },
+  {
     title: 'Клієнти',
     description: 'Контакти, реквізити та історія звернень.',
     href: '/customers',
