@@ -186,10 +186,15 @@ test.describe('the built-in Member role', () => {
         url: `/quotes/${fixtures.quoteId}`,
         shows: (p) => expect(p.getByText(fixtures.quoteNumber).first()).toBeVisible(),
       },
+      {
+        url: '/directories',
+        shows: (p) =>
+          expect(p.getByRole('heading', { name: 'Directories', exact: true })).toBeVisible(),
+      },
       { url: '/inventory', shows: (p) => expect(p.getByText('All Parts').first()).toBeVisible() },
       {
         url: '/labor-presets',
-        shows: (p) => expect(p.getByText('Labor Presets').first()).toBeVisible(),
+        shows: (p) => expect(p.getByPlaceholder('Search labor packages...')).toBeVisible(),
       },
       { url: '/work-board', shows: (p) => expect(p.getByText('Work Board').first()).toBeVisible() },
       {

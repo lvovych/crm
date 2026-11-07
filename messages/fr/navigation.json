@@ -1,4 +1,17 @@
 {
+  "directoryContent": {
+    "inventory": "Product cards",
+    "brands": "Brands",
+    "intro": "Choose a directory to find, create or edit a record.",
+    "open": "Open directory",
+    "noAccess": "No directories are available. Contact an administrator about access.",
+    "customersDescription": "Contact details and customer history.",
+    "vehiclesDescription": "Vehicle details and service history.",
+    "vesselsDescription": "Vessel details and service history.",
+    "labor_presetsDescription": "Reusable jobs and parts for work orders.",
+    "inventoryDescription": "Names, articles, units and prices.",
+    "brandsDescription": "Product manufacturers and their availability."
+  },
   "breadcrumbs": {
     "dashboard": "Tableau de bord",
     "vehicles": "Véhicules",
