@@ -150,6 +150,9 @@ test.describe('the built-in Member role', () => {
   })
 
   test('is refused nothing on any page the role is meant to open', async ({ page }) => {
+    // Fourteen real navigations each wait for hydration and asynchronous audit writes.
+    // Their combined duration can exceed the default minute on a shared CI runner.
+    test.setTimeout(120_000)
     await signInAsMember(page)
 
     /**
@@ -210,23 +213,25 @@ test.describe('the built-in Member role', () => {
     let counted = 0
 
     for (const { url, shows } of pages) {
-      await page.goto(url)
-      await settle(page)
+      await test.step(`Member opens ${url} without permission refusals`, async () => {
+        await page.goto(url)
+        await settle(page)
 
-      // The refusal screen, an error boundary or an empty shell all mean the
-      // page did not open, and would leave the audit log innocently empty.
-      await expect(
-        page.getByRole('heading', { name: 'No access yet' }),
-        `${url} opens`
-      ).toHaveCount(0)
-      await shows(page)
+        // The refusal screen, an error boundary or an empty shell all mean the
+        // page did not open, and would leave the audit log innocently empty.
+        await expect(
+          page.getByRole('heading', { name: 'No access yet' }),
+          `${url} opens`
+        ).toHaveCount(0)
+        await shows(page)
 
-      await page.waitForTimeout(2_000)
-      const all = await permissionDenialsFor(MEMBER, since)
-      // Attributed to the page that was open when they appeared, which is what
-      // makes a failure here readable rather than a list of bare messages.
-      for (const message of all.slice(counted)) refusals.push(`${url} -> ${message}`)
-      counted = all.length
+        await page.waitForTimeout(2_000)
+        const all = await permissionDenialsFor(MEMBER, since)
+        // Attributed to the page that was open when they appeared, which is what
+        // makes a failure here readable rather than a list of bare messages.
+        for (const message of all.slice(counted)) refusals.push(`${url} -> ${message}`)
+        counted = all.length
+      })
     }
 
     expect(
