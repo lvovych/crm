@@ -110,3 +110,17 @@ test('new work order searches real owner contacts, VIN and plate without exposin
   await dialog.getByRole('button', { name: new RegExp(prefix + ' Passat') }).click()
   await expect(page).toHaveURL(new RegExp(`/vehicles/${ids[1]}/service/`))
 })
+
+test('Quick Add passes owner phone and VIN to the same search', async ({ page }) => {
+  await page.goto('/')
+  await settle(page)
+  await page.getByRole('button', { name: 'Quick Add', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Work Order', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  const search = dialog.getByRole('textbox')
+  await search.fill(`0679876543 ${prefix}`)
+  await expect(dialog.getByRole('button', { name: new RegExp(prefix) })).toHaveCount(2)
+  await search.fill('wvwzzz1kzfw123450')
+  await expect(dialog.getByRole('button', { name: new RegExp(prefix + ' Golf') })).toBeVisible()
+  await expect(dialog.getByRole('button', { name: new RegExp(prefix + ' Passat') })).toHaveCount(0)
+})
