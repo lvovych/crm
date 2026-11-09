@@ -314,6 +314,16 @@ export function ModernDetails(props: ModernDetailsProps) {
                   onSaved={formState.flashSaved}
                 />
 
+                {/* Outside the lock: the customer notes freeze with the invoice,
+                    the internal ones keep saving on their own. */}
+                <NotesSection
+                  initialData={formState.initialData}
+                  onNotesChange={onNotesChange}
+                  serviceRecordId={record.id}
+                  aiEnabled={props.aiEnabled}
+                  publicLocked={locked}
+                />
+
                 <Lockable locked={locked}>
                   {vehicleId && (
                     <ServiceFindingsSection
@@ -379,16 +389,6 @@ export function ModernDetails(props: ModernDetailsProps) {
                 />
 
                 <FilesMediaCard serviceRecordId={record.id} customerId={customer?.id} {...files} />
-
-                {/* Outside the lock: the customer notes freeze with the invoice,
-                    the internal ones keep saving on their own. */}
-                <NotesSection
-                  initialData={formState.initialData}
-                  onNotesChange={onNotesChange}
-                  serviceRecordId={record.id}
-                  aiEnabled={props.aiEnabled}
-                  publicLocked={locked}
-                />
               </div>
 
               {/* A locked invoice freezes what it says is owed: its lines, totals,

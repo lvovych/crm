@@ -2,16 +2,24 @@ import Link from 'next/link'
 import { PageHeader } from '@/components/page-header'
 import { withAuth } from '@/lib/with-auth'
 import { getCachedMembership } from '@/lib/cached-session'
-import { Users, Car, Ship, Layers, Package } from 'lucide-react'
+import { Users, Car, Ship, Layers, Package, Building2 } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
+import { supplierDirectoryEnabled } from '@/features/suppliers/Lib/enabled'
 import { getLayoutData } from '@/lib/get-layout-data'
 
 const directories = [
   {
+    title: 'Постачальники',
+    description: 'Контакти, реквізити та документи постачальників.',
+    href: '/suppliers',
+    subject: 'suppliers',
+    icon: Building2,
+  },
+  {
     title: 'Бренди',
     description: 'Виробники товарів та їх доступність для вибору.',
     href: '/directories/brands',
-    subject: 'inventory',
+    subject: 'brands',
     icon: Package,
   },
   {
@@ -47,15 +55,17 @@ export default async function Page() {
   const [t, layout] = await Promise.all([getTranslations('navigation'), getLayoutData()])
   const marine = layout.status === 'ok' && layout.serviceType === 'marine'
   const titles: Record<string, string> = {
+    '/suppliers': t('sidebar.suppliers'),
     '/customers': t('sidebar.customers'),
     '/vehicles': t(marine ? 'sidebar.vessels' : 'sidebar.vehicles'),
     '/labor-presets': t('sidebar.laborPresets'),
     '/inventory': t('directoryContent.inventory'),
     '/directories/brands': t('directoryContent.brands'),
   }
-  const result = await withAuth(async ({ userId, isAdmin }) => {
+  const result = await withAuth(async ({ userId, isAdmin, organizationId }) => {
     const member = await getCachedMembership(userId)
     return directories
+      .filter((d) => d.subject !== 'suppliers' || supplierDirectoryEnabled(organizationId))
       .filter(
         (d) =>
           isAdmin ||

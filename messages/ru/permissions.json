@@ -18,7 +18,8 @@
     "settings": "Настройки",
     "supplier_settlements": "Supplier settlements",
     "receipts": "Поступления",
-    "suppliers": "Suppliers"
+    "suppliers": "Suppliers",
+    "brands": "Бренды (общий справочник)"
   },
   "actions": {
     "create": "Создание",
@@ -26,6 +27,7 @@
     "update": "Изменение",
     "delete": "Удаление",
     "manage": "Управление",
-    "manage_storage": "Управление структурой склада"
+    "manage_storage": "Управление структурой склада",
+    "deactivate_brand": "Удаление (деактивация)"
   }
 }

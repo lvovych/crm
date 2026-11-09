@@ -18,7 +18,8 @@
     "settings": "Innstillinger",
     "supplier_settlements": "Supplier settlements",
     "receipts": "Varemottak",
-    "suppliers": "Suppliers"
+    "suppliers": "Suppliers",
+    "brands": "Brands (shared directory)"
   },
   "actions": {
     "create": "Opprette",
@@ -26,6 +27,7 @@
     "update": "Endre",
     "delete": "Slette",
     "manage": "Administrere",
-    "manage_storage": "Endre lageroppsettet"
+    "manage_storage": "Endre lageroppsettet",
+    "deactivate_brand": "Delete (deactivate)"
   }
 }

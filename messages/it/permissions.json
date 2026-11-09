@@ -18,7 +18,8 @@
     "settings": "Impostazioni",
     "supplier_settlements": "Supplier settlements",
     "receipts": "Ricevimenti fornitori",
-    "suppliers": "Suppliers"
+    "suppliers": "Suppliers",
+    "brands": "Brands (shared directory)"
   },
   "actions": {
     "create": "Creare",
@@ -26,6 +27,7 @@
     "update": "Modificare",
     "delete": "Eliminare",
     "manage": "Gestire",
-    "manage_storage": "Gestire la disposizione del deposito"
+    "manage_storage": "Gestire la disposizione del deposito",
+    "deactivate_brand": "Delete (deactivate)"
   }
 }

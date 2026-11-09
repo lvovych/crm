@@ -1,4 +1,5 @@
 import { expect, test, type Locator } from '@playwright/test'
+import { settle } from '../../support/hydration'
 import {
   addPart,
   applyLine,
@@ -64,6 +65,7 @@ test.describe('line validation protects the saved work order', () => {
     page,
   }) => {
     await page.goto(jobUrl)
+    await settle(page)
     await page.getByRole('button', { name: 'Add Labor', exact: true }).click()
     const dialog = page.getByRole('dialog', { name: 'Add Service', exact: true })
     await dialog.getByLabel('Hours', { exact: true }).fill('3')

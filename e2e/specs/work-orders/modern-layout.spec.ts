@@ -100,6 +100,31 @@ test.describe('the work order page', () => {
     await expect(bar.getByRole('button', { name: /Send/ })).toBeVisible()
   })
 
+  test('notes follow mechanic planning and survive saving before labor', async ({ page }) => {
+    await page.goto(jobUrl)
+    await settle(page)
+    const schedule = page.getByText('Mechanic and scheduling', { exact: true })
+    const internal = page.getByRole('heading', { name: 'Internal notes', exact: true })
+    const customer = page.getByRole('heading', { name: 'Customer notes', exact: true })
+    const labor = page.getByRole('heading', { name: /Labor & Services/ })
+    const positions = await Promise.all(
+      [schedule, internal, customer, labor].map((el) => el.boundingBox())
+    )
+    expect(positions.every(Boolean)).toBe(true)
+    expect(positions[1]!.y).toBeGreaterThan(positions[0]!.y)
+    expect(positions[2]!.y).toBeGreaterThan(positions[0]!.y)
+    expect(positions[3]!.y).toBeGreaterThan(Math.max(positions[1]!.y, positions[2]!.y))
+    const editors = page.locator('[contenteditable="true"]')
+    await expect(editors).toHaveCount(2)
+    await editors.nth(0).fill('Internal placement regression')
+    await editors.nth(1).fill('Customer placement regression')
+    await saveWorkOrder(page)
+    await page.reload()
+    await settle(page)
+    await expect(editors.nth(0)).toContainText('Internal placement regression')
+    await expect(editors.nth(1)).toContainText('Customer placement regression')
+  })
+
   test('saves what is on screen', async ({ page }) => {
     await page.goto(jobUrl)
     await settle(page)

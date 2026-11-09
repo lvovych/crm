@@ -23,6 +23,7 @@ export const draftSchema = z.object({
   lines: z
     .array(
       z.object({
+        brandId: z.string().min(1).optional(),
         article: z.string().trim().max(120).optional(),
         kind: z.enum(['part', 'service']),
         name: z.string().trim().min(1).max(250),

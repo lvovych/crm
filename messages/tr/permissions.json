@@ -18,7 +18,8 @@
     "settings": "Ayarlar",
     "supplier_settlements": "Supplier settlements",
     "receipts": "Tedarikçi teslimatları",
-    "suppliers": "Suppliers"
+    "suppliers": "Suppliers",
+    "brands": "Brands (shared directory)"
   },
   "actions": {
     "create": "Oluşturma",
@@ -26,6 +27,7 @@
     "update": "Düzenleme",
     "delete": "Silme",
     "manage": "Yönetme",
-    "manage_storage": "Depo düzenini yönetme"
+    "manage_storage": "Depo düzenini yönetme",
+    "deactivate_brand": "Delete (deactivate)"
   }
 }
