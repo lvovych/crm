@@ -41,15 +41,6 @@ interface JobFactsCardProps {
   } | null
 }
 
-function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('')
-}
-
 /** A name that leads to its own page: plain until hovered, so the card does not read as a list of links. */
 const nameLink =
   'rounded-sm underline-offset-2 transition-colors hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
@@ -231,9 +222,6 @@ export function JobFactsCard({
           {customer ? (
             <>
               <div className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold">
-                  {initials(customer.name)}
-                </div>
                 <div className="min-w-0">
                   <Link
                     href={`/customers/${customer.id}`}
@@ -246,7 +234,7 @@ export function JobFactsCard({
                   )}
                 </div>
               </div>
-              <dl className="grid grid-cols-1 gap-x-3 gap-y-1 @xs:grid-cols-2">
+              <dl className="grid grid-cols-1 gap-y-1">
                 <div className="min-w-0">
                   <dt className={factLabel}>{t('modern.phone')}</dt>
                   <dd className="truncate text-sm">
@@ -262,21 +250,7 @@ export function JobFactsCard({
                     )}
                   </dd>
                 </div>
-                <div className="min-w-0">
-                  <dt className={factLabel}>{t('modern.email')}</dt>
-                  <dd className="truncate text-sm">
-                    {customer.email ? (
-                      <span className="flex min-w-0 items-center gap-0.5">
-                        <a href={`mailto:${customer.email}`} className="truncate hover:underline">
-                          {customer.email}
-                        </a>
-                        <CopyValue value={customer.email} label={t('modern.email')} />
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">{t('modern.notSet')}</span>
-                    )}
-                  </dd>
-                </div>
+
               </dl>
             </>
           ) : (
