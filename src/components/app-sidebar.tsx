@@ -238,7 +238,8 @@ export function AppSidebar({
   ].filter((item) => !item.subject || canAccess(item.subject))
 
   const businessItems: NavItem[] = [
-    ...(['customers', 'vehicles', 'labor_presets', 'inventory'].some(canAccess)
+    ...(['customers', 'vehicles', 'labor_presets', 'inventory'].some(canAccess) ||
+    (supplierDirectoryEnabled && canAccess('suppliers'))
       ? [{ titleKey: 'sidebar.directories', url: '/directories', icon: Layers, subject: '' }]
       : []),
     { titleKey: 'sidebar.quotes' as const, url: '/quotes', icon: FileText, subject: 'quotes' },
@@ -250,16 +251,6 @@ export function AppSidebar({
             url: '/receipts',
             icon: Receipt,
             subject: 'receipts',
-          },
-        ]
-      : []),
-    ...(supplierDirectoryEnabled
-      ? [
-          {
-            titleKey: 'sidebar.suppliers' as const,
-            url: '/suppliers',
-            icon: Building2,
-            subject: 'suppliers',
           },
         ]
       : []),
@@ -358,7 +349,9 @@ export function AppSidebar({
     items.map((item) => {
       const isActive =
         (item.url === '/directories' &&
-          ['/customers', '/vehicles', '/labor-presets'].some((p) => pathname === p)) ||
+          (['/customers', '/vehicles', '/labor-presets'].some((p) => pathname === p) ||
+            pathname === '/suppliers' ||
+            pathname.startsWith('/suppliers/'))) ||
         pathname === item.url ||
         (item.url !== '/' && pathname.startsWith(item.url))
       const count = item.count ?? 0

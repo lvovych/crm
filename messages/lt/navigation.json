@@ -10,7 +10,8 @@
     "vesselsDescription": "Vessel details and service history.",
     "labor_presetsDescription": "Reusable jobs and parts for work orders.",
     "inventoryDescription": "Names, articles, units and prices.",
-    "brandsDescription": "Product manufacturers and their availability."
+    "brandsDescription": "Product manufacturers and their availability.",
+    "suppliersDescription": "Supplier contacts, details and documents."
   },
   "breadcrumbs": {
     "dashboard": "Valdymo skydelis",
