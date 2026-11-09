@@ -249,7 +249,7 @@ test.describe('a workshop that picks Marine', () => {
     await settle(page)
     const picker = page.getByRole('dialog', { name: 'Select Vessel for Work Order' })
     await expect(picker).toBeVisible({ timeout: 30_000 })
-    await expect(picker.getByPlaceholder('Search vessels...')).toBeVisible()
+    await expect(picker.getByLabel('Search vessel or owner')).toBeVisible()
 
     await expect(async () => {
       await picker.getByRole('button', { name: 'Add New Vessel' }).first().click()

@@ -119,7 +119,20 @@
         "brown": "Brown",
         "gray": "Gray"
       }
-    }
+    },
+    "searchLabel": "Search vehicle or owner",
+    "searchLabelMarine": "Search vessel or owner",
+    "searchExample": "For example: AB1234 or owner name",
+    "searchExampleMarine": "Registration or owner name",
+    "searchHelp": "Plate, VIN, make, owner name or phone — full number or last 4+ digits.",
+    "searchHelpMarine": "Registration, make, owner name or phone — full number or last 4+ digits.",
+    "clearSearch": "Clear search",
+    "searchResults": "Search results",
+    "resultCount": "Found: {count}",
+    "noSearchResults": "No matches for this search",
+    "emptySearchHelp": "Check your search or clear it. For a phone, enter at least the last 4 digits. Add a vehicle if it is not in the directory yet.",
+    "keyboardHelp": "↑ ↓ to choose · Enter to open · Esc to close",
+    "addVehicleShort": "Add vehicle"
   },
   "notify": {
     "title": "Varsle {name}",

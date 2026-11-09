@@ -37,7 +37,7 @@ function open() {
       <VehiclePickerDialog open onOpenChange={vi.fn()} vehicles={[]} customers={[]} />
     </ServiceTypeProvider>
   )
-  fireEvent.click(screen.getAllByRole('button', { name: 'Add New Vehicle' })[0])
+  fireEvent.click(screen.getAllByRole('button', { name: 'Add vehicle' })[0])
 }
 async function choose(label: string, option: string) {
   fireEvent.click(screen.getByRole('combobox', { name: label }))

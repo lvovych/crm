@@ -164,6 +164,33 @@ describe('getVehicle — cross-org isolation', () => {
 // ---------------------------------------------------------------------------
 
 describe('getVehicles — org scoping', () => {
+  it('loads owner phone for search while excluding archived vehicles', async () => {
+    setupOrgAOwner()
+    vi.mocked(db.vehicle.findMany).mockResolvedValue([])
+    await getVehicles()
+    expect(db.vehicle.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { organizationId: ORG_A, isArchived: false },
+        include: expect.objectContaining({
+          customer: { select: { id: true, name: true, company: true, phone: true } },
+        }),
+      })
+    )
+  })
+
+  it('does not load search contacts for a member without vehicle-read permission', async () => {
+    setupOrgAOwner()
+    mockMembership.mockResolvedValue({
+      organizationId: ORG_A,
+      role: 'member',
+      roleId: 'restricted',
+      customRole: { permissions: [] },
+    } as any)
+    const result = await getVehicles()
+    expect(result.success).toBe(false)
+    expect(db.vehicle.findMany).not.toHaveBeenCalled()
+  })
+
   it("list query always includes the caller's organizationId in the where clause", async () => {
     setupOrgAOwner()
     vi.mocked(db.vehicle.findMany).mockResolvedValue([ORG_A_VEHICLE] as any)

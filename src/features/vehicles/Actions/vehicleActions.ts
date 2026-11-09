@@ -21,7 +21,7 @@ export async function getVehicles() {
       return db.vehicle.findMany({
         where: { organizationId, isArchived: false },
         include: {
-          customer: { select: { id: true, name: true, company: true } },
+          customer: { select: { id: true, name: true, company: true, phone: true } },
           _count: {
             select: { serviceRecords: true, notes: true },
           },
