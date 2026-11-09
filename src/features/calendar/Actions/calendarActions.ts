@@ -21,6 +21,7 @@ export type CalendarEvent = {
   /** Only on scheduled-message events: email | sms | telegram | in_app */
   channel?: string
   vehicleId: string | null
+  serviceVehiclePlate?: string | null
   serviceVehicleLabel?: string
   vehicleLabel: string
   customerName: string | null
@@ -251,7 +252,8 @@ export async function getCalendarEvents(params: { start: string; end: string }) 
             status: s.status,
             vehicleId: s.vehicleId,
             vehicleLabel: vehicleLabel(s.vehicle),
-            serviceVehicleLabel: [s.vehicle?.licensePlate, s.vehicle?.make, s.vehicle?.model].filter(Boolean).join(' '),
+            serviceVehiclePlate: s.vehicle?.licensePlate,
+            serviceVehicleLabel: [s.vehicle?.make, s.vehicle?.model].filter(Boolean).join(' '),
             customerName: (s.customer ?? s.vehicle?.customer)?.name ?? null,
             invoiceNumber: s.invoiceNumber,
             amount: s.totalAmount > 0 ? s.totalAmount : s.cost > 0 ? s.cost : null,

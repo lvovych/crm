@@ -56,7 +56,7 @@ export function EventChip({
 
   if (event.type === 'service') {
     const vehicle = event.serviceVehicleLabel || event.vehicleLabel
-    const summary = [vehicle, event.customerName].filter(Boolean).join(' · ')
+    const summary = [event.serviceVehiclePlate, vehicle, event.customerName].filter(Boolean).join(' · ')
     button = (
       <button
         type="button"
@@ -74,7 +74,10 @@ export function EventChip({
           className
         )}
       >
-        <span className="w-full truncate font-semibold">
+        {(variant === 'block' || variant === 'row') && event.serviceVehiclePlate && (
+          <span className="w-full truncate font-semibold">{event.serviceVehiclePlate}</span>
+        )}
+        <span className="w-full truncate">
           {variant === 'chip' || variant === 'timed' ? summary : vehicle}
         </span>
         {(variant === 'block' || variant === 'row') && event.customerName && (
