@@ -61,12 +61,15 @@ test('new card is created only on save, draft has zero stock, post and cancel mo
   await page.getByLabel('Назва', { exact: true }).fill(fixture.prefix + ' new filter')
   await page.getByLabel('Кількість', { exact: true }).fill('2.001')
   await page.getByLabel('Ціна, грн', { exact: true }).fill('12.3456')
-  const db = receiptDb()
+  const db = await receiptDb()
   try {
-    const cards = () =>
-      db.inventoryPart.findMany({
-        where: { organizationId: fixture.organizationId, partNumber: article },
-      })
+    const cards = async () =>
+      (
+        await db.query<{ id: string; quantity: number }>(
+          'select id, quantity from inventory_parts where "organizationId"=$1 and "partNumber"=$2',
+          [fixture.organizationId, article]
+        )
+      ).rows
     expect(await cards()).toHaveLength(0)
     await page.getByRole('button', { name: 'Зберегти чернетку', exact: true }).click()
     await expect(page).toHaveURL(/\/receipts\/[^/?]+$/)
@@ -91,7 +94,7 @@ test('new card is created only on save, draft has zero stock, post and cancel mo
     await expect(page.getByRole('button', { name: 'Скасувати проведення' })).toHaveCount(0)
     expect((await cards())[0].quantity).toBe(0)
   } finally {
-    await db.$disconnect()
+    await db.end()
   }
 })
 

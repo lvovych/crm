@@ -33,20 +33,30 @@ test('brand create, rename, deactivate and restore preserve the product referenc
   await page.getByLabel('Назва', { exact: true }).fill(brandName + ' renamed')
   await page.getByRole('button', { name: 'Зберегти', exact: true }).click()
   await expect(row).toContainText(brandName + ' renamed')
-  const db = receiptDb()
+  const db = await receiptDb()
   try {
-    const brand = await db.brand.findFirstOrThrow({ where: { name: brandName + ' renamed' } })
-    await db.inventoryPart.update({ where: { id: fixture.part.id }, data: { brandId: brand.id } })
+    const {
+      rows: [brand],
+    } = await db.query<{ id: string }>('select id from brands where name=$1', [
+      brandName + ' renamed',
+    ])
+    await db.query('update inventory_parts set "brandId"=$1 where id=$2', [
+      brand.id,
+      fixture.part.id,
+    ])
     await row.getByRole('button', { name: 'Видалити (деактивувати)' }).click()
     await expect(row).toContainText('Неактивний')
     expect(
-      (await db.inventoryPart.findUniqueOrThrow({ where: { id: fixture.part.id } })).brandId
+      (await db.query('select "brandId" from inventory_parts where id=$1', [fixture.part.id]))
+        .rows[0].brandId
     ).toBe(brand.id)
     await row.getByRole('button', { name: 'Відновити' }).click()
     await expect(row).toContainText('Активний')
-    expect((await db.brand.findUniqueOrThrow({ where: { id: brand.id } })).isActive).toBe(true)
+    expect(
+      (await db.query('select "isActive" from brands where id=$1', [brand.id])).rows[0].isActive
+    ).toBe(true)
   } finally {
-    await db.$disconnect()
+    await db.end()
   }
 })
 
