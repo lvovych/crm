@@ -3,9 +3,19 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { saveBrand } from '../Actions/manageBrands'
+import { saveBrand, changeBrandAvailability } from '../Actions/manageBrands'
 type Brand = { id: string; name: string; isActive: boolean }
-export function BrandDirectory({ brands, canEdit }: { brands: Brand[]; canEdit: boolean }) {
+export function BrandDirectory({
+  brands,
+  canCreate,
+  canEdit,
+  canDelete,
+}: {
+  brands: Brand[]
+  canCreate: boolean
+  canEdit: boolean
+  canDelete: boolean
+}) {
   const [query, setQuery] = useState(''),
     [editing, setEditing] = useState<Brand | null>(null),
     [message, setMessage] = useState(''),
@@ -14,10 +24,9 @@ export function BrandDirectory({ brands, canEdit }: { brands: Brand[]; canEdit: 
   return (
     <div className="space-y-4">
       <p className="text-muted-foreground">
-        Спільний довідник виробників для карток товарів.{' '}
-        {canEdit
-          ? 'Зміни назви застосовуються до карток товарів усіх організацій. Історичні назви в нарядах зберігаються.'
-          : 'Редагування доступне системному адміністратору.'}
+        Спільний довідник виробників для карток товарів. Зміни застосовуються до всіх організацій.
+        Видалення деактивує бренд для нових товарів; існуючі картки та історія зберігаються. Доступ
+        визначається правами ролі.
       </p>
       <div className="flex gap-3">
         <Input
@@ -26,7 +35,7 @@ export function BrandDirectory({ brands, canEdit }: { brands: Brand[]; canEdit: 
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        {canEdit && (
+        {canCreate && (
           <Button onClick={() => setEditing({ id: '', name: '', isActive: true })}>
             Додати бренд
           </Button>
@@ -57,14 +66,6 @@ export function BrandDirectory({ brands, canEdit }: { brands: Brand[]; canEdit: 
               onChange={(e) => setEditing({ ...editing, name: e.target.value })}
             />
           </label>
-          <label className="flex gap-2">
-            <input
-              type="checkbox"
-              checked={editing.isActive}
-              onChange={(e) => setEditing({ ...editing, isActive: e.target.checked })}
-            />
-            Доступний для нових товарів
-          </label>
           <div className="flex gap-2">
             <Button disabled={pending}>Зберегти</Button>
             <Button type="button" variant="outline" onClick={() => setEditing(null)}>
@@ -80,7 +81,7 @@ export function BrandDirectory({ brands, canEdit }: { brands: Brand[]; canEdit: 
             <tr>
               <th className="p-3">Бренд</th>
               <th className="p-3">Статус</th>
-              {canEdit && <th className="p-3">Дія</th>}
+              {(canEdit || canDelete) && <th className="p-3">Дія</th>}
             </tr>
           </thead>
           <tbody>
@@ -90,15 +91,41 @@ export function BrandDirectory({ brands, canEdit }: { brands: Brand[]; canEdit: 
                 <tr key={b.id} className="border-t">
                   <td className="p-3">{b.name}</td>
                   <td className="p-3">{b.isActive ? 'Активний' : 'Неактивний'}</td>
-                  {canEdit && (
+                  {(canEdit || canDelete) && (
                     <td className="p-3">
-                      <Button
-                        variant="outline"
-                        disabled={b.id === 'brand_unknown'}
-                        onClick={() => setEditing(b)}
-                      >
-                        Редагувати
-                      </Button>
+                      {canEdit && (
+                        <Button
+                          variant="outline"
+                          disabled={b.id === 'brand_unknown'}
+                          onClick={() => setEditing(b)}
+                        >
+                          Редагувати
+                        </Button>
+                      )}
+                      {b.id !== 'brand_unknown' &&
+                        ((b.isActive && canDelete) || (!b.isActive && canEdit)) && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="ml-2"
+                            disabled={pending}
+                            onClick={() =>
+                              start(async () => {
+                                const r = await changeBrandAvailability(b.id, !b.isActive)
+                                setMessage(
+                                  r.success
+                                    ? b.isActive
+                                      ? 'Бренд деактивовано'
+                                      : 'Бренд відновлено'
+                                    : r.error || 'Помилка'
+                                )
+                                if (r.success) router.refresh()
+                              })
+                            }
+                          >
+                            {b.isActive ? 'Видалити (деактивувати)' : 'Відновити'}
+                          </Button>
+                        )}
                     </td>
                   )}
                 </tr>

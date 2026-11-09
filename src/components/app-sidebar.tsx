@@ -238,7 +238,7 @@ export function AppSidebar({
   ].filter((item) => !item.subject || canAccess(item.subject))
 
   const businessItems: NavItem[] = [
-    ...(['customers', 'vehicles', 'labor_presets', 'inventory'].some(canAccess) ||
+    ...(['customers', 'vehicles', 'labor_presets', 'inventory', 'brands'].some(canAccess) ||
     (supplierDirectoryEnabled && canAccess('suppliers'))
       ? [{ titleKey: 'sidebar.directories', url: '/directories', icon: Layers, subject: '' }]
       : []),

@@ -15,6 +15,7 @@ export enum PermissionSubject {
   SERVICES = 'services',
   BILLING = 'billing',
   INVENTORY = 'inventory',
+  BRANDS = 'brands',
   SETTLEMENTS = 'supplier_settlements',
   RECEIPTS = 'receipts',
   SUPPLIERS = 'suppliers',
@@ -43,6 +44,16 @@ export type PermissionGroup = {
 }
 
 export const permissionGroups: PermissionGroup[] = [
+  {
+    name: 'Brands (shared directory)',
+    subject: PermissionSubject.BRANDS,
+    permissions: [
+      { action: PermissionAction.READ, label: 'View' },
+      { action: PermissionAction.CREATE, label: 'Create' },
+      { action: PermissionAction.UPDATE, label: 'Edit and restore' },
+      { action: PermissionAction.DELETE, label: 'Deactivate' },
+    ],
+  },
   {
     name: 'Supplier settlements',
     subject: PermissionSubject.SETTLEMENTS,

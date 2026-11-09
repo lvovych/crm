@@ -18,7 +18,8 @@
     "settings": "Nustatymai",
     "supplier_settlements": "Supplier settlements",
     "receipts": "Tiekėjų pristatymai",
-    "suppliers": "Suppliers"
+    "suppliers": "Suppliers",
+    "brands": "Brands (shared directory)"
   },
   "actions": {
     "create": "Kurti",
@@ -26,6 +27,7 @@
     "update": "Redaguoti",
     "delete": "Šalinti",
     "manage": "Valdyti",
-    "manage_storage": "Valdyti saugyklos išdėstymą"
+    "manage_storage": "Valdyti saugyklos išdėstymą",
+    "deactivate_brand": "Delete (deactivate)"
   }
 }

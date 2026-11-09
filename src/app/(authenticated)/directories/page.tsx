@@ -19,7 +19,7 @@ const directories = [
     title: 'Бренди',
     description: 'Виробники товарів та їх доступність для вибору.',
     href: '/directories/brands',
-    subject: 'inventory',
+    subject: 'brands',
     icon: Package,
   },
   {

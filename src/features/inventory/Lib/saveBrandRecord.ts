@@ -3,7 +3,7 @@ import type { TxClient } from '@/lib/db'
 // The advisory lock returns PostgreSQL void; cast it for Prisma's result decoder.
 export async function saveBrandRecord(
   tx: TxClient,
-  data: { id?: string; name: string; isActive: boolean }
+  data: { id?: string; name: string; isActive?: boolean }
 ) {
   await tx.$queryRaw`SELECT pg_advisory_xact_lock(724193)::text`
   const duplicate = await tx.brand.findFirst({
@@ -20,4 +20,10 @@ export async function saveBrandRecord(
       })
     : await tx.brand.create({ data: { name: data.name, isActive: data.isActive } })
   return brand
+}
+
+export async function setBrandAvailability(tx: TxClient, id: string, isActive: boolean) {
+  if (id === 'brand_unknown') throw new Error('Системний бренд не можна змінювати.')
+  await tx.$queryRaw`SELECT pg_advisory_xact_lock(724193)::text`
+  return tx.brand.update({ where: { id }, data: { isActive } })
 }

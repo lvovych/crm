@@ -18,7 +18,8 @@
     "settings": "Instellingen",
     "supplier_settlements": "Supplier settlements",
     "receipts": "Goederenontvangsten",
-    "suppliers": "Suppliers"
+    "suppliers": "Suppliers",
+    "brands": "Brands (shared directory)"
   },
   "actions": {
     "create": "Aanmaken",
@@ -26,6 +27,7 @@
     "update": "Bewerken",
     "delete": "Verwijderen",
     "manage": "Beheren",
-    "manage_storage": "Opslagindeling beheren"
+    "manage_storage": "Opslagindeling beheren",
+    "deactivate_brand": "Delete (deactivate)"
   }
 }
