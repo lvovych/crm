@@ -1,3 +1,4 @@
+import { chooseStatus } from '../../support/work-order'
 import { expect, test } from '@playwright/test'
 import { settle } from '../../support/hydration'
 import {
@@ -27,6 +28,9 @@ test.beforeAll(async ({ browser }) => {
   const vehicleUrl = await seededVehicleUrl(page)
   jobUrl = await newWorkOrder(page, vehicleUrl, `E2E modern layout ${stamp}`)
   await addPart(page, { name: partName, quantity: 2, unitPrice: 150 })
+  // This layout fixture asserts a 300 balance, independent of a workshop's default tax.
+  const taxRate = page.getByTestId('totals').getByRole('spinbutton')
+  if (await taxRate.count()) await taxRate.fill('0')
   await saveWorkOrder(page)
   await page.close()
 })
@@ -103,7 +107,7 @@ test.describe('the work order page', () => {
   test('notes follow mechanic planning and survive saving before labor', async ({ page }) => {
     await page.goto(jobUrl)
     await settle(page)
-    const schedule = page.getByText('Mechanic and scheduling', { exact: true })
+    const schedule = page.getByRole('heading', { name: 'Responsible mechanic', exact: true })
     const internal = page.getByRole('heading', { name: 'Internal notes', exact: true })
     const customer = page.getByRole('heading', { name: 'Customer notes', exact: true })
     const labor = page.getByRole('heading', { name: /Labor & Services/ })
@@ -133,13 +137,7 @@ test.describe('the work order page', () => {
     // The part saved when the job was made is here, with its figures.
     await expect(partRows(page)).toContainText(partName)
 
-    // The stepper is the status control: walk the job on and save.
-    const stepper = page.getByTestId('status-stepper')
-    await stepper.getByRole('button', { name: /In Progress/i }).click()
-    await expect(stepper.getByRole('button', { name: /In Progress/i })).toHaveAttribute(
-      'aria-current',
-      'step'
-    )
+    await chooseStatus(page, 'In Progress')
     // The title is edited in the header, behind its pencil; the form carries
     // it as a hidden field, so Save takes it with everything else.
     const title = `E2E modern layout ${stamp} renamed`
@@ -153,9 +151,7 @@ test.describe('the work order page', () => {
     await page.reload()
     await settle(page)
     await expect(page.getByTestId('service-title').first()).toHaveText(title)
-    await expect(
-      page.getByTestId('status-stepper').getByRole('button', { name: /In Progress/i })
-    ).toHaveAttribute('aria-current', 'step')
+    await expect(page.getByTestId('current-status')).toHaveText('In Progress')
     await expect(partRows(page)).toContainText(partName)
   })
 
@@ -176,22 +172,9 @@ test.describe('the work order page', () => {
     // left for a wider screen.
     await expect(page.getByTestId('service-opened')).toBeHidden()
 
-    // Each control of the status stepper stays in its own space: a label is
-    // cut short rather than running into the next. Three stages, and the
-    // arrow beside "In Progress" that opens the statuses filed under it
-    // (always there, for "Waiting Parts"): four buttons in all on a workshop
-    // that has defined no statuses of its own.
-    const stages = await page
-      .getByTestId('status-stepper')
-      .getByRole('button')
-      .evaluateAll((buttons) => buttons.map((b) => b.getBoundingClientRect().toJSON()))
-    expect(stages).toHaveLength(4)
-    for (let i = 1; i < stages.length; i++) {
-      expect(
-        stages[i - 1].right,
-        `stage ${i} ends before stage ${i + 1} starts`
-      ).toBeLessThanOrEqual(stages[i].left)
-    }
+    const control = page.getByTestId('status-control').getByRole('button')
+    await expect(control).toContainText('In Progress')
+    expect((await control.boundingBox())!.height).toBeGreaterThanOrEqual(44)
 
     const overflow = await layout.evaluate((el) => el.scrollWidth - el.clientWidth)
     expect(overflow, 'sideways overflow in pixels').toBeLessThanOrEqual(1)

@@ -116,6 +116,8 @@ export const createServiceSchema = z.object({
 })
 
 export const updateServiceSchema = createServiceSchema.partial().extend({
+  // A partial form save must preserve a status saved by the dedicated control.
+  status: z.enum(['pending', 'in-progress', 'waiting-parts', 'completed']).optional(),
   id: z.string(),
 })
 

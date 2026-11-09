@@ -278,26 +278,27 @@ export function ServiceHeaderActions({
           onClick={onPreviewPDF}
         />
         <IconActionButton
-          className="hidden sm:inline-flex"
+          className="hidden min-h-11 min-w-11 sm:inline-flex"
           label={t('pdf')}
           icon={Download}
           loading={downloading}
           onClick={onDownloadPDF}
         />
         <IconActionButton
-          className="hidden sm:inline-flex"
+          className="hidden min-h-11 min-w-11 sm:inline-flex"
           label={t('email')}
           icon={Mail}
           onClick={onShowEmail}
         />
         <IconActionButton
-          className="hidden sm:inline-flex"
+          className="hidden min-h-11 min-w-11 sm:inline-flex"
           label={t('share')}
           icon={Globe}
           onClick={onShowShare}
         />
         {meetingUrl && (
           <IconActionButton
+            className="min-h-11 min-w-11"
             label={t('joinCall')}
             icon={Video}
             onClick={() => window.open(meetingUrl, '_blank', 'noopener')}
@@ -305,7 +306,7 @@ export function ServiceHeaderActions({
         )}
         {hasCustomer && onNotifyCustomer && (
           <IconActionButton
-            className="hidden sm:inline-flex"
+            className="hidden min-h-11 min-w-11 sm:inline-flex"
             label={t('notify')}
             icon={MessageSquare}
             onClick={onNotifyCustomer}

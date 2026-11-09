@@ -154,31 +154,29 @@ export function ModernDetails(props: ModernDetailsProps) {
     setCustomStatus(record.customStatus ?? null)
   }, [recordCustomKey]) // eslint-disable-line react-hooks/exhaustive-deps -- see above
 
+  const statusBusy = useRef(false)
+  const [statusSaving, setStatusSaving] = useState(false)
+  const [statusMessage, setStatusMessage] = useState('')
   const changeStatus = async (next: string, custom: WorkOrderStatusOption | null = null) => {
-    // A plain move between stages, with none of the workshop's statuses on
-    // either side of it, goes with the form as it always has.
-    if (!locked && !custom && !customStatus) {
-      formState.dirtySetStatus(next)
-      return
-    }
-    // Everything else is saved on its own, the way the work board moves a
-    // card. A locked invoice refuses the form's save, but the lock freezes
-    // what the invoice says is owed, not how far along the job is. And one of
-    // the workshop's statuses is not a field of the form at all: it is chosen,
-    // and dropped, here.
-    const previous = { status: formState.status, custom: customStatus }
-    formState.setStatus(next)
-    setCustomStatus(custom)
-    const result = await updateServiceStatus(record.id, next, custom?.id ?? null)
-    if (result.success) {
-      formState.flashSaved()
+    if (statusBusy.current) return
+    statusBusy.current = true
+    setStatusSaving(true)
+    setStatusMessage('')
+    try {
+      const result = await updateServiceStatus(record.id, next, custom?.id ?? null)
+      if (!result.success) throw new Error(result.error || t('page.failedUpdate'))
+      formState.setStatus(next)
+      setCustomStatus(custom)
+      setStatusMessage(t('assignment.statusSaved'))
       router.refresh()
-      // Asked, never sent: the desk decides whether this customer hears.
       if (custom?.notifyCustomer) props.onNotifyForStatus?.(custom)
-    } else {
-      formState.setStatus(previous.status)
-      setCustomStatus(previous.custom)
-      toast.error(result.error || t('page.failedUpdate'))
+    } catch (error) {
+      const message = error instanceof Error ? error.message : t('page.failedUpdate')
+      setStatusMessage(message)
+      toast.error(message)
+    } finally {
+      statusBusy.current = false
+      setStatusSaving(false)
     }
   }
 
@@ -272,6 +270,8 @@ export function ModernDetails(props: ModernDetailsProps) {
             />
             {/* Outside the lock: a locked invoice still moves along. */}
             <StatusStepper
+              saving={statusSaving}
+              message={statusMessage}
               status={formState.status}
               customStatus={customStatus}
               options={props.workOrderStatuses}
@@ -289,7 +289,6 @@ export function ModernDetails(props: ModernDetailsProps) {
                     locked invoice; the card disables its own fields. */}
                 <JobFactsCard
                   record={record}
-                  currencyCode={currencyCode}
                   locked={locked}
                   initialData={formState.initialData}
                   vehicleName={formState.vehicleName}
@@ -311,17 +310,16 @@ export function ModernDetails(props: ModernDetailsProps) {
                   initialPromisedAt={
                     record.promisedAt ? new Date(record.promisedAt).toISOString() : null
                   }
+                  afterAssignment={
+                    <NotesSection
+                      initialData={formState.initialData}
+                      onNotesChange={onNotesChange}
+                      serviceRecordId={record.id}
+                      aiEnabled={props.aiEnabled}
+                      publicLocked={locked}
+                    />
+                  }
                   onSaved={formState.flashSaved}
-                />
-
-                {/* Outside the lock: the customer notes freeze with the invoice,
-                    the internal ones keep saving on their own. */}
-                <NotesSection
-                  initialData={formState.initialData}
-                  onNotesChange={onNotesChange}
-                  serviceRecordId={record.id}
-                  aiEnabled={props.aiEnabled}
-                  publicLocked={locked}
                 />
 
                 <Lockable locked={locked}>

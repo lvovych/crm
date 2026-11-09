@@ -55,13 +55,13 @@ const vehiclesItem = { href: '/vehicles', icon: Car, labelKey: 'vehicles' } as c
 const vesselsItem = { href: '/vehicles', icon: Ship, labelKey: 'vessels' } as const
 
 const primaryItems = [
+  { href: '/calendar', icon: CalendarDays, labelKey: 'calendar' },
   { href: '/work-orders', icon: ClipboardList, labelKey: 'workOrders' },
   { href: '/customers', icon: Users, labelKey: 'customers' },
   { href: '/inventory', icon: Package, labelKey: 'inventory' },
 ] as const
 
 const workshopItems = [
-  { href: '/calendar', icon: CalendarDays, labelKey: 'calendar' },
   { href: '/work-board', icon: Columns3, labelKey: 'workBoard' },
   { href: '/inspections', icon: ClipboardCheck, labelKey: 'inspections' },
   { href: '/reminders', icon: Bell, labelKey: 'reminders' },
@@ -80,6 +80,7 @@ const businessItems = [
 ] as const
 
 const allDrawerItems = [
+  vehiclesItem,
   ...workshopItems,
   tireHotelItem,
   ...businessItems,
@@ -96,10 +97,10 @@ export function MobileBottomNav({
 }) {
   const pathname = usePathname()
   const isMarine = useServiceType() === 'marine'
-  const visiblePrimaryItems = [isMarine ? vesselsItem : vehiclesItem, ...primaryItems]
+  const visiblePrimaryItems = primaryItems
   const visibleWorkshopItems = tireHotelEnabled
-    ? [...workshopItems, tireHotelItem]
-    : [...workshopItems]
+    ? [isMarine ? vesselsItem : vehiclesItem, ...workshopItems, tireHotelItem]
+    : [isMarine ? vesselsItem : vehiclesItem, ...workshopItems]
   const router = useRouter()
   const t = useTranslations('navigation.sidebar')
   const tScan = useTranslations('inventory.barcodeScan')

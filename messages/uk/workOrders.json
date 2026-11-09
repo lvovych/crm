@@ -11,7 +11,7 @@
     "statusTabs": {
       "all": "Усі",
       "active": "Активні",
-      "pending": "Очікувані",
+      "pending": "Запис",
       "inProgress": "У роботі",
       "waitingParts": "Очікування запчастин",
       "completed": "Завершені"

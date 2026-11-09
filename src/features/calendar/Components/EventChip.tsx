@@ -54,7 +54,39 @@ export function EventChip({
 
   let button: ReactNode
 
-  if (variant === 'timed') {
+  if (event.type === 'service') {
+    const vehicle = event.serviceVehicleLabel || event.vehicleLabel
+    const summary = [event.serviceVehiclePlate, vehicle, event.customerName].filter(Boolean).join(' · ')
+    button = (
+      <button
+        type="button"
+        onClick={onClick}
+        onContextMenu={onContextMenu}
+        title={summary}
+        aria-label={summary}
+        data-event-id={event.id}
+        style={style}
+        className={cn(
+          'flex min-w-0 flex-col overflow-hidden rounded-md px-1.5 py-1 text-left text-xs leading-tight',
+          variant === 'block' ? 'absolute border shadow-sm' : 'w-full',
+          (variant === 'chip' || variant === 'timed') && 'h-[22px] justify-center',
+          variant === 'block' ? palette.block : palette.chip,
+          done && 'opacity-70',
+          className
+        )}
+      >
+        {(variant === 'block' || variant === 'row') && event.serviceVehiclePlate && (
+          <span className="w-full truncate font-semibold">{event.serviceVehiclePlate}</span>
+        )}
+        <span className="w-full truncate">
+          {variant === 'chip' || variant === 'timed' ? summary : vehicle}
+        </span>
+        {(variant === 'block' || variant === 'row') && event.customerName && (
+          <span className="w-full truncate">{event.customerName}</span>
+        )}
+      </button>
+    )
+  } else if (variant === 'timed') {
     button = (
       <button
         type="button"

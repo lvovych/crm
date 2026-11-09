@@ -35,7 +35,7 @@
   "unknownUser": "Користувач",
   "stats": {
     "activeJobs": "Активні роботи",
-    "pending": "Очікувані",
+    "pending": "Запис",
     "totalParts": "Усього запчастин",
     "totalCustomers": "Всього клієнтів",
     "lowStock": "Мало на складі"
@@ -234,7 +234,7 @@
       "repair": "Ремонт",
       "upgrade": "Доопрацювання",
       "inspection": "Огляд",
-      "pending": "Очікує",
+      "pending": "Запис",
       "in-progress": "У роботі",
       "waiting-parts": "Очікування запчастин",
       "completed": "Завершено",

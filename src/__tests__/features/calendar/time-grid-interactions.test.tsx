@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import type { CalendarEvent } from '@/features/calendar/Actions/calendarActions'
 
 vi.mock('@/components/date-settings-context', () => ({
@@ -119,6 +119,7 @@ const job: CalendarEvent = {
   status: 'pending',
   vehicleId: 'v1',
   vehicleLabel: '2019 Volvo V90',
+  serviceVehicleLabel: 'AC1234AA Volvo V90',
   customerName: 'Kari Nordmann',
   invoiceNumber: '2026-1001',
   amount: 1200,
@@ -183,7 +184,7 @@ describe('TimeGridView', () => {
   it('draws seven day columns and the job as a block', () => {
     const { columns } = setup()
     expect(columns).toHaveLength(7)
-    expect(screen.getByText('Brake service')).toBeInTheDocument()
+    expect(screen.getByText('AC1234AA Volvo V90')).toBeInTheDocument()
   })
 
   it('opens the create menu at the clicked quarter hour and hands the time on', async () => {
@@ -211,10 +212,10 @@ describe('TimeGridView', () => {
 
   it('peeks at a block instead of creating anything', async () => {
     const { actions } = setup()
-    fireEvent.click(screen.getByText('Brake service'))
+    fireEvent.click(screen.getByText('AC1234AA Volvo V90'))
     const link = await screen.findByRole('link', { name: /Open work order/ })
     expect(link).toHaveAttribute('href', '/vehicles/v1/service/s1')
-    expect(screen.getByText('Kari Nordmann')).toBeInTheDocument()
+    expect(within(screen.getByRole('dialog')).getByText('Kari Nordmann')).toBeInTheDocument()
     expect(screen.getByText('1200 NOK')).toBeInTheDocument()
     expect(actions.onNewWorkOrder).not.toHaveBeenCalled()
   })

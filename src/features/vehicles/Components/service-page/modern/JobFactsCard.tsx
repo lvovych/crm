@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { Check, ChevronDown, Copy } from 'lucide-react'
-import { useFormatCurrency } from '@/components/currency-settings-context'
 import { useDateSettings } from '@/components/date-settings-context'
 import { useFormatDate } from '@/lib/use-format-date'
 import { inspectionDisplayDate } from '@/features/vehicles/Lib/inspectionDueInput'
@@ -20,7 +19,6 @@ import { useTypeKeyEnabled } from '@/components/type-key-context'
 
 interface JobFactsCardProps {
   record: ServiceDetail
-  currencyCode: string
   /**
    * A locked invoice. The card sits outside the page's locked fieldset so that
    * "More info" and the copy buttons keep working; it disables its own
@@ -39,15 +37,6 @@ interface JobFactsCardProps {
     year: number
     licensePlate: string | null
   } | null
-}
-
-function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('')
 }
 
 /** A name that leads to its own page: plain until hovered, so the card does not read as a list of links. */
@@ -157,7 +146,6 @@ function CopyPlate({ plate, label }: { plate: string; label: string }) {
  */
 export function JobFactsCard({
   record,
-  currencyCode,
   locked = false,
   initialData,
   vehicleName,
@@ -173,7 +161,6 @@ export function JobFactsCard({
   const serviceType = useServiceType()
   const isMarine = serviceType === 'marine'
   const { formatDate } = useFormatDate()
-  const formatCurrency = useFormatCurrency()
   const { timezone } = useDateSettings()
   const [changingVehicle, setChangingVehicle] = useState(false)
 
@@ -231,9 +218,6 @@ export function JobFactsCard({
           {customer ? (
             <>
               <div className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold">
-                  {initials(customer.name)}
-                </div>
                 <div className="min-w-0">
                   <Link
                     href={`/customers/${customer.id}`}
@@ -246,7 +230,7 @@ export function JobFactsCard({
                   )}
                 </div>
               </div>
-              <dl className="grid grid-cols-1 gap-x-3 gap-y-1 @xs:grid-cols-2">
+              <dl className="grid grid-cols-1 gap-y-1">
                 <div className="min-w-0">
                   <dt className={factLabel}>{t('modern.phone')}</dt>
                   <dd className="truncate text-sm">
@@ -262,21 +246,7 @@ export function JobFactsCard({
                     )}
                   </dd>
                 </div>
-                <div className="min-w-0">
-                  <dt className={factLabel}>{t('modern.email')}</dt>
-                  <dd className="truncate text-sm">
-                    {customer.email ? (
-                      <span className="flex min-w-0 items-center gap-0.5">
-                        <a href={`mailto:${customer.email}`} className="truncate hover:underline">
-                          {customer.email}
-                        </a>
-                        <CopyValue value={customer.email} label={t('modern.email')} />
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">{t('modern.notSet')}</span>
-                    )}
-                  </dd>
-                </div>
+
               </dl>
             </>
           ) : (
@@ -292,26 +262,7 @@ export function JobFactsCard({
             <h3 className="font-display text-sm font-semibold tracking-tight">
               {t('basicInfo.vehicle')}
             </h3>
-            <div className="flex items-center gap-3">
-              {selectedVehicleId && (
-                <Link
-                  href={`/vehicles/${selectedVehicleId}`}
-                  className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  {t('modern.serviceHistory')}
-                </Link>
-              )}
-              {vehicle && !changingVehicle && (
-                <button
-                  type="button"
-                  disabled={locked}
-                  onClick={() => setChangingVehicle(true)}
-                  className="cursor-pointer text-xs font-medium text-muted-foreground transition-colors hover:text-foreground disabled:cursor-default disabled:opacity-50"
-                >
-                  {t('modern.changeVehicle')}
-                </button>
-              )}
-            </div>
+
           </div>
 
           {vehicle && (
@@ -385,13 +336,32 @@ export function JobFactsCard({
               {customer && <CustomerDetails customer={customer} formatDate={formatDate} />}
             </div>
             <div className="order-4 border-t border-card-edge px-4 py-3 @xl:order-none">
+            <div className="mb-3 flex flex-wrap items-center gap-3">
+              {selectedVehicleId && (
+                <Link
+                  href={`/vehicles/${selectedVehicleId}`}
+                  className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  {t('modern.serviceHistory')}
+                </Link>
+              )}
+              {vehicle && !changingVehicle && (
+                <button
+                  type="button"
+                  disabled={locked}
+                  onClick={() => setChangingVehicle(true)}
+                  className="cursor-pointer text-xs font-medium text-muted-foreground transition-colors hover:text-foreground disabled:cursor-default disabled:opacity-50"
+                >
+                  {t('modern.changeVehicle')}
+                </button>
+              )}
+            </div>
               {vehicle && (
                 <VehicleDetails
                   vehicle={vehicle}
                   isMarine={isMarine}
                   rows={{ tv, tInfo, t }}
                   formatDate={formatDate}
-                  formatCurrency={(amount) => formatCurrency(amount, currencyCode)}
                   timeZone={timezone}
                   notRegisteredLabel={tDetail('notRegistered')}
                 />
@@ -437,7 +407,6 @@ function VehicleDetails({
   isMarine,
   rows: { tv, tInfo, t },
   formatDate,
-  formatCurrency,
   timeZone,
   notRegisteredLabel,
 }: {
@@ -445,7 +414,6 @@ function VehicleDetails({
   isMarine: boolean
   rows: { tv: Translate; tInfo: Translate; t: Translate }
   formatDate: (date: Date | string) => string
-  formatCurrency: (amount: number) => string
   timeZone: string
   notRegisteredLabel: string
 }) {
@@ -532,16 +500,7 @@ function VehicleDetails({
       label: tInfo('lastInspection'),
       value: lastAt ? formatDate(lastAt) : null,
     },
-    {
-      key: 'purchaseDate',
-      label: tInfo('purchaseDate'),
-      value: vehicle.purchaseDate ? formatDate(vehicle.purchaseDate) : null,
-    },
-    {
-      key: 'purchasePrice',
-      label: tInfo('purchasePrice'),
-      value: vehicle.purchasePrice ? formatCurrency(vehicle.purchasePrice) : null,
-    },
+
   ]
 
   return (
@@ -586,6 +545,7 @@ function CustomerDetails({
   const tForm = useTranslations('customers.form')
   const tDetail = useTranslations('customers.detail')
   const tCommon = useTranslations('common.form')
+  const tModern = useTranslations('service.modern')
 
   const rows: {
     key: string
@@ -614,6 +574,7 @@ function CustomerDetails({
       value: customer.createdAt ? formatDate(customer.createdAt) : null,
     },
     { key: 'notes', label: tCommon('notes'), value: customer.notes ?? null, multiline: true },
+    { key: 'email', label: tModern('email'), value: customer.email ?? null, copy: true },
   ]
 
   const badges = [

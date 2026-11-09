@@ -403,6 +403,7 @@ export function ServicePageClient({
   }
 
   const actions = useServiceActions({
+    separateStatus: modern,
     record,
     vehicleId,
     currencyCode,

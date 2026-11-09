@@ -28,11 +28,13 @@ export function useServiceActions({
   vehicleId,
   currencyCode,
   formState,
+  separateStatus = false,
 }: {
   record: ServiceDetail
   vehicleId: string | null
   currencyCode: string
   formState: FormState
+  separateStatus?: boolean
 }) {
   const router = useRouter()
   const modal = useGlassModal()
@@ -151,7 +153,8 @@ export function useServiceActions({
       // not in the notes section, so it is read from the form rather than from
       // the notes state.
       type,
-      status,
+      // Modern status is persisted independently; autosave must never overwrite it.
+      ...(separateStatus ? {} : { status }),
       cost: totalAmount,
       mileage: parsedMileage,
       serviceDate: getVisible('serviceDate') || new Date().toISOString(),

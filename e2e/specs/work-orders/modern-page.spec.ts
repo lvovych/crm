@@ -1,3 +1,4 @@
+import { chooseStatus } from '../../support/work-order'
 import { expect, type Locator, type Page, test } from '@playwright/test'
 import {
   deleteTechnicians,
@@ -16,7 +17,6 @@ import {
   jobIdOf,
   newWorkOrder,
   partRows,
-  openSchedule,
   saveWorkOrder,
   seededVehicleUrl,
   shareLink,
@@ -85,12 +85,8 @@ async function typeInNotes(page: Page, card: Locator, text: string): Promise<voi
   await expect(editor).toContainText(text)
 }
 
-function stepper(page: Page): Locator {
-  return page.getByTestId('status-stepper')
-}
-
 async function expectStatus(page: Page, name: RegExp): Promise<void> {
-  await expect(stepper(page).getByRole('button', { name })).toHaveAttribute('aria-current', 'step')
+  await expect(page.getByTestId('current-status')).toHaveText(name)
 }
 
 test.describe('the overhauled work order page', () => {
@@ -203,9 +199,7 @@ test.describe('the overhauled work order page', () => {
         await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
       ).toBe(true)
     }
-    await stepper(page)
-      .getByRole('button', { name: /Completed/ })
-      .click()
+    await chooseStatus(page, 'Completed')
     await expect(
       page.getByRole('alertdialog', { name: 'Complete with unconfirmed concerns?' })
     ).toHaveCount(0)
@@ -372,22 +366,23 @@ test.describe('the overhauled work order page', () => {
       await deleteTechnicians([technicianId])
     })
 
-    test('assigns a technician through the schedule list', async ({ page }) => {
+    test('assigns a technician through the visible mechanic control', async ({ page }) => {
       await openModern(page, scheduleJob)
 
-      await openSchedule(page)
+      await page.getByTestId('mechanic-assignment').getByRole('button').click()
       const technician = page
         .getByRole('radiogroup', { name: 'Technician' })
         .getByRole('radio', { name: technicianName })
       await technician.click()
-      await expect(technician).toBeChecked()
+      await expect(page.getByTestId('assigned-mechanic')).toHaveText(technicianName)
       await expect
         .poll(async () => (await jobAssignment(jobIdOf(scheduleJob))).technicianId)
         .toBe(technicianId)
 
       await page.reload()
       await settle(page)
-      await openSchedule(page)
+      await expect(page.getByTestId('assigned-mechanic')).toHaveText(technicianName)
+      await page.getByTestId('mechanic-assignment').getByRole('button').click()
       await expect(technician).toBeChecked()
       // The way to the workshop's defaults is here, as on the classic picker.
       await expect(page.getByRole('link', { name: 'Set Defaults' })).toHaveAttribute(
@@ -432,17 +427,7 @@ test.describe('the overhauled work order page', () => {
         'false'
       )
 
-      // Still moving: the status, saved on its own. "Waiting Parts" is filed
-      // under "In Progress", in the menu behind that stage's arrow, and the
-      // stage then reads "In Progress: Waiting Parts".
-      await expect(async () => {
-        await page.getByTestId('status-menu-in-progress').click()
-        await expect(page.getByRole('menuitem', { name: 'Waiting Parts' })).toBeVisible({
-          timeout: 2_000,
-        })
-      }).toPass({ timeout: 30_000 })
-      await page.getByRole('menuitem', { name: 'Waiting Parts' }).click()
-      await expectStatus(page, /Waiting Parts/)
+      await chooseStatus(page, 'Waiting Parts')
 
       // Still written: the internal notes, saved on their own.
       const note = `Customer will collect on Friday ${stamp}`
