@@ -5,12 +5,12 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { saveDraft, type receiptOptions } from './actions'
-import { createInventoryPart } from '@/features/inventory/Actions/inventoryActions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
 type Options = NonNullable<Awaited<ReturnType<typeof receiptOptions>>['data']>
 type Line = {
+  brandId?: string
   article: string
   kind: 'part' | 'service'
   name: string
@@ -52,9 +52,14 @@ export default function ReceiptForm({
   canPost: boolean
 }) {
   const router = useRouter()
-  const [doc, setDoc] = useState(initial)
-  const [parts, setParts] = useState(options.parts)
-  const [queries, setQueries] = useState<Record<number, string>>({})
+  const [doc, setDoc] = useState<Draft>(() => ({
+    ...initial,
+    lines: initial.lines.map((l) => ({
+      ...l,
+      brandId: l.brandId || options.parts.find((p) => p.id === l.partId)?.brandId || '',
+    })),
+  }))
+  const parts = options.parts
   const [error, setError] = useState(''),
     [duplicate, setDuplicate] = useState('')
   const [busy, start] = useTransition()
@@ -75,15 +80,37 @@ export default function ReceiptForm({
     }))
   }
   function resolve(l: Line, supplierId: string): Line {
-    const matches = matchArticle(parts, supplierId, l.article)
+    const matches = matchArticle(parts, supplierId, l.article, l.brandId)
     const part = matches.length === 1 ? matches[0] : null
-    return { ...l, partId: part?.id ?? null, name: part?.name ?? '', unit: part?.unit || 'шт' }
+    return {
+      ...l,
+      partId: part?.id ?? null,
+      brandId: part?.brandId || l.brandId || '',
+      name: part?.name ?? (l.partId ? '' : l.name),
+      unit: part?.unit || (l.partId ? 'шт' : l.unit),
+      unitPrice: part
+        ? part.id === l.partId
+          ? l.unitPrice
+          : String(part.unitCost)
+        : l.partId
+          ? '0'
+          : l.unitPrice,
+    }
   }
   function save(post: boolean) {
     start(async () => {
       setError('')
       setDuplicate('')
-      const r = await saveDraft(doc, post)
+      const r = await saveDraft(
+        {
+          ...doc,
+          lines: doc.lines.map((l) => ({
+            ...l,
+            brandId: l.kind === 'part' && l.brandId ? l.brandId : undefined,
+          })),
+        },
+        post
+      )
       if (!r.data) {
         setError(r.error || 'Помилка збереження')
         return
@@ -94,32 +121,6 @@ export default function ReceiptForm({
       }
       router.push('/receipts/' + r.data.id)
       router.refresh()
-    })
-  }
-  function newPart(index: number, l: Line) {
-    start(async () => {
-      if (!doc.supplierId || !l.article.trim()) {
-        setError('Оберіть постачальника та вкажіть артикул.')
-        return
-      }
-      if (!l.name.trim()) {
-        setError('Введіть назву нової запчастини.')
-        return
-      }
-      const r = await createInventoryPart({
-        name: l.name,
-        partNumber: l.article,
-        unit: l.unit,
-        quantity: 0,
-      })
-      if (!r.data) {
-        setError(r.error || 'Помилка створення')
-        return
-      }
-      setParts((p) => [...p, { ...r.data!, supplierArticles: [], brand: { name: '---' } }])
-      setQueries((q) => ({ ...q, [index]: '' }))
-      patch(index, { partId: r.data.id })
-      setError('')
     })
   }
   return (
@@ -186,8 +187,8 @@ export default function ReceiptForm({
         <section className="rounded-xl border-2 border-border p-5 space-y-4">
           <h2 className="text-lg font-semibold">2. Товари та послуги</h2>
           <p className="text-sm text-muted-foreground">
-            Введіть артикул із накладної. Система знайде товар за його артикулами, зокрема
-            артикулами цього постачальника.
+            Введіть артикул — назва, бренд, одиниця та закупівельна ціна заповняться з картки
+            товару. Кількість і ціну перевірте за накладною.
           </p>
           {doc.lines.map((l, i) => (
             <section key={i} className="space-y-3 rounded-lg border border-border bg-muted/25 p-4">
@@ -199,13 +200,12 @@ export default function ReceiptForm({
                   disabled={doc.lines.length === 1}
                   onClick={() => {
                     setDoc({ ...doc, lines: doc.lines.filter((_, j) => j !== i) })
-                    setQueries({})
                   }}
                 >
                   Видалити рядок
                 </Button>
               </div>
-              <div className="grid gap-3 md:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-[10rem_minmax(0,1fr)] lg:grid-cols-[10rem_minmax(0,1fr)_minmax(0,1fr)]">
                 <label>
                   Тип
                   <select
@@ -215,6 +215,7 @@ export default function ReceiptForm({
                       patch(i, {
                         kind: e.target.value as Line['kind'],
                         partId: null,
+                        brandId: '',
                         article: '',
                         name: '',
                         unit: e.target.value === 'service' ? 'посл.' : 'шт',
@@ -235,66 +236,42 @@ export default function ReceiptForm({
                         value={l.article}
                         placeholder="Наприклад, FE 12345"
                         onChange={(e) =>
-                          patch(i, resolve({ ...l, article: e.target.value }, doc.supplierId))
+                          patch(
+                            i,
+                            resolve(
+                              { ...l, article: e.target.value, brandId: l.partId ? '' : l.brandId },
+                              doc.supplierId
+                            )
+                          )
                         }
                       />
                     </label>
-                    {l.partId ? (
-                      <p aria-live="polite">
-                        Товар знайдено на складі
-                        <br />
-                        <strong>{parts.find((p) => p.id === l.partId)?.name}</strong>
-                      </p>
-                    ) : (
-                      doc.supplierId &&
-                      l.article.trim() && (
-                        <div className="space-y-2">
-                          <p>
-                            {matchArticle(parts, doc.supplierId, l.article).length > 1
-                              ? 'Знайдено кілька товарів. Уточніть картку за брендом.'
-                              : 'Новий артикул. Прив’яжіть його до товару один раз.'}
-                          </p>
-                          <Input
-                            aria-label="Пошук товару для прив’язки"
-                            placeholder="Назва, бренд або основний артикул"
-                            value={queries[i] || ''}
-                            onChange={(e) => setQueries({ ...queries, [i]: e.target.value })}
-                          />
-                          <select
-                            aria-label="Прив’язати до товару"
-                            className={selectClass}
-                            value=""
-                            onChange={(e) => {
-                              const p = parts.find((p) => p.id === e.target.value)
-                              if (p) patch(i, { partId: p.id, name: p.name, unit: p.unit || 'шт' })
-                            }}
-                          >
-                            <option value="">Оберіть товар для цього артикула</option>
-                            {(matchArticle(parts, doc.supplierId, l.article).length > 1
-                              ? matchArticle(parts, doc.supplierId, l.article)
-                              : parts
-                            )
-                              .filter((p) =>
-                                [p.name, p.brand.name, p.partNumber, p.barcode]
-                                  .join(' ')
-                                  .toLowerCase()
-                                  .includes((queries[i] || '').toLowerCase())
-                              )
-                              .map((p) => (
-                                <option key={p.id} value={p.id}>
-                                  {p.name} · {p.brand.name}
-                                </option>
-                              ))}
-                          </select>
-                        </div>
-                      )
-                    )}
+                    <label>
+                      Бренд
+                      <select
+                        required
+                        className={selectClass}
+                        value={l.brandId || ''}
+                        onChange={(e) =>
+                          patch(i, resolve({ ...l, brandId: e.target.value }, doc.supplierId))
+                        }
+                      >
+                        <option value="">Оберіть бренд</option>
+                        {options.brands
+                          .filter((b) => b.isActive || b.id === l.brandId)
+                          .map((b) => (
+                            <option key={b.id} value={b.id}>
+                              {b.name}
+                            </option>
+                          ))}
+                      </select>
+                    </label>
                   </>
                 )}
               </div>
               <div className="grid gap-3 md:grid-cols-5">
                 <label>
-                  Назва з накладної
+                  Назва
                   <Input
                     required
                     value={l.name}
@@ -338,15 +315,15 @@ export default function ReceiptForm({
                   {money(lineCents(l) ?? BigInt(0))}
                 </p>
               </div>
-              {l.kind === 'part' &&
-                !!doc.supplierId &&
-                !!l.article.trim() &&
-                !l.partId &&
-                matchArticle(parts, doc.supplierId, l.article).length === 0 && (
-                  <Button type="button" variant="outline" onClick={() => newPart(i, l)}>
-                    Створити складську картку з нульовим залишком
-                  </Button>
-                )}
+              {l.kind === 'part' && l.article.trim() && (
+                <p className="text-sm text-muted-foreground" aria-live="polite">
+                  {l.partId
+                    ? 'Товар знайдено. Дані заповнено зі складської картки.'
+                    : matchArticle(parts, doc.supplierId, l.article, l.brandId).length > 1
+                      ? 'Знайдено кілька карток. Уточніть бренд. Якщо бренд однаковий — перевірте дублікати в довіднику товарів.'
+                      : 'Новий товар. Заповніть назву й бренд — картка створиться під час збереження. Залишок збільшиться лише після проведення накладної.'}
+                </p>
+              )}
             </section>
           ))}
           <Button

@@ -67,11 +67,13 @@ export default async function Page({
           <table className="w-full text-left [&_td]:px-2 [&_td]:py-3 [&_td]:whitespace-nowrap">
             <thead className="bg-muted">
               <tr>
-                {['Позиція', 'Артикул', 'Тип', 'Кількість', 'Ціна, грн', 'Сума, грн'].map((s) => (
-                  <th className="px-2 py-3" key={s}>
-                    {s}
-                  </th>
-                ))}
+                {['Позиція', 'Артикул', 'Бренд', 'Тип', 'Кількість', 'Ціна, грн', 'Сума, грн'].map(
+                  (s) => (
+                    <th className="px-2 py-3" key={s}>
+                      {s}
+                    </th>
+                  )
+                )}
               </tr>
             </thead>
             <tbody>
@@ -87,6 +89,7 @@ export default async function Page({
                     )}
                   </td>
                   <td>{l.article || '—'}</td>
+                  <td>{l.part?.brand.name || '—'}</td>
                   <td>{l.kind === 'part' ? 'Запчастина' : 'Послуга'}</td>
                   <td>
                     {l.quantity} {l.unit}

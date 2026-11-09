@@ -173,6 +173,13 @@ jobs:
           SUPPLIER_SETTLEMENT_ORGANIZATIONS: '*'
         run: npx tsx --tsconfig scripts/tsconfig.receipt-check.json scripts/check-receipt-transfer.ts
 
+      - name: Verify automatic receipt product cards on PostgreSQL
+        if: ${{ matrix.id == 'shard-1' }}
+        env:
+          DATABASE_URL: ${{ env.E2E_DATABASE_URL }}
+          SUPPLIER_SETTLEMENT_ORGANIZATIONS: '*'
+        run: npx tsx --tsconfig scripts/tsconfig.receipt-check.json scripts/check-receipt-auto-card.ts
+
       # The blob carries the results with their traces, screenshots and videos;
       # the report job turns every job's blob into one HTML report.
       - name: Upload the blob report
