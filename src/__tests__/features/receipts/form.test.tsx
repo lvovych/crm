@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ReceiptForm from '@/features/receipts/ReceiptForm'
 const { save, push } = vi.hoisted(() => ({ save: vi.fn(), push: vi.fn() }))
 vi.mock('@/features/receipts/actions', () => ({ saveDraft: save }))
@@ -42,16 +42,32 @@ const initial = {
   lines: [line],
 }
 beforeEach(() => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {
+        /* No layout in jsdom. */
+      }
+      unobserve() {
+        /* No layout in jsdom. */
+      }
+      disconnect() {
+        /* No layout in jsdom. */
+      }
+    }
+  )
+  Element.prototype.scrollIntoView = vi.fn()
   save.mockReset()
   save.mockResolvedValue({ data: { id: 'saved' } })
   push.mockReset()
 })
+afterEach(() => vi.unstubAllGlobals())
 describe('receipt article and brand entry', () => {
   it('fills the card fields and cost by one article, preserving receipt quantity', () => {
     render(<ReceiptForm options={options} initial={initial} canPost />)
     fireEvent.change(screen.getByLabelText('Артикул'), { target: { value: ' vd 1105 ' } })
     expect(screen.getByLabelText('Назва')).toHaveValue('Фільтр')
-    expect(screen.getByLabelText('Бренд')).toHaveValue('febi')
+    expect(screen.getByLabelText('Бренд')).toHaveTextContent('Febi')
     expect(screen.getByLabelText('Ціна, грн')).toHaveValue(123.45)
     expect(screen.getByLabelText('Кількість')).toHaveValue(2)
     expect(screen.queryByText('Оберіть товар для цього артикула')).not.toBeInTheDocument()
@@ -80,14 +96,16 @@ describe('receipt article and brand entry', () => {
     )
     fireEvent.change(screen.getByLabelText('Артикул'), { target: { value: 'VD1105' } })
     expect(screen.getByLabelText('Назва')).toHaveValue('')
-    fireEvent.change(screen.getByLabelText('Бренд'), { target: { value: 'bosch' } })
+    fireEvent.click(screen.getByRole('combobox', { name: 'Бренд' }))
+    fireEvent.click(screen.getByRole('option', { name: 'Bosch' }))
     expect(screen.getByLabelText('Назва')).toHaveValue('Інший фільтр')
     expect(screen.getByLabelText('Ціна, грн')).toHaveValue(99)
   })
   it('submits a new product in the receipt instead of creating it separately', async () => {
     render(<ReceiptForm options={options} initial={initial} canPost />)
     fireEvent.change(screen.getByLabelText('Артикул'), { target: { value: 'NEW' } })
-    fireEvent.change(screen.getByLabelText('Бренд'), { target: { value: 'febi' } })
+    fireEvent.click(screen.getByRole('combobox', { name: 'Бренд' }))
+    fireEvent.click(screen.getByRole('option', { name: 'Febi' }))
     fireEvent.change(screen.getByLabelText('Назва'), { target: { value: 'Новий фільтр' } })
     fireEvent.click(screen.getByRole('button', { name: 'Зберегти чернетку' }))
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1))
@@ -108,7 +126,8 @@ describe('receipt article and brand entry', () => {
     )
     fireEvent.change(screen.getByLabelText('Артикул'), { target: { value: 'VD1105' } })
     fireEvent.change(screen.getByLabelText('Ціна, грн'), { target: { value: '99.99' } })
-    fireEvent.change(screen.getByLabelText('Постачальник'), { target: { value: 's2' } })
+    fireEvent.click(screen.getByRole('combobox', { name: 'Постачальник' }))
+    fireEvent.click(screen.getByRole('option', { name: 'Other' }))
     expect(screen.getByLabelText('Ціна, грн')).toHaveValue(99.99)
   })
   it('loads the brand from the linked card without changing saved invoice values', () => {
@@ -130,8 +149,46 @@ describe('receipt article and brand entry', () => {
         canPost
       />
     )
-    expect(screen.getByLabelText('Бренд')).toHaveValue('febi')
+    expect(screen.getByLabelText('Бренд')).toHaveTextContent('Febi')
     expect(screen.getByLabelText('Ціна, грн')).toHaveValue(77.77)
     expect(screen.getByLabelText('Назва')).toHaveValue('Історична назва')
+  })
+})
+
+describe('receipt entry workflow', () => {
+  it('focuses a new article and removes only the selected line', () => {
+    render(<ReceiptForm options={options} initial={initial} canPost />)
+    fireEvent.change(screen.getByLabelText('Артикул'), { target: { value: 'VD1105' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Додати позицію' }))
+    expect(screen.getAllByLabelText('Артикул')[1]).toHaveFocus()
+    fireEvent.click(screen.getByRole('button', { name: 'Видалити позицію 2' }))
+    expect(screen.getByLabelText('Артикул')).toHaveValue('VD1105')
+    expect(screen.getByLabelText('Ціна, грн')).toHaveValue(123.45)
+  })
+  it('requires a brand before saving and never posts without permission', () => {
+    render(
+      <ReceiptForm
+        options={options}
+        initial={{ ...initial, lines: [{ ...line, article: 'NEW', name: 'New' }] }}
+        canPost={false}
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Зберегти чернетку' }))
+    expect(screen.getByRole('alert')).toHaveTextContent('Оберіть бренд')
+    expect(save).not.toHaveBeenCalled()
+    expect(screen.queryByRole('button', { name: 'Зберегти й провести' })).not.toBeInTheDocument()
+  })
+  it('searches brands and submits posting explicitly', async () => {
+    render(<ReceiptForm options={options} initial={initial} canPost />)
+    fireEvent.change(screen.getByLabelText('Артикул'), { target: { value: 'NEW' } })
+    fireEvent.change(screen.getByLabelText('Назва'), { target: { value: 'New' } })
+    fireEvent.click(screen.getByRole('combobox', { name: 'Бренд' }))
+    fireEvent.change(screen.getByLabelText('Пошук: Бренд'), { target: { value: 'Bosch' } })
+    expect(screen.queryByRole('option', { name: 'Febi' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('option', { name: 'Bosch' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Зберегти й провести' }))
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1))
+    expect(save.mock.calls[0][1]).toBe(true)
+    expect(save.mock.calls[0][0].lines[0].brandId).toBe('bosch')
   })
 })
