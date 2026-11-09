@@ -99,3 +99,25 @@ describe('brand directory role permissions', () => {
     expect(state.save).not.toHaveBeenCalled()
   })
 })
+
+describe('complete brand permission matrix', () => {
+  it.each(
+    Array.from({ length: 16 }, (_, mask) => mask)
+  )('enforces every operation for permission mask %s', async (mask) => {
+    const actions = ['read', 'create', 'update', 'delete'].filter((_, i) => mask & (1 << i))
+    grant(...actions)
+    const allowed = (action: string) => actions.includes('read') && actions.includes(action)
+    const result = await brandDirectory()
+    expect(result.success).toBe(actions.includes('read'))
+    if (result.success)
+      expect(result.data).toMatchObject({
+        canCreate: allowed('create'),
+        canEdit: allowed('update'),
+        canDelete: allowed('delete'),
+      })
+    expect((await saveBrand({ name: 'New' })).success).toBe(allowed('create'))
+    expect((await saveBrand({ id: 'b', name: 'Renamed' })).success).toBe(allowed('update'))
+    expect((await changeBrandAvailability('b', false)).success).toBe(allowed('delete'))
+    expect((await changeBrandAvailability('b', true)).success).toBe(allowed('update'))
+  })
+})

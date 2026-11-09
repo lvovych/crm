@@ -213,6 +213,8 @@ export default defineConfig({
             // The schedulers would otherwise tick through the run, writing to
             // the rows the specs are asserting on.
             DISABLE_BACKGROUND_JOBS: '1',
+            SUPPLIER_DIRECTORY_ORGANIZATIONS: '*',
+            SUPPLIER_RECEIPT_ORGANIZATIONS: '*',
             // Demo mode blocks invites, billing and outbound messages. Tests want
             // the real behaviour, so it stays off.
             DEMO_MODE: 'false',

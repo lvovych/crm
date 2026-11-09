@@ -192,3 +192,49 @@ describe('receipt entry workflow', () => {
     expect(save.mock.calls[0][0].lines[0].brandId).toBe('bosch')
   })
 })
+
+describe('receipt failures and service entry', () => {
+  it('retains entered fields after server failure and allows retry', async () => {
+    save.mockResolvedValueOnce({ error: 'Документ змінився' })
+    render(<ReceiptForm options={options} initial={initial} canPost />)
+    fireEvent.change(screen.getByLabelText('Артикул'), { target: { value: 'VD1105' } })
+    fireEvent.change(screen.getByLabelText('Ціна, грн'), { target: { value: '88.1234' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Зберегти чернетку' }))
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Документ змінився'))
+    expect(screen.getByLabelText('Ціна, грн')).toHaveValue(88.1234)
+    expect(push).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Зберегти чернетку' }))
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/receipts/saved'))
+  })
+  it('offers the existing duplicate without navigating away or discarding data', async () => {
+    save.mockResolvedValue({ data: { id: 'existing', duplicate: true } })
+    render(<ReceiptForm options={options} initial={initial} canPost />)
+    fireEvent.change(screen.getByLabelText('Артикул'), { target: { value: 'VD1105' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Зберегти чернетку' }))
+    await waitFor(() =>
+      expect(screen.getByRole('link', { name: /Така накладна вже є/ })).toHaveAttribute(
+        'href',
+        '/receipts/existing'
+      )
+    )
+    expect(push).not.toHaveBeenCalled()
+    expect(screen.getByLabelText('Артикул')).toHaveValue('VD1105')
+  })
+  it('switches a linked part to a service without retaining inventory identity', async () => {
+    render(<ReceiptForm options={options} initial={initial} canPost />)
+    fireEvent.change(screen.getByLabelText('Артикул'), { target: { value: 'VD1105' } })
+    fireEvent.change(screen.getByLabelText('Тип'), { target: { value: 'service' } })
+    expect(screen.getByLabelText('Артикул')).toBeDisabled()
+    expect(screen.queryByRole('combobox', { name: 'Бренд' })).not.toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Назва'), { target: { value: 'Доставка' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Зберегти чернетку' }))
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1))
+    expect(save.mock.calls[0][0].lines[0]).toMatchObject({
+      kind: 'service',
+      partId: null,
+      article: '',
+      brandId: undefined,
+      unit: 'посл.',
+    })
+  })
+})
