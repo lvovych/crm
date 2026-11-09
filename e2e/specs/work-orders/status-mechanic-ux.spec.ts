@@ -56,13 +56,14 @@ for (const viewport of [
   test(`status and mechanic are discoverable, keyboard accessible and persistent at ${viewport.width}px`, async ({
     page,
   }) => {
-    await page.setViewportSize(viewport)
     const url = await newWorkOrder(
       page,
       await seededVehicleUrl(page),
       `UX review ${viewport.width} ${Date.now()}`
     )
     await saveWorkOrder(page)
+    await settle(page)
+    await page.setViewportSize(viewport)
     const planning = page
       .locator('details')
       .filter({ has: page.locator('summary').filter({ hasText: /^Scheduling/ }) })

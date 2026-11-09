@@ -28,6 +28,9 @@ test.beforeAll(async ({ browser }) => {
   const vehicleUrl = await seededVehicleUrl(page)
   jobUrl = await newWorkOrder(page, vehicleUrl, `E2E modern layout ${stamp}`)
   await addPart(page, { name: partName, quantity: 2, unitPrice: 150 })
+  // This layout fixture asserts a 300 balance, independent of a workshop's default tax.
+  const taxRate = page.getByTestId('totals').getByRole('spinbutton')
+  if (await taxRate.count()) await taxRate.fill('0')
   await saveWorkOrder(page)
   await page.close()
 })

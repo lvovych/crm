@@ -40,7 +40,6 @@ export function useHardwareScanner({ onScan, enabled = true }: UseHardwareScanne
       const now = Date.now()
 
       if (e.key === 'Enter') {
-        e.preventDefault()
         const buffer = bufferRef.current
         const timestamps = timestampsRef.current
 
@@ -53,6 +52,10 @@ export function useHardwareScanner({ onScan, enabled = true }: UseHardwareScanne
           const avgGap = totalGap / (timestamps.length - 1)
 
           if (avgGap < 80) {
+            // Only a recognized scan owns Enter. Ordinary buttons and forms
+            // must retain their native keyboard activation.
+            e.preventDefault()
+            e.stopPropagation()
             cooldownRef.current = true
             onScan(buffer)
             setTimeout(() => {

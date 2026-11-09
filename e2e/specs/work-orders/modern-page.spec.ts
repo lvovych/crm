@@ -366,7 +366,7 @@ test.describe('the overhauled work order page', () => {
       await deleteTechnicians([technicianId])
     })
 
-    test('assigns a technician through the schedule list', async ({ page }) => {
+    test('assigns a technician through the visible mechanic control', async ({ page }) => {
       await openModern(page, scheduleJob)
 
       await page.getByTestId('mechanic-assignment').getByRole('button').click()
