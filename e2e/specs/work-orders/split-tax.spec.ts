@@ -137,6 +137,7 @@ test('a job charges GST and QST on their own lines', async ({ page }) => {
 
 test('a discount comes off before both taxes', async ({ page }) => {
   await page.goto(job)
+  await settle(page)
   await setDiscount(page, 'Percentage', 10)
   await saveWorkOrder(page)
   await expectTotals(page, {
