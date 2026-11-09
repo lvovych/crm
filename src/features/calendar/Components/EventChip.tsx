@@ -64,6 +64,7 @@ export function EventChip({
         onContextMenu={onContextMenu}
         title={summary}
         aria-label={summary}
+        data-event-id={event.id}
         style={style}
         className={cn(
           'flex min-w-0 flex-col overflow-hidden rounded-md px-1.5 py-1 text-left text-xs leading-tight',

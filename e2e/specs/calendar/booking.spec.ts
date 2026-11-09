@@ -152,16 +152,15 @@ test.describe('booking a job from the calendar', () => {
   test('and the calendar shows it where it put it', async ({ page }) => {
     await openDayView(page)
 
-    // The chip's tooltip is the times it was drawn at, which is the reading
-    // that matters: the block is positioned from the same string. Read rather
-    // than clicked, because a day with several bookings in one slot draws
-    // them on top of each other and a click lands on whichever is in front.
-    const chip = page.locator(`[title*="E2E booking ${stamp}"]`).first()
+    // The card now contains only vehicle/customer details. Verify the actual
+    // grid position instead of relying on time in its tooltip.
+    const jobId = new URL(jobUrl, 'http://localhost').pathname.split('/').pop()
+    const chip = page.locator(`[data-event-id="${jobId}"]`)
     await expect(chip).toBeVisible({ timeout: 30_000 })
-    await expect(chip, 'the chip is drawn at the time the menu offered').toHaveAttribute(
-      'title',
-      new RegExp(`^${offered.replace('.', '[:.]')}\\b`)
-    )
+    const [hours, minutes] = offered.replace('.', ':').split(':').map(Number)
+    const top = await chip.evaluate((element) => Number.parseFloat((element as HTMLElement).style.top))
+    expect(top).toBeCloseTo((hours + minutes / 60) * 60, 1)
+
   })
 
   test('the workshop’s own timezone is what the times are read in', async ({ page }) => {
