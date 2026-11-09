@@ -727,7 +727,7 @@ export function ScheduleTimesSection({
         <summary className="cursor-pointer px-4 py-3 text-sm">
           <strong>{modern ? ta('planning') : summaryT('schedule')}</strong>
           <span className="mt-1 block text-muted-foreground">
-            {selectedTechName || summaryT('unassigned')} ·{' '}
+            {!modern && <>{selectedTechName || summaryT('unassigned')} · </>}
             {startDateTime
               ? startDateTime.toLocaleString(locale, {
                   timeZone: timezone || undefined,
@@ -738,6 +738,8 @@ export function ScheduleTimesSection({
             {endDateTime
               ? ` – ${endDateTime.toLocaleString(locale, { timeZone: timezone || undefined, dateStyle: 'short', timeStyle: 'short' })}`
               : ''}
+            {modern && workBays.find((bay) => bay.id === selectedBayId) &&
+              ` · ${workBays.find((bay) => bay.id === selectedBayId)?.name}`}
             {promisedAt
               ? ` · ${t('promisedAt')}: ${promisedAt.toLocaleString(locale, { timeZone: timezone || undefined, dateStyle: 'short', timeStyle: 'short' })}`
               : ''}
