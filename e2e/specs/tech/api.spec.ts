@@ -8,7 +8,7 @@ import {
   seededTenantFixtures,
 } from '../../support/db'
 import { settle } from '../../support/hydration'
-import { openSchedule, laborRows, saveWorkOrder, setTitle } from '../../support/work-order'
+import { laborRows, saveWorkOrder, setTitle } from '../../support/work-order'
 
 /**
  * The contract the technician app is built against.
@@ -255,12 +255,12 @@ test.describe('the technician app', () => {
     await setTitle(page, `E2E tech job ${stamp}`)
     await saveWorkOrder(page)
 
-    await openSchedule(page)
+    await page.getByTestId('mechanic-assignment').getByRole('button').click()
     const technician = page
       .getByRole('radiogroup', { name: 'Technician' })
       .getByRole('radio', { name: TECHNICIAN })
     await technician.click()
-    await expect(technician).toBeChecked()
+    await expect(page.getByTestId('assigned-mechanic')).toHaveText(TECHNICIAN)
     await expect.poll(async () => (await jobAssignment(jobId)).technicianId).toBeTruthy()
 
     const jobs = await phone(device).get('/api/v1/tech/jobs')

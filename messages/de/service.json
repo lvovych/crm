@@ -821,5 +821,23 @@
     "invalid": "Enter a job name, quantity greater than zero and a valid price (zero is allowed).",
     "saveFailed": "Could not save the service to the catalog. Check your permissions or connection, or uncheck “Also save” to add a one-off job.",
     "added": "Added to the order. Ready for the next job."
+  },
+  "assignment": {
+    "status": "Work order status",
+    "statusHint": "Choose a status. The change is saved immediately.",
+    "saving": "Saving…",
+    "statusSaved": "Status saved",
+    "mechanic": "Responsible mechanic",
+    "assign": "Assign mechanic",
+    "change": "Change mechanic",
+    "unassigned": "Not assigned",
+    "mechanicHint": "Responsible for the whole work order. Individual services can have their own technician.",
+    "choose": "Choose mechanic",
+    "search": "Search by name",
+    "noResults": "No mechanics found",
+    "remove": "Remove assignment",
+    "assigned": "Assignment saved",
+    "planning": "Scheduling",
+    "close": "Close"
   }
 }

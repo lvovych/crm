@@ -1,3 +1,4 @@
+import { chooseStatus } from '../../support/work-order'
 import { expect, test } from '@playwright/test'
 import { settle } from '../../support/hydration'
 import { addPart, newWorkOrder, saveWorkOrder, seededVehicleUrl } from '../../support/work-order'
@@ -8,10 +9,7 @@ test('work order list defaults to Active, excludes completed jobs and preserves 
   const title = `E2E completed filter ${Date.now()}`
   await newWorkOrder(page, await seededVehicleUrl(page), title)
   await addPart(page, { name: 'Filter fixture', quantity: 1, unitPrice: 10 })
-  await page
-    .getByTestId('status-stepper')
-    .getByRole('button', { name: /Completed/ })
-    .click()
+  await chooseStatus(page, 'Completed')
   await saveWorkOrder(page)
   const number = await page.getByLabel('Invoice Number').inputValue()
 

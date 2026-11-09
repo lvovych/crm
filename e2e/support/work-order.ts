@@ -69,7 +69,9 @@ export function laborRowOf(name: Locator): Locator {
 }
 /** The scheduling fields live in a collapsed details section. */
 export async function openSchedule(page: Page): Promise<void> {
-  const summary = page.locator('summary').filter({ hasText: 'Mechanic and scheduling' })
+  const summary = page
+    .locator('summary')
+    .filter({ hasText: /^(Mechanic and scheduling|Scheduling)/ })
   const section = summary.locator('..')
   if ((await section.getAttribute('open')) === null) await summary.click()
   await expect(section).toHaveAttribute('open', '')
@@ -227,4 +229,14 @@ export async function shareLink(page: Page): Promise<string> {
   const url = await field.inputValue()
   await page.keyboard.press('Escape')
   return url
+}
+
+/** Change the dedicated status control and wait for server confirmation. */
+export async function chooseStatus(page: Page, name: string | RegExp): Promise<void> {
+  await settle(page)
+  await page.getByTestId('status-control').getByRole('button').click()
+  const dialog = page.getByRole('dialog', { name: 'Work order status', exact: true })
+  await dialog.getByRole('button', { name, exact: typeof name === 'string' }).click()
+  await expect(page.getByTestId('current-status')).toHaveText(name)
+  await expect(page.getByTestId('status-control').getByRole('button')).toBeEnabled()
 }

@@ -1,4 +1,5 @@
-import { expect, type Locator, type Page, test } from '@playwright/test'
+import { chooseStatus as setStatus } from '../../support/work-order'
+import { expect, test } from '@playwright/test'
 import { settle } from '../../support/hydration'
 import {
   addLabor,
@@ -39,19 +40,6 @@ const MULTILINE_LABOR = 'Replace timing belt\nand water pump\nrefill coolant'
 
 let vehicleUrl = ''
 let jobUrl = ''
-
-/** The status stepper in the page header: one button per stage. */
-function stage(page: Page, name: string): Locator {
-  return page.getByTestId('status-stepper').getByRole('button', { name: new RegExp(name) })
-}
-
-/** Moves the job to a stage. A click before hydration does nothing, so it is repeated. */
-async function setStatus(page: Page, name: string): Promise<void> {
-  await expect(async () => {
-    await stage(page, name).click()
-    await expect(stage(page, name)).toHaveAttribute('aria-current', 'step', { timeout: 2_000 })
-  }).toPass({ timeout: 30_000 })
-}
 
 test.beforeAll(async ({ browser }) => {
   const page = await browser.newPage({ storageState: 'e2e/.auth/owner.json' })
@@ -153,7 +141,7 @@ test.describe('a work order from intake to completion', () => {
     await saveWorkOrder(page)
     await page.reload()
     await settle(page)
-    await expect(stage(page, 'In Progress')).toHaveAttribute('aria-current', 'step')
+    await expect(page.getByTestId('current-status')).toHaveText('In Progress')
     // The badge in the header used to print the stored value beside a select
     // that said it properly, so the same job read "in-progress" and
     // "In Progress" an inch apart.
@@ -163,7 +151,7 @@ test.describe('a work order from intake to completion', () => {
     await saveWorkOrder(page)
     await page.reload()
     await settle(page)
-    await expect(stage(page, 'Completed')).toHaveAttribute('aria-current', 'step')
+    await expect(page.getByTestId('current-status')).toHaveText('Completed')
   })
 
   test('the finished job is on the All work orders list with its number', async ({ page }) => {
