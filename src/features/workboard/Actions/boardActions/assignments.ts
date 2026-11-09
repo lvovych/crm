@@ -101,6 +101,7 @@ export async function getUnassignedJobs() {
           select: {
             id: true,
             title: true,
+            customer: { select: { name: true } },
             status: true,
             vehicle: { select: VEHICLE_SELECT },
           },

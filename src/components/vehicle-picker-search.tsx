@@ -36,7 +36,7 @@ export function VehiclePickerSearch({
   onQueryChange: (value: string) => void
   onSelect: (id: string) => void
   onCreate: () => void
-  onSale: () => void
+  onSale?: () => void
   isMarine: boolean
 }) {
   const t = useTranslations('workOrders.vehiclePicker')
@@ -207,17 +207,19 @@ export function VehiclePickerSearch({
             })}
           </ul>
         )}
-        <div className="mt-4 border-t pt-3">
-          <Button
-            type="button"
-            variant="ghost"
-            className="h-auto min-h-11 w-full whitespace-normal"
-            onClick={onSale}
-          >
-            <ShoppingCart aria-hidden />
-            {t('partsSale')}
-          </Button>
-        </div>
+        {onSale && (
+          <div className="mt-4 border-t pt-3">
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-auto min-h-11 w-full whitespace-normal"
+              onClick={onSale}
+            >
+              <ShoppingCart aria-hidden />
+              {t('partsSale')}
+            </Button>
+          </div>
+        )}
       </div>
       <div className="shrink-0 border-t pt-3">
         <Button

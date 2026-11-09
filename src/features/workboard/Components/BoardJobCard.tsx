@@ -1,5 +1,6 @@
 'use client'
 
+import { BoardJobIdentity } from './BoardJobIdentity'
 import { interactiveRow } from '@/lib/interactive-row'
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
@@ -44,34 +45,40 @@ export function BoardJobCard({ job, onClick }: { job: WorkBoardJob; onClick?: ()
         <GripVertical className="h-3 w-3" />
       </button>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1">
-          {isServiceRecord ? (
-            <Wrench className="h-3 w-3 shrink-0 text-blue-500" />
-          ) : (
-            <ClipboardCheck className="h-3 w-3 shrink-0 text-green-500" />
-          )}
-          <span className="truncate font-medium">{job.title}</span>
-        </div>
-        {job.vehicle && (
-          <p className="truncate text-muted-foreground">
-            {job.vehicle.year} {job.vehicle.make} {job.vehicle.model}
-            {job.vehicle.licensePlate ? ` · ${job.vehicle.licensePlate}` : ''}
-          </p>
+        {isServiceRecord ? (
+          <BoardJobIdentity job={job} />
+        ) : (
+          <>
+            <div className="flex items-center gap-1">
+              {isServiceRecord ? (
+                <Wrench className="h-3 w-3 shrink-0 text-blue-500" />
+              ) : (
+                <ClipboardCheck className="h-3 w-3 shrink-0 text-green-500" />
+              )}
+              <span className="truncate font-medium">{job.title}</span>
+            </div>
+            {job.vehicle && (
+              <p className="truncate text-muted-foreground">
+                {job.vehicle.year} {job.vehicle.make} {job.vehicle.model}
+                {job.vehicle.licensePlate ? ` · ${job.vehicle.licensePlate}` : ''}
+              </p>
+            )}
+            <div className="flex items-center gap-1.5">
+              {job.status && (
+                <span className="inline-block rounded bg-muted px-1 py-0.5 text-[10px] capitalize">
+                  {job.status.replace(/_/g, ' ')}
+                </span>
+              )}
+              {durationMins != null && durationMins > 0 && (
+                <span className="inline-flex items-center gap-0.5 rounded bg-blue-500/10 px-1 py-0.5 text-[10px] text-blue-600 dark:text-blue-400">
+                  <Clock className="h-2.5 w-2.5" />
+                  {formatDuration(durationMins)}
+                </span>
+              )}
+              <PromiseOverdueMark job={job} />
+            </div>
+          </>
         )}
-        <div className="flex items-center gap-1.5">
-          {job.status && (
-            <span className="inline-block rounded bg-muted px-1 py-0.5 text-[10px] capitalize">
-              {job.status.replace(/_/g, ' ')}
-            </span>
-          )}
-          {durationMins != null && durationMins > 0 && (
-            <span className="inline-flex items-center gap-0.5 rounded bg-blue-500/10 px-1 py-0.5 text-[10px] text-blue-600 dark:text-blue-400">
-              <Clock className="h-2.5 w-2.5" />
-              {formatDuration(durationMins)}
-            </span>
-          )}
-          <PromiseOverdueMark job={job} />
-        </div>
       </div>
     </div>
   )
@@ -137,19 +144,25 @@ export function UnassignedJobCard({
       className="flex cursor-grab items-start gap-1 rounded-md border bg-card p-1.5 text-xs shadow-sm touch-none active:cursor-grabbing"
     >
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1">
-          {isServiceRecord ? (
-            <Wrench className="h-3 w-3 shrink-0 text-blue-500" />
-          ) : (
-            <ClipboardCheck className="h-3 w-3 shrink-0 text-green-500" />
-          )}
-          <span className="truncate font-medium">{title}</span>
-        </div>
-        {job.vehicle && (
-          <p className="truncate text-muted-foreground">
-            {job.vehicle.year} {job.vehicle.make} {job.vehicle.model}
-            {job.vehicle.licensePlate ? ` · ${job.vehicle.licensePlate}` : ''}
-          </p>
+        {isServiceRecord ? (
+          <BoardJobIdentity job={job} />
+        ) : (
+          <>
+            <div className="flex items-center gap-1">
+              {isServiceRecord ? (
+                <Wrench className="h-3 w-3 shrink-0 text-blue-500" />
+              ) : (
+                <ClipboardCheck className="h-3 w-3 shrink-0 text-green-500" />
+              )}
+              <span className="truncate font-medium">{title}</span>
+            </div>
+            {job.vehicle && (
+              <p className="truncate text-muted-foreground">
+                {job.vehicle.year} {job.vehicle.make} {job.vehicle.model}
+                {job.vehicle.licensePlate ? ` · ${job.vehicle.licensePlate}` : ''}
+              </p>
+            )}
+          </>
         )}
       </div>
     </div>

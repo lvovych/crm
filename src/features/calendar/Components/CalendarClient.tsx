@@ -4,12 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useDayFormatter } from './useDayFormatter'
-import { CalendarDays, CalendarOff, Plus } from 'lucide-react'
+import { CalendarOff, Plus } from 'lucide-react'
 import { useDateSettings } from '@/components/date-settings-context'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { VehiclePickerDialog } from '@/components/vehicle-picker-dialog'
+import { QuickBookingDialog } from './QuickBookingDialog'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { ReminderFormDialog } from '@/features/vehicles/Components/ReminderFormDialog'
 import { NewQuoteDialog } from '@/features/quotes/Components/NewQuoteDialog'
@@ -62,6 +61,7 @@ interface CalendarClientProps {
   initialEvents: CalendarEvent[]
   /** The days `initialEvents` covers, as YYYY-MM-DD. */
   initialRange: { start: string; end: string }
+  explicitView?: boolean
   initialView: CalendarView
   /** YYYY-MM-DD the calendar opens on. */
   initialDate: string
@@ -97,6 +97,7 @@ export default function CalendarClient({
   initialEvents,
   initialRange,
   initialView,
+  explicitView = false,
   initialDate,
   todayStr,
   vehicles,
@@ -113,6 +114,13 @@ export default function CalendarClient({
   const { preferences, update: updatePreferences } = useCalendarPreferences()
 
   const [view, setView] = useState<CalendarView>(initialView)
+  const mobileDefaultApplied = useRef(false)
+  useEffect(() => {
+    if (isMobile && !explicitView && !mobileDefaultApplied.current) {
+      mobileDefaultApplied.current = true
+      setView('day')
+    }
+  }, [isMobile, explicitView])
   const [date, setDate] = useState<Date>(
     () => parseDateKey(initialDate) ?? parseDateKey(todayStr) ?? new Date()
   )
@@ -133,7 +141,6 @@ export default function CalendarClient({
 
   // Dialogs the calendar can open
   const [showPicker, setShowPicker] = useState(false)
-  const [showDateChoice, setShowDateChoice] = useState(false)
   const [workOrderQuery, setWorkOrderQuery] = useState<Record<string, string> | undefined>()
   const [showReminderDialog, setShowReminderDialog] = useState(false)
   const [showQuoteDialog, setShowQuoteDialog] = useState(false)
@@ -332,10 +339,8 @@ export default function CalendarClient({
       setMenuTime(undefined)
       switch (kind) {
         case 'workOrder':
-          // A day other than today is probably what the person means, but
-          // it might not be: ask, as the old button did.
-          if (dateStr !== todayStr) setShowDateChoice(true)
-          else openWorkOrderPicker(undefined)
+          // Start with the selected date; it remains editable in quick booking.
+          openWorkOrderPicker({ boardDate: dateStr })
           break
         case 'reminder':
           setShowReminderDialog(true)
@@ -349,14 +354,6 @@ export default function CalendarClient({
       }
     },
     [dateStr, todayStr, openWorkOrderPicker]
-  )
-
-  const handleDateChoice = useCallback(
-    (useSelectedDate: boolean) => {
-      setShowDateChoice(false)
-      openWorkOrderPicker(useSelectedDate ? { boardDate: dateStr } : undefined)
-    },
-    [dateStr, openWorkOrderPicker]
   )
 
   const dayActions = useMemo<DayActions>(
@@ -542,7 +539,28 @@ export default function CalendarClient({
               }
             />
           )}
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col">{body}</div>
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            {isMobile && view === 'day' && (
+              <nav
+                aria-label={t('quickBooking.weekDates')}
+                className="grid grid-cols-7 gap-1 border-b p-2"
+              >
+                {eachDay(visibleRange('week', date, weekStartDay)).map((day) => (
+                  <button
+                    key={toLocalDateStr(day)}
+                    type="button"
+                    onClick={() => setDate(day)}
+                    aria-pressed={toLocalDateStr(day) === dateStr}
+                    className={`min-h-11 rounded-md py-1 text-xs ${toLocalDateStr(day) === dateStr ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
+                  >
+                    <span className="block">{format.dateTime(day, { weekday: 'short' })}</span>
+                    <span className="block font-semibold">{day.getDate()}</span>
+                  </button>
+                ))}
+              </nav>
+            )}
+            {body}
+          </div>
         </div>
       </div>
 
@@ -566,35 +584,6 @@ export default function CalendarClient({
           </div>
         </SheetContent>
       </Sheet>
-
-      <Dialog open={showDateChoice} onOpenChange={setShowDateChoice}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{t('dateChoice.title')}</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            {t('dateChoice.description', {
-              selectedDate: format.dateTime(date, {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              }),
-            })}
-          </p>
-          <div className="flex flex-col gap-2 pt-2">
-            <Button onClick={() => handleDateChoice(true)}>
-              <CalendarDays className="mr-2 h-4 w-4" />
-              {t('dateChoice.useSelected', {
-                date: format.dateTime(date, { month: 'short', day: 'numeric' }),
-              })}
-            </Button>
-            <Button variant="outline" onClick={() => handleDateChoice(false)}>
-              {t('dateChoice.useToday')}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       <ReminderFormDialog
         open={showReminderDialog}
@@ -620,13 +609,21 @@ export default function CalendarClient({
         onSaved={refresh}
       />
 
-      <VehiclePickerDialog
+      <QuickBookingDialog
         open={showPicker}
         onOpenChange={setShowPicker}
         vehicles={vehicles}
         customers={customers}
-        title={t('selectVehicle')}
-        redirectQuery={workOrderQuery}
+        date={workOrderQuery?.boardDate || dateStr}
+        time={workOrderQuery?.boardStart}
+        onSaved={(_id, savedDay) => {
+          const next = parseDateKey(savedDay)
+          if (next) {
+            setDate(next)
+            setFilters((current) => ({ ...current, service: true }))
+            load(fetchRangeFor(view, next, weekStartDay))
+          }
+        }}
       />
     </EventPeekProvider>
   )

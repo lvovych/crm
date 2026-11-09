@@ -117,9 +117,12 @@ test.describe('booking a job from the calendar', () => {
     await item.click()
 
     // It asks which vehicle before it can make anything.
-    const picker = page.getByRole('dialog', { name: /select vehicle for work order/i })
+    const picker = page.getByRole('dialog', { name: /book customer/i })
     await expect(picker).toBeVisible({ timeout: 30_000 })
     await picker.getByText(/Camry/i).first().click()
+    await picker.getByLabel('Reason for visit').fill('E2E timezone booking')
+    await picker.getByLabel('Open work order after saving').check()
+    await picker.getByRole('button', { name: 'Save booking', exact: true }).click()
 
     await page.waitForURL(
       (url) => /\/service\/[^/]+$/.test(url.pathname) && !url.pathname.endsWith('/new'),

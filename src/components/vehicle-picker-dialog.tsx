@@ -43,6 +43,7 @@ interface VehiclePickerDialogProps {
   vehicles: Vehicle[]
   customers: Customer[]
   title?: string
+  onVehicleSelected?: (id: string) => void
   redirectQuery?: Record<string, string>
 }
 
@@ -53,6 +54,7 @@ export function VehiclePickerDialog({
   customers,
   title,
   redirectQuery,
+  onVehicleSelected,
 }: VehiclePickerDialogProps) {
   const router = useRouter()
   const t = useTranslations('workOrders.vehiclePicker')
@@ -154,6 +156,10 @@ export function VehiclePickerDialog({
   const handleSelect = (vehicleId: string) => {
     onOpenChange(false)
     resetState()
+    if (onVehicleSelected) {
+      onVehicleSelected(vehicleId)
+      return
+    }
     const qs = redirectQuery ? '?' + new URLSearchParams(redirectQuery).toString() : ''
     router.push(`/vehicles/${vehicleId}/service/new${qs}`)
   }
@@ -259,7 +265,7 @@ export function VehiclePickerDialog({
               onQueryChange={setVehicleSearch}
               onSelect={handleSelect}
               onCreate={() => setPickerStep('create')}
-              onSale={() => setPickerStep('sale')}
+              onSale={onVehicleSelected ? undefined : () => setPickerStep('sale')}
               isMarine={isMarine}
             />
           </>

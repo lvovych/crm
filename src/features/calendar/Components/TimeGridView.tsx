@@ -2,10 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { useTranslations } from 'next-intl'
-import { Bell, FileText, Send, Wrench } from 'lucide-react'
 import { useDayFormatter } from './useDayFormatter'
 import { useDateSettings } from '@/components/date-settings-context'
-import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { formatClock } from '@/features/workboard/utils/clock'
 import { cn } from '@/lib/utils'
 import {
@@ -13,7 +12,6 @@ import {
   isWeekend,
   layoutTimedEvents,
   minutesToTime,
-  timeToMinutes,
   toLocalDateStr,
 } from '../Lib/calendar-range'
 import { DayContextMenu, type DayActions } from './DayContextMenu'
@@ -28,22 +26,9 @@ const GUTTER = '3.5rem'
 const MAX_ALL_DAY = 3
 /** The hour the grid scrolls to when the day has nothing earlier. */
 const DEFAULT_SCROLL_HOUR = 7
-/** Minutes the placeholder covers while the create menu is open. */
-const SLOT_MINUTES = 60
 /** A click on the grid rounds to the nearest of these. */
 const SNAP_MINUTES = 30
 const HOURS = Array.from({ length: 24 }, (_, h) => h)
-
-/** An empty slot somebody clicked, waiting to become something. */
-interface Slot {
-  date: Date
-  dateStr: string
-  /** HH:MM, snapped to the quarter hour. */
-  time: string
-  /** Where the click landed, so the menu opens right there. */
-  x: number
-  y: number
-}
 
 interface TimeGridViewProps {
   days: Date[]
@@ -75,22 +60,6 @@ export function TimeGridView({
   const format = useDayFormatter()
   const { timeFormat } = useDateSettings()
   const scrollRef = useRef<HTMLDivElement>(null)
-  const [slot, setSlot] = useState<Slot | null>(null)
-  // Radix measures a virtual anchor through getBoundingClientRect, so the
-  // click point is wrapped as a zero-size box. Memoised per slot: Radix
-  // stores the anchor in state on every render, and a fresh object each
-  // time would re-render without end.
-  const slotAnchor = useMemo(() => {
-    const x = slot?.x ?? 0
-    const y = slot?.y ?? 0
-    return { current: { getBoundingClientRect: () => new DOMRect(x, y, 0, 0) } }
-  }, [slot])
-  const runSlotAction = (action: (dateStr: string, time?: string) => void) => {
-    if (!slot) return
-    const { dateStr, time } = slot
-    setSlot(null)
-    action(dateStr, time)
-  }
   const visibleDays = useMemo(
     () => (showWeekends || days.length < 7 ? days : days.filter((d) => !isWeekend(d))),
     [days, showWeekends]
@@ -270,84 +239,16 @@ export function TimeGridView({
               isToday={toLocalDateStr(date) === todayStr}
               nowMins={nowMins}
               actions={actions}
-              placeholderMins={
-                slot && slot.dateStr === toLocalDateStr(date) ? timeToMinutes(slot.time) : null
-              }
               onSelect={() => onSelectDate(date)}
-              onSlotClick={(time, x, y) => {
+              onSlotClick={(time) => {
                 onSelectDate(date)
-                setSlot({ date, dateStr: toLocalDateStr(date), time, x, y })
+                actions.onNewWorkOrder(toLocalDateStr(date), time)
               }}
             />
           ))}
         </div>
       </div>
-
-      {/* What an empty slot can become, opened where the click landed. */}
-      <Popover open={slot !== null} onOpenChange={(open) => !open && setSlot(null)}>
-        <PopoverAnchor virtualRef={slotAnchor} />
-        <PopoverContent
-          side="right"
-          align="start"
-          collisionPadding={12}
-          className="w-64 p-1.5"
-          onOpenAutoFocus={(e) => e.preventDefault()}
-        >
-          {slot && (
-            <>
-              <p className="px-2 pb-1.5 pt-1 text-xs text-muted-foreground">
-                {format.dateTime(slot.date, { weekday: 'long', day: 'numeric', month: 'long' })}
-                {' · '}
-                {formatClock(timeToMinutes(slot.time), timeFormat)}
-              </p>
-              <SlotMenuItem
-                icon={Wrench}
-                label={t('contextMenu.newWorkOrderAt', {
-                  time: formatClock(timeToMinutes(slot.time), timeFormat),
-                })}
-                onClick={() => runSlotAction(actions.onNewWorkOrder)}
-              />
-              <SlotMenuItem
-                icon={Bell}
-                label={t('contextMenu.newReminder')}
-                onClick={() => runSlotAction(actions.onNewReminder)}
-              />
-              <SlotMenuItem
-                icon={FileText}
-                label={t('contextMenu.newQuote')}
-                onClick={() => runSlotAction(actions.onNewQuote)}
-              />
-              <SlotMenuItem
-                icon={Send}
-                label={t('contextMenu.scheduleMessage')}
-                onClick={() => runSlotAction(actions.onScheduleMessage)}
-              />
-            </>
-          )}
-        </PopoverContent>
-      </Popover>
     </div>
-  )
-}
-
-function SlotMenuItem({
-  icon: Icon,
-  label,
-  onClick,
-}: {
-  icon: typeof Wrench
-  label: string
-  onClick: () => void
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
-    >
-      <Icon className="h-4 w-4 text-muted-foreground" />
-      {label}
-    </button>
   )
 }
 
@@ -368,7 +269,6 @@ function DayColumn({
   isToday,
   nowMins,
   actions,
-  placeholderMins,
   onSelect,
   onSlotClick,
 }: {
@@ -377,12 +277,9 @@ function DayColumn({
   isToday: boolean
   nowMins: number | null
   actions: DayActions
-  /** Start of the slot being created, drawn as a ghost block. */
-  placeholderMins: number | null
   onSelect: () => void
   onSlotClick: (time: string, x: number, y: number) => void
 }) {
-  const { timeFormat } = useDateSettings()
   const dateStr = toLocalDateStr(date)
   const columnRef = useRef<HTMLDivElement>(null)
   const [menuTime, setMenuTime] = useState<string | null>(null)
@@ -418,7 +315,7 @@ function DayColumn({
         )}
         onClick={(e) => {
           // A click on a block opens its peek; a click on the grid itself
-          // asks what to put there.
+          // opens quick booking.
           if (e.target === e.currentTarget) {
             onSlotClick(minutesToTime(minutesAtPointer(e)), e.clientX, e.clientY)
           } else {
@@ -426,22 +323,7 @@ function DayColumn({
           }
         }}
         onContextMenu={(e) => setMenuTime(minutesToTime(minutesAtPointer(e)))}
-        onDoubleClick={(e) => {
-          if (e.target !== e.currentTarget) return
-          actions.onNewWorkOrder(dateStr, minutesToTime(minutesAtPointer(e)))
-        }}
       >
-        {placeholderMins !== null && (
-          <div
-            className="pointer-events-none absolute inset-x-0.5 z-20 flex items-start rounded-md border-2 border-dashed border-primary/70 bg-primary/10 px-1.5 py-1 text-xs font-medium text-primary"
-            style={{
-              top: (placeholderMins / 60) * HOUR_PX,
-              height: (Math.min(SLOT_MINUTES, 24 * 60 - placeholderMins) / 60) * HOUR_PX,
-            }}
-          >
-            {formatClock(placeholderMins, timeFormat)}
-          </div>
-        )}
         {HOURS.map((h) => (
           <div
             key={h}

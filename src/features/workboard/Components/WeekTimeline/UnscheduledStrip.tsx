@@ -1,7 +1,9 @@
 'use client'
 
+import { BoardJobIdentity } from '../BoardJobIdentity'
+
 import { useDraggable } from '@dnd-kit/core'
-import { CalendarClock, ClipboardCheck, Wrench } from 'lucide-react'
+import { CalendarClock, ClipboardCheck } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 import type { WorkBoardJob } from '../../Actions/boardActions'
@@ -70,12 +72,15 @@ function UnscheduledChip({
       )}
     >
       {job.type === 'serviceRecord' ? (
-        <Wrench className="h-3 w-3 shrink-0 text-blue-500" />
+        <BoardJobIdentity job={job} />
       ) : (
-        <ClipboardCheck className="h-3 w-3 shrink-0 text-green-500" />
+        <>
+          <ClipboardCheck className="h-3 w-3 shrink-0 text-green-500" />
+
+          <span className="truncate font-medium">{job.title}</span>
+          {vehicleLabel && <span className="truncate text-muted-foreground">{vehicleLabel}</span>}
+        </>
       )}
-      <span className="truncate font-medium">{job.title}</span>
-      {vehicleLabel && <span className="truncate text-muted-foreground">{vehicleLabel}</span>}
     </button>
   )
 }
