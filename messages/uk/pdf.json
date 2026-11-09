@@ -230,7 +230,7 @@
     "scheduled": "Заплановано: {date}",
     "promised": "Обіцяно: {date}",
     "workBay": "Пост: {bay}",
-    "statusPending": "Очікує",
+    "statusPending": "Запис",
     "statusInProgress": "У роботі",
     "statusWaitingParts": "Очікування запчастин",
     "statusCompleted": "Завершено",

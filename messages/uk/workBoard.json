@@ -105,7 +105,7 @@
     "job": "{count} робота",
     "jobs": "{count} робіт",
     "statusLabels": {
-      "pending": "Очікує",
+      "pending": "Запис",
       "inProgress": "У роботі",
       "waitingParts": "Очікування запчастин",
       "completed": "Завершено"

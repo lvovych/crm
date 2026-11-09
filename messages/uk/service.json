@@ -93,7 +93,7 @@
       "inspection": "Огляд"
     },
     "statusOptions": {
-      "pending": "Очікує",
+      "pending": "Запис",
       "in_progress": "У роботі",
       "waiting_parts": "Очікування запчастин",
       "completed": "Завершено"
