@@ -230,11 +230,14 @@ test.describe('a workshop that picks Marine', () => {
     await expect(breadcrumb).not.toContainText('Vehicle')
   })
 
-  test('names vessels in the bottom bar on a phone', async ({ page }) => {
+  test('shows calendar in the bottom bar and vessels in More on a phone', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto('/vehicles')
     await settle(page)
 
+    await expect(page.getByRole('link', { name: 'Calendar', exact: true }).filter({ visible: true })).toHaveAttribute('href', '/calendar')
+    await expect(page.getByRole('link', { name: 'Vessels', exact: true }).filter({ visible: true })).toHaveCount(0)
+    await page.getByRole('button', { name: 'More', exact: true }).click()
     const vessels = page
       .getByRole('link', { name: 'Vessels', exact: true })
       .filter({ visible: true })

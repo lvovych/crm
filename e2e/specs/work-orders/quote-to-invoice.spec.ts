@@ -104,7 +104,7 @@ test.describe('quote to invoice', () => {
     await addPart(page, { name: PART_NAME, quantity: 1, cost: 450 })
 
     await page.getByRole('button', { name: 'Save', exact: true }).click()
-    await expect(page.getByText('Saved')).toBeVisible()
+    await expect(page.getByText('Saved', { exact: true })).toBeVisible()
 
     // An invoice number is assigned by the workshop's numbering rules, not
     // typed. Any value at all means the sequence ran.
