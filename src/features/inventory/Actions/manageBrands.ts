@@ -1,6 +1,7 @@
 'use server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
+import { saveBrandRecord } from '../Lib/saveBrandRecord'
 import { withAuth } from '@/lib/with-auth'
 import { revalidatePath } from 'next/cache'
 const schema = z.object({
@@ -22,24 +23,9 @@ export async function saveBrand(input: unknown) {
     if (!isSuperAdmin) throw new Error('Спільний довідник брендів редагує системний адміністратор.')
     const data = schema.parse(input)
     if (data.id === 'brand_unknown') throw new Error('Системний бренд не можна змінювати.')
-    return db.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(724193)`
-      const duplicate = await tx.brand.findFirst({
-        where: {
-          name: { equals: data.name, mode: 'insensitive' },
-          ...(data.id ? { id: { not: data.id } } : {}),
-        },
-      })
-      if (duplicate) throw new Error('Бренд із такою назвою вже існує.')
-      const brand = data.id
-        ? await tx.brand.update({
-            where: { id: data.id },
-            data: { name: data.name, isActive: data.isActive },
-          })
-        : await tx.brand.create({ data: { name: data.name, isActive: data.isActive } })
-      revalidatePath('/directories/brands')
-      revalidatePath('/inventory')
-      return brand
-    })
+    const brand = await db.$transaction((tx) => saveBrandRecord(tx, data))
+    revalidatePath('/directories/brands')
+    revalidatePath('/inventory')
+    return brand
   })
 }
