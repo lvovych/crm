@@ -207,7 +207,8 @@ export function WorkBoardClient({
       model: string
       year: number
       licensePlate: string | null
-      customer: { id: string; name: string; company: string | null } | null
+      vin?: string | null
+      customer: { id: string; name: string; company: string | null; phone?: string | null } | null
     }[]
   >([])
   const [vehiclePickerCustomers, setVehiclePickerCustomers] = useState<
@@ -398,6 +399,7 @@ export function WorkBoardClient({
             model: v.model,
             year: v.year,
             licensePlate: v.licensePlate,
+            vin: v.vin,
             customer: v.customer,
           }))
         : []

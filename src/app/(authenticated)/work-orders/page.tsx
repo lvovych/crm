@@ -76,6 +76,7 @@ export default async function WorkOrdersPage({
           model: v.model,
           year: v.year,
           licensePlate: v.licensePlate,
+          vin: v.vin,
           customer: v.customer,
         }))
       : []

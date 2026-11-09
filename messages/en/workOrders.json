@@ -50,7 +50,7 @@
   "vehiclePicker": {
     "title": "Select Vehicle for Work Order",
     "titleMarine": "Select Vessel for Work Order",
-    "searchPlaceholder": "Search vehicles...",
+    "searchPlaceholder": "Plate, VIN, make, owner or phone",
     "searchPlaceholderMarine": "Search vessels...",
     "empty": "No vehicles found.",
     "emptyMarine": "No vessels found.",

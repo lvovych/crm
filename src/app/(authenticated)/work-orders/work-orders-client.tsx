@@ -114,7 +114,8 @@ interface VehicleOption {
   model: string
   year: number
   licensePlate: string | null
-  customer: { id: string; name: string; company: string | null } | null
+  vin?: string | null
+  customer: { id: string; name: string; company: string | null; phone?: string | null } | null
 }
 
 interface CustomerOption {

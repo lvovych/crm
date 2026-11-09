@@ -48,7 +48,8 @@ interface Vehicle {
   model: string
   year: number
   licensePlate: string | null
-  customer: { id: string; name: string; company: string | null } | null
+  vin?: string | null
+  customer: { id: string; name: string; company: string | null; phone?: string | null } | null
 }
 
 interface Customer {
@@ -406,6 +407,7 @@ export default function CalendarClient({
         model: v.model,
         year: v.year,
         licensePlate: v.licensePlate,
+        vin: v.vin,
         customerName: v.customer?.name ?? null,
         customerId: v.customer?.id ?? null,
       })),

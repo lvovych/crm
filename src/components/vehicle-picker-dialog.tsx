@@ -28,14 +28,10 @@ import {
 } from '@/features/vehicles/Components/VehicleCatalogFields'
 import { REGISTRATION_COLORS } from '@/features/vehicles/Lib/vehicleCatalog'
 
-interface Vehicle {
-  id: string
-  make: string
-  model: string
-  year: number
-  licensePlate: string | null
-  customer: { id: string; name: string; company: string | null } | null
-}
+import {
+  matchesVehiclePickerSearch,
+  type VehiclePickerOption as Vehicle,
+} from '@/features/vehicles/Lib/vehiclePickerSearch'
 
 interface Customer {
   id: string
@@ -84,14 +80,7 @@ export function VehiclePickerDialog({
   const [creating, setCreating] = useState(false)
 
   const filteredVehicles = useMemo(() => {
-    if (!vehicleSearch.trim()) return vehicles
-    const q = vehicleSearch.toLowerCase()
-    return vehicles.filter(
-      (v) =>
-        `${v.year} ${v.make} ${v.model}`.toLowerCase().includes(q) ||
-        v.licensePlate?.toLowerCase().includes(q) ||
-        v.customer?.name.toLowerCase().includes(q)
-    )
+    return vehicles.filter((vehicle) => matchesVehiclePickerSearch(vehicle, vehicleSearch))
   }, [vehicles, vehicleSearch])
 
   const resetState = () => {
@@ -243,6 +232,7 @@ export function VehiclePickerDialog({
                 <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder={isMarine ? t('searchPlaceholderMarine') : t('searchPlaceholder')}
+                  aria-label={isMarine ? t('searchPlaceholderMarine') : t('searchPlaceholder')}
                   value={vehicleSearch}
                   onChange={(e) => setVehicleSearch(e.target.value)}
                   className="pl-9"
@@ -285,8 +275,9 @@ export function VehiclePickerDialog({
                             {v.year} {v.make} {v.model}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {[v.licensePlate, v.customer?.name].filter(Boolean).join(' · ') ||
-                              (isMarine ? t('noPlateMarine') : t('noPlate'))}
+                            {[v.licensePlate, v.customer?.name, v.customer?.phone]
+                              .filter(Boolean)
+                              .join(' · ') || (isMarine ? t('noPlateMarine') : t('noPlate'))}
                           </p>
                         </div>
                       </button>
