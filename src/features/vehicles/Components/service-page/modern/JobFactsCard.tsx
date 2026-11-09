@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { Check, ChevronDown, Copy } from 'lucide-react'
-import { useFormatCurrency } from '@/components/currency-settings-context'
 import { useDateSettings } from '@/components/date-settings-context'
 import { useFormatDate } from '@/lib/use-format-date'
 import { inspectionDisplayDate } from '@/features/vehicles/Lib/inspectionDueInput'
@@ -20,7 +19,6 @@ import { useTypeKeyEnabled } from '@/components/type-key-context'
 
 interface JobFactsCardProps {
   record: ServiceDetail
-  currencyCode: string
   /**
    * A locked invoice. The card sits outside the page's locked fieldset so that
    * "More info" and the copy buttons keep working; it disables its own
@@ -148,7 +146,6 @@ function CopyPlate({ plate, label }: { plate: string; label: string }) {
  */
 export function JobFactsCard({
   record,
-  currencyCode,
   locked = false,
   initialData,
   vehicleName,
@@ -164,7 +161,6 @@ export function JobFactsCard({
   const serviceType = useServiceType()
   const isMarine = serviceType === 'marine'
   const { formatDate } = useFormatDate()
-  const formatCurrency = useFormatCurrency()
   const { timezone } = useDateSettings()
   const [changingVehicle, setChangingVehicle] = useState(false)
 
@@ -366,7 +362,6 @@ export function JobFactsCard({
                   isMarine={isMarine}
                   rows={{ tv, tInfo, t }}
                   formatDate={formatDate}
-                  formatCurrency={(amount) => formatCurrency(amount, currencyCode)}
                   timeZone={timezone}
                   notRegisteredLabel={tDetail('notRegistered')}
                 />
@@ -412,7 +407,6 @@ function VehicleDetails({
   isMarine,
   rows: { tv, tInfo, t },
   formatDate,
-  formatCurrency,
   timeZone,
   notRegisteredLabel,
 }: {
@@ -420,7 +414,6 @@ function VehicleDetails({
   isMarine: boolean
   rows: { tv: Translate; tInfo: Translate; t: Translate }
   formatDate: (date: Date | string) => string
-  formatCurrency: (amount: number) => string
   timeZone: string
   notRegisteredLabel: string
 }) {
@@ -507,16 +500,7 @@ function VehicleDetails({
       label: tInfo('lastInspection'),
       value: lastAt ? formatDate(lastAt) : null,
     },
-    {
-      key: 'purchaseDate',
-      label: tInfo('purchaseDate'),
-      value: vehicle.purchaseDate ? formatDate(vehicle.purchaseDate) : null,
-    },
-    {
-      key: 'purchasePrice',
-      label: tInfo('purchasePrice'),
-      value: vehicle.purchasePrice ? formatCurrency(vehicle.purchasePrice) : null,
-    },
+
   ]
 
   return (

@@ -289,7 +289,6 @@ export function ModernDetails(props: ModernDetailsProps) {
                     locked invoice; the card disables its own fields. */}
                 <JobFactsCard
                   record={record}
-                  currencyCode={currencyCode}
                   locked={locked}
                   initialData={formState.initialData}
                   vehicleName={formState.vehicleName}
