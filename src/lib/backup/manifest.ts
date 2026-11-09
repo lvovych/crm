@@ -109,6 +109,12 @@ export const BACKUP_ENTITIES: readonly BackupEntity[] = [
     clearOrder: 59,
   },
   {
+    model: 'ReceiptTransfer',
+    nestedUnder: 'SupplierReceiptLine',
+    option: 'inventory',
+    restore: 'replace',
+  },
+  {
     model: 'SupplierReceiptLine',
     nestedUnder: 'SupplierReceipt',
     option: 'inventory',
