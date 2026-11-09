@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   matchesVehiclePickerSearch as matches,
+  vehiclePickerMatchFields,
   type VehiclePickerOption,
 } from '@/features/vehicles/Lib/vehiclePickerSearch'
 
@@ -191,5 +192,54 @@ describe('vehicle picker search', () => {
     expect(matches(car, '67 '.repeat(300))).toBe(false)
     expect(matches(car, 'Golf '.repeat(300))).toBe(true)
     expect(JSON.stringify(car)).toBe(before)
+  })
+})
+
+describe('vehicle picker match explanations', () => {
+  it.each([
+    ['Golf', 'vehicle'],
+    ['2015', 'year'],
+    ['AC-1234-BK', 'plate'],
+    ['андРІЙ', 'owner'],
+    ['fw123456', 'vin'],
+    ['+380 (67) 987-65-43', 'phone'],
+    ['2015 6543', 'phone'],
+    ['Воляник 0679876543 Golf', 'phone'],
+  ])('highlights %s in %s', (query, field) => {
+    expect(
+      vehiclePickerMatchFields(car, query)[
+        field as keyof ReturnType<typeof vehiclePickerMatchFields>
+      ]
+    ).toBe(true)
+  })
+  it.each([
+    '',
+    ' ',
+    '---',
+    '543',
+    'unknown',
+    '99 '.repeat(20),
+  ])('does not highlight unrelated data for %j', (query) => {
+    expect(Object.values(vehiclePickerMatchFields(car, query))).not.toContain(true)
+  })
+  it('marks separate fields for a combined query', () => {
+    expect(vehiclePickerMatchFields(car, 'Golf Андрій 6543')).toEqual({
+      vehicle: true,
+      year: false,
+      plate: false,
+      owner: true,
+      vin: false,
+      phone: true,
+    })
+  })
+  it('does not show VIN or phone highlights when data is missing', () => {
+    expect(
+      Object.values(
+        vehiclePickerMatchFields(
+          { ...car, vin: null, licensePlate: null, customer: null },
+          'Андрій 6543 FW123456'
+        )
+      )
+    ).not.toContain(true)
   })
 })

@@ -48,7 +48,7 @@ test.beforeAll(async () => {
       )
       for (const [i, id] of ids.entries()) {
         await db.query(
-          'insert into vehicles (id,make,model,year,vin,"licensePlate","customerId","organizationId","userId","isArchived","updatedAt") values ($1,$2,$3,2015,$4,$5,$6,$7,$8,$9,now())',
+          'insert into vehicles (id,make,model,year,vin,"licensePlate","customerId","organizationId","userId","isArchived","updatedAt") values ($1,$2,$3,2015,$4,$5,$6,$7,$8,$9,now()-($10 * interval \'1 second\'))',
           [
             id,
             prefix,
@@ -59,6 +59,7 @@ test.beforeAll(async () => {
             i === 3 ? otherOrgId : owner.organizationId,
             owner.userId,
             i === 2,
+            i,
           ]
         )
       }
@@ -94,7 +95,7 @@ test('new work order searches real owner contacts, VIN and plate without exposin
   ]) {
     await search.fill(query)
     await expect(dialog.getByRole('button', { name: new RegExp(prefix) })).toHaveCount(2)
-    await expect(dialog.getByText(/Воляник Андрій.*987-65-43/)).toHaveCount(2)
+    await expect(dialog.getByText('+380 (67) 987-65-43', { exact: true })).toHaveCount(2)
     await expect(dialog.getByRole('button', { name: /Archived|Foreign/ })).toHaveCount(0)
   }
   for (const query of ['AC-1230-BK', 'wvwzzz1kzfw123450', `Golf Воляник ${prefix}`]) {
@@ -123,4 +124,66 @@ test('Quick Add passes owner phone and VIN to the same search', async ({ page })
   await search.fill('wvwzzz1kzfw123450')
   await expect(dialog.getByRole('button', { name: new RegExp(prefix + ' Golf') })).toBeVisible()
   await expect(dialog.getByRole('button', { name: new RegExp(prefix + ' Passat') })).toHaveCount(0)
+})
+
+for (const viewport of [
+  { width: 1440, height: 900 },
+  { width: 390, height: 844 },
+  { width: 320, height: 568 },
+  { width: 390, height: 400 },
+]) {
+  test(`search layout and touch controls at ${viewport.width}x${viewport.height}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(viewport)
+    await page.goto('/work-orders')
+    await settle(page)
+    await page.getByRole('button', { name: 'New Work Order', exact: true }).last().click()
+    const dialog = page.getByRole('dialog')
+    const field = dialog.getByRole('textbox', { name: 'Search vehicle or owner' })
+    await field.fill(`Воляник ${prefix}`)
+    await expect(dialog.getByRole('status')).toHaveText('Found: 2')
+    const region = dialog.getByRole('region', { name: 'Search results' })
+    expect(await dialog.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1)
+    expect(await dialog.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(1)
+    for (const control of [
+      field,
+      dialog.getByRole('button', { name: 'Clear search' }),
+      dialog.getByRole('button', { name: 'Close', exact: true }),
+      dialog.getByRole('button', { name: 'Add vehicle', exact: true }),
+    ]) {
+      await expect(control).toBeInViewport()
+      const box = await control.boundingBox()
+      expect(box!.height).toBeGreaterThanOrEqual(44)
+      expect(box!.width).toBeGreaterThanOrEqual(44)
+    }
+    const last = region.getByRole('button', { name: new RegExp(prefix + ' Passat') })
+    await last.scrollIntoViewIfNeeded()
+    await expect(last).toBeInViewport()
+    await dialog.getByRole('button', { name: 'Clear search' }).click()
+    await expect(field).toHaveValue('')
+    await expect(field).toBeFocused()
+    await field.fill('missing-search-vehicle')
+    await expect(dialog.getByText('No matches for this search')).toBeVisible()
+    await expect(dialog.getByRole('button', { name: 'Add vehicle', exact: true })).toHaveCount(1)
+    await page.keyboard.press('Escape')
+    await expect(dialog).toHaveCount(0)
+  })
+}
+
+test('keyboard selects the intended result and displays VIN match context', async ({ page }) => {
+  await page.goto('/work-orders')
+  await settle(page)
+  await page.getByRole('button', { name: 'New Work Order', exact: true }).last().click()
+  const dialog = page.getByRole('dialog')
+  const field = dialog.getByRole('textbox')
+  await field.fill('wvwzzz1kzfw123450')
+  await expect(dialog.locator('mark').filter({ hasText: 'WVWZZZ1KZFW123450' })).toBeVisible()
+  await field.fill(`Воляник ${prefix}`)
+  await field.press('ArrowDown')
+  await expect(dialog.getByRole('button', { name: new RegExp(prefix + ' Golf') })).toBeFocused()
+  await page.keyboard.press('ArrowDown')
+  await expect(dialog.getByRole('button', { name: new RegExp(prefix + ' Passat') })).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(page).toHaveURL(new RegExp(`/vehicles/${ids[1]}/service/`))
 })

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useEffect, type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Loader2, Plus, Car, Search, ArrowLeft, UserPlus, ShoppingCart, Ship } from 'lucide-react'
+import { Loader2, ArrowLeft, UserPlus } from 'lucide-react'
 import { createVehicle } from '@/features/vehicles/Actions/vehicleActions'
 import { createDraftCounterSale } from '@/features/vehicles/Actions/createDraftServiceRecord'
 import { CustomerCombobox } from '@/features/quotes/Components/CustomerCombobox'
@@ -26,12 +26,10 @@ import {
   VehicleCatalogFields,
   EMPTY_VEHICLE_IDENTITY,
 } from '@/features/vehicles/Components/VehicleCatalogFields'
+import { VehiclePickerSearch } from '@/components/vehicle-picker-search'
 import { REGISTRATION_COLORS } from '@/features/vehicles/Lib/vehicleCatalog'
 
-import {
-  matchesVehiclePickerSearch,
-  type VehiclePickerOption as Vehicle,
-} from '@/features/vehicles/Lib/vehiclePickerSearch'
+import { type VehiclePickerOption as Vehicle } from '@/features/vehicles/Lib/vehiclePickerSearch'
 
 interface Customer {
   id: string
@@ -79,9 +77,22 @@ export function VehiclePickerDialog({
   const [newCustomerPhone, setNewCustomerPhone] = useState('')
   const [creating, setCreating] = useState(false)
 
-  const filteredVehicles = useMemo(() => {
-    return vehicles.filter((vehicle) => matchesVehiclePickerSearch(vehicle, vehicleSearch))
-  }, [vehicles, vehicleSearch])
+  const [viewport, setViewport] = useState<{ height: number; top: number } | null>(null)
+  useEffect(() => {
+    if (!open) return
+    const visual = window.visualViewport
+    const update = () =>
+      setViewport({ height: visual?.height ?? window.innerHeight, top: visual?.offsetTop ?? 0 })
+    update()
+    visual?.addEventListener('resize', update)
+    visual?.addEventListener('scroll', update)
+    window.addEventListener('resize', update)
+    return () => {
+      visual?.removeEventListener('resize', update)
+      visual?.removeEventListener('scroll', update)
+      window.removeEventListener('resize', update)
+    }
+  }, [open])
 
   const resetState = () => {
     setPickerStep('select')
@@ -219,83 +230,38 @@ export function VehiclePickerDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="w-[calc(100%-1rem)] max-w-md max-h-[90dvh] overflow-y-auto p-4 sm:p-6"
+        className={
+          pickerStep === 'select'
+            ? 'top-[calc(var(--picker-top,0px)+0.5rem)] flex h-[calc(var(--picker-height,100dvh)-1rem)] max-h-none w-[calc(100%-1rem)] max-w-none translate-y-0 flex-col overflow-hidden p-4 sm:top-1/2 sm:h-auto sm:max-h-[85dvh] sm:w-[640px] sm:max-w-[calc(100%-3rem)] sm:-translate-y-1/2 sm:p-6 [&>[data-slot=dialog-close]]:top-1 [&>[data-slot=dialog-close]]:right-1 [&>[data-slot=dialog-close]]:flex [&>[data-slot=dialog-close]]:size-11 [&>[data-slot=dialog-close]]:items-center [&>[data-slot=dialog-close]]:justify-center'
+            : 'w-[calc(100%-1rem)] max-w-md max-h-[90dvh] overflow-y-auto p-4 sm:p-6'
+        }
+        style={
+          viewport
+            ? ({
+                '--picker-height': `${viewport.height}px`,
+                '--picker-top': `${viewport.top}px`,
+              } as CSSProperties)
+            : undefined
+        }
         aria-describedby={undefined}
       >
         {pickerStep === 'select' ? (
           <>
-            <DialogHeader>
-              <DialogTitle>{displayTitle}</DialogTitle>
+            <DialogHeader
+              className={`shrink-0 pr-7 text-left ${viewport && viewport.height < 500 ? 'max-sm:sr-only' : ''}`}
+            >
+              <DialogTitle className="text-base leading-6 sm:text-lg">{displayTitle}</DialogTitle>
             </DialogHeader>
-            <div className="space-y-3">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder={isMarine ? t('searchPlaceholderMarine') : t('searchPlaceholder')}
-                  aria-label={isMarine ? t('searchPlaceholderMarine') : t('searchPlaceholder')}
-                  value={vehicleSearch}
-                  onChange={(e) => setVehicleSearch(e.target.value)}
-                  className="pl-9"
-                  autoFocus
-                />
-              </div>
-              <div className="max-h-[300px] overflow-y-auto">
-                {filteredVehicles.length === 0 ? (
-                  <div className="py-6 text-center space-y-3">
-                    <p className="text-sm text-muted-foreground">
-                      {vehicles.length === 0
-                        ? isMarine
-                          ? t('emptyMarine')
-                          : t('empty')
-                        : isMarine
-                          ? t('emptySearchMarine')
-                          : t('emptySearch')}
-                    </p>
-                    <Button variant="outline" onClick={() => setPickerStep('create')}>
-                      <Plus className="h-4 w-4 mr-1" />
-                      {isMarine ? t('addNewVehicleMarine') : t('addNewVehicle')}
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-1">
-                    {filteredVehicles.map((v) => (
-                      <button
-                        key={v.id}
-                        type="button"
-                        className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-muted"
-                        onClick={() => handleSelect(v.id)}
-                      >
-                        {isMarine ? (
-                          <Ship className="h-4 w-4 shrink-0 text-muted-foreground" />
-                        ) : (
-                          <Car className="h-4 w-4 shrink-0 text-muted-foreground" />
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium">
-                            {v.year} {v.make} {v.model}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {[v.licensePlate, v.customer?.name, v.customer?.phone]
-                              .filter(Boolean)
-                              .join(' · ') || (isMarine ? t('noPlateMarine') : t('noPlate'))}
-                          </p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <Button variant="ghost" className="flex-1" onClick={() => setPickerStep('create')}>
-                  <Plus className="h-4 w-4 mr-1" />
-                  {isMarine ? t('addNewVehicleMarine') : t('addNewVehicle')}
-                </Button>
-                <Button variant="ghost" className="flex-1" onClick={() => setPickerStep('sale')}>
-                  <ShoppingCart className="h-4 w-4 mr-1" />
-                  {t('partsSale')}
-                </Button>
-              </div>
-            </div>
+            <VehiclePickerSearch
+              compact={!!viewport && viewport.height < 500}
+              vehicles={vehicles}
+              query={vehicleSearch}
+              onQueryChange={setVehicleSearch}
+              onSelect={handleSelect}
+              onCreate={() => setPickerStep('create')}
+              onSale={() => setPickerStep('sale')}
+              isMarine={isMarine}
+            />
           </>
         ) : pickerStep === 'sale' ? (
           <>

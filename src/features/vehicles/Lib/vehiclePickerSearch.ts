@@ -86,3 +86,37 @@ export function matchesVehiclePickerSearch(vehicle: VehiclePickerOption, query: 
   }
   return matched[0]
 }
+
+/** Explain a match visually without changing search results or injecting HTML. */
+export function vehiclePickerMatchFields(vehicle: VehiclePickerOption, query: string) {
+  const words = text(query)
+    .trim()
+    .split(/\s+/)
+    .filter((word) => /[\p{L}\p{N}]/u.test(word))
+  const contains = (value: string, normalize = text) =>
+    words.some((word) => !!normalize(word) && normalize(value).includes(normalize(word)))
+  const phone = phoneDigits(vehicle.customer?.phone ?? '')
+  const phoneWords = text(query).trim().split(/\s+/)
+  let phoneMatched = false
+  for (let start = 0; start < phoneWords.length && !phoneMatched; start++) {
+    let fragments = ''
+    for (let end = start; end < phoneWords.length; end++) {
+      if (!/^[\d+()\-–—]+$/.test(phoneWords[end])) break
+      fragments += phoneWords[end]
+      const digits = phoneDigits(fragments)
+      if (digits.length > Math.max(phone.length, 12)) break
+      if (digits.length >= 4 && phone.endsWith(digits)) {
+        phoneMatched = true
+        break
+      }
+    }
+  }
+  return {
+    vehicle: contains(`${vehicle.make} ${vehicle.model}`),
+    year: contains(String(vehicle.year)),
+    plate: contains(vehicle.licensePlate ?? '', plate),
+    owner: contains(vehicle.customer?.name ?? ''),
+    vin: contains(vehicle.vin ?? '', compact),
+    phone: phoneMatched,
+  }
+}
