@@ -40,6 +40,7 @@ const DEFAULT_JOB_MINUTES = 60
 export async function createDraftRecord(
   { organizationId, userId }: { organizationId: string; userId: string },
   opts: {
+    id?: string
     vehicleId: string | null
     customerId: string | null
     customerExempt: boolean
@@ -261,6 +262,7 @@ export async function createDraftRecord(
 
   return writer.serviceRecord.create({
     data: {
+      ...(opts.id ? { id: opts.id } : {}),
       organizationId,
       createdById: userId,
       title,

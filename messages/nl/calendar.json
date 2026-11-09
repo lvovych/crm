@@ -145,5 +145,27 @@
     }
   },
   "previousMonth": "Vorige maand",
-  "nextMonth": "Volgende maand"
+  "nextMonth": "Volgende maand",
+  "quickBooking": {
+    "title": "Book customer",
+    "reason": "Reason for visit",
+    "date": "Date",
+    "time": "Start time",
+    "duration": "Duration",
+    "minutes": "{count} min",
+    "resources": "Mechanic and work bay (optional)",
+    "mechanic": "Mechanic",
+    "bay": "Work bay",
+    "defaultMechanic": "Workshop default",
+    "noBay": "Not assigned",
+    "changeVehicle": "Change vehicle",
+    "selectedVehicle": "Vehicle selected",
+    "openAfterSave": "Open work order after saving",
+    "save": "Save booking",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "saved": "Booking saved",
+    "error": "Could not save the booking. Check the fields and try again.",
+    "weekDates": "Week dates"
+  }
 }

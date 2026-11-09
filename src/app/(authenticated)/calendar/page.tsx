@@ -75,6 +75,7 @@ export default async function CalendarPage({
           model: v.model,
           year: v.year,
           licensePlate: v.licensePlate,
+          vin: v.vin,
           customer: v.customer,
         }))
       : []
@@ -88,6 +89,7 @@ export default async function CalendarPage({
           initialEvents={events}
           initialRange={rangeKeys}
           initialView={view}
+          explicitView={isCalendarView(params.view)}
           initialDate={toLocalDateStr(date)}
           todayStr={todayStr}
           vehicles={vehicles}

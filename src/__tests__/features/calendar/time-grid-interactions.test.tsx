@@ -187,7 +187,7 @@ describe('TimeGridView', () => {
     expect(screen.getByText('AC1234AA Volvo V90')).toBeInTheDocument()
   })
 
-  it('opens the create menu at the clicked quarter hour and hands the time on', async () => {
+  it('opens quick booking directly at the clicked half hour', async () => {
     const { columns, actions, onSelectDate } = setup()
     const tuesday = columns[1]
     fireEvent.click(tuesday, { clientX: 10, clientY: 620 })
@@ -196,16 +196,13 @@ describe('TimeGridView', () => {
     expect(onSelectDate.mock.calls[0][0].getDate()).toBe(1)
 
     // 620px of 1440 is 10:20, which rounds to the half hour
-    const item = await screen.findByText('New work order at 10:30')
-    expect(screen.getByText('Schedule message')).toBeInTheDocument()
-    fireEvent.click(item)
     expect(actions.onNewWorkOrder).toHaveBeenCalledWith('2026-09-01', '10:30')
-    await waitFor(() => expect(screen.queryByText('Schedule message')).not.toBeInTheDocument())
+    expect(screen.queryByText('Schedule message')).not.toBeInTheDocument()
   })
 
   it('passes the slot time to a scheduled message too', async () => {
     const { columns, actions } = setup()
-    fireEvent.click(columns[2], { clientX: 10, clientY: 900 })
+    fireEvent.contextMenu(columns[2], { clientX: 10, clientY: 900 })
     fireEvent.click(await screen.findByText('Schedule message'))
     expect(actions.onScheduleMessage).toHaveBeenCalledWith('2026-09-02', '15:00')
   })
@@ -247,7 +244,7 @@ describe('TimeGridView', () => {
   it('still offers a scheduled message for a slot that has passed; the dialog says no', async () => {
     const { columns, actions } = setup()
     vi.setSystemTime(new Date(2026, 8, 2, 16, 0)) // 2 Sep, 16:00
-    fireEvent.click(columns[2], { clientX: 10, clientY: 600 }) // 2 Sep, 10:00
+    fireEvent.contextMenu(columns[2], { clientX: 10, clientY: 600 }) // 2 Sep, 10:00
     fireEvent.click(await screen.findByText('Schedule message'))
     expect(actions.onScheduleMessage).toHaveBeenCalledWith('2026-09-02', '10:00')
     vi.setSystemTime(new Date(2026, 7, 15, 12, 0))

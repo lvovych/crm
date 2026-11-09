@@ -126,7 +126,11 @@ export function CalendarToolbar({
         aria-hidden={!loading}
       />
 
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto flex flex-wrap items-center gap-2">
+        <Button className="min-h-11" onClick={() => onCreate('workOrder')}>
+          <Plus className="mr-1.5 h-4 w-4" />
+          {t('quickBooking.title')}
+        </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm" className="h-9 min-w-[7rem] justify-between">
@@ -170,7 +174,12 @@ export function CalendarToolbar({
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button size="sm" className="h-9">
+            <Button
+              variant="outline"
+              size="sm"
+              className="min-h-11"
+              aria-label={t('toolbar.create')}
+            >
               <Plus className="h-4 w-4 sm:mr-1.5" />
               <span className="hidden sm:inline">{t('toolbar.create')}</span>
             </Button>
