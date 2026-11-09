@@ -25,7 +25,7 @@ for (const mobile of [false, true]) {
     if (mobile) await page.setViewportSize({ width: 390, height: 844 })
     await page.goto('/work-orders?new=1')
     await settle(page)
-    await page.getByRole('dialog').getByRole('button', { name: 'Add New Vehicle' }).first().click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Add vehicle', exact: true }).click()
     const dialog = page.getByRole('dialog', { name: 'Add New Vehicle', exact: true })
     await expect(dialog).toBeVisible()
     await dialog.getByRole('combobox', { name: 'Make *' }).click()

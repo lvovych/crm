@@ -115,7 +115,7 @@ test.describe('the free plan', () => {
     await expect(async () => {
       await page
         .getByRole('dialog', { name: 'Select Vehicle' })
-        .getByRole('button', { name: 'Add New Vehicle' })
+        .getByRole('button', { name: 'Add vehicle', exact: true })
         .first()
         .click()
       await expect(page.locator('#new-make')).toBeVisible({ timeout: 2_000 })

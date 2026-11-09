@@ -144,6 +144,10 @@ for (const viewport of [
     await field.fill(`Воляник ${prefix}`)
     await expect(dialog.getByRole('status')).toHaveText('Found: 2')
     const region = dialog.getByRole('region', { name: 'Search results' })
+    // Measure the final hit target, not the dialog's opening scale animation.
+    await dialog.evaluate(async (el) => {
+      await Promise.all(el.getAnimations().map((animation) => animation.finished))
+    })
     expect(await dialog.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1)
     expect(await dialog.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(1)
     for (const control of [
