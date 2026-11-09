@@ -1,7 +1,9 @@
 'use client'
 
+import { BoardJobIdentity } from './BoardJobIdentity'
+
 import { useDroppable } from '@dnd-kit/core'
-import { ClipboardCheck, Wrench } from 'lucide-react'
+import { ClipboardCheck } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 import type { WorkBoardJob } from '../Actions/boardActions'
@@ -213,19 +215,22 @@ function DayCell({
 function StaticJobCard({ job }: { job: WorkBoardJob }) {
   return (
     <div className="rounded-md border bg-card p-1.5 text-xs shadow-sm">
-      <div className="flex items-center gap-1">
-        {job.type === 'serviceRecord' ? (
-          <Wrench className="h-3 w-3 shrink-0 text-blue-500" />
-        ) : (
-          <ClipboardCheck className="h-3 w-3 shrink-0 text-green-500" />
-        )}
-        <span className="truncate font-medium">{job.title}</span>
-      </div>
-      {job.vehicle && (
-        <p className="truncate text-muted-foreground">
-          {job.vehicle.year} {job.vehicle.make} {job.vehicle.model}
-          {job.vehicle.licensePlate ? ` · ${job.vehicle.licensePlate}` : ''}
-        </p>
+      {job.type === 'serviceRecord' ? (
+        <BoardJobIdentity job={job} />
+      ) : (
+        <>
+          <div className="flex items-center gap-1">
+            <ClipboardCheck className="h-3 w-3 shrink-0 text-green-500" />
+
+            <span className="truncate font-medium">{job.title}</span>
+          </div>
+          {job.vehicle && (
+            <p className="truncate text-muted-foreground">
+              {job.vehicle.year} {job.vehicle.make} {job.vehicle.model}
+              {job.vehicle.licensePlate ? ` · ${job.vehicle.licensePlate}` : ''}
+            </p>
+          )}
+        </>
       )}
     </div>
   )

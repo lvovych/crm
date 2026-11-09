@@ -1,5 +1,7 @@
 'use client'
 
+import { BoardJobIdentity } from '../BoardJobIdentity'
+
 import { useRef } from 'react'
 import { ChevronDown, ChevronUp, ClipboardCheck, Wrench } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -142,6 +144,8 @@ export function WeekJobBlock({
           <div className="pointer-events-none flex h-full items-start gap-1 font-semibold tabular-nums">
             <span className="truncate">{timeLabel}</span>
           </div>
+        ) : isServiceRecord ? (
+          <BoardJobIdentity job={job} />
         ) : (
           <div className="pointer-events-none flex items-start gap-1">
             {continuesBefore ? (

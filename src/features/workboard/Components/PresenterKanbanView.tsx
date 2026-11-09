@@ -1,5 +1,7 @@
 'use client'
 
+import { BoardJobIdentity } from './BoardJobIdentity'
+
 import { Wrench, ClipboardCheck } from 'lucide-react'
 import type { Technician } from '../store/workboardStore'
 import type { WorkBoardJob } from '../Actions/boardActions'
@@ -18,19 +20,25 @@ function KanbanCard({ job }: { job: WorkBoardJob }) {
 
   return (
     <div className="rounded-lg border bg-card p-2.5 shadow-sm">
-      <div className="flex items-center gap-1.5">
-        {isServiceRecord ? (
-          <Wrench className="h-4 w-4 shrink-0 text-blue-500" />
-        ) : (
-          <ClipboardCheck className="h-4 w-4 shrink-0 text-green-500" />
-        )}
-        <span className="truncate text-sm font-semibold">{job.title}</span>
-      </div>
-      {job.vehicle && (
-        <p className="mt-1 truncate text-sm text-muted-foreground">
-          {job.vehicle.year} {job.vehicle.make} {job.vehicle.model}
-          {job.vehicle.licensePlate ? ` · ${job.vehicle.licensePlate}` : ''}
-        </p>
+      {job.type === 'serviceRecord' ? (
+        <BoardJobIdentity job={job} />
+      ) : (
+        <>
+          <div className="flex items-center gap-1.5">
+            {isServiceRecord ? (
+              <Wrench className="h-4 w-4 shrink-0 text-blue-500" />
+            ) : (
+              <ClipboardCheck className="h-4 w-4 shrink-0 text-green-500" />
+            )}
+            <span className="truncate text-sm font-semibold">{job.title}</span>
+          </div>
+          {job.vehicle && (
+            <p className="mt-1 truncate text-sm text-muted-foreground">
+              {job.vehicle.year} {job.vehicle.make} {job.vehicle.model}
+              {job.vehicle.licensePlate ? ` · ${job.vehicle.licensePlate}` : ''}
+            </p>
+          )}
+        </>
       )}
     </div>
   )
