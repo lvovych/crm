@@ -7,7 +7,7 @@ test.beforeAll(async () => {
 })
 async function choose(page: Page, label: string, name: string) {
   await page.getByRole('combobox', { name: label, exact: true }).click()
-  await page.getByLabel(`Пошук: ${label}`).fill(name)
+  await page.getByRole('combobox', { name: `Пошук: ${label}`, exact: true }).fill(name)
   await page.getByRole('option', { name, exact: true }).click()
 }
 async function open(page: Page, number: string) {
@@ -43,9 +43,13 @@ test('ambiguous article requires a brand and inactive brands are not offered', a
   await expect(page.getByText(/Уточніть бренд/)).toBeVisible()
   await expect(page.getByLabel('Назва', { exact: true })).toHaveValue('')
   await page.getByRole('combobox', { name: 'Бренд', exact: true }).click()
-  await page.getByLabel('Пошук: Бренд').fill(fixture.brands[2].name)
+  await page
+    .getByRole('combobox', { name: 'Пошук: Бренд', exact: true })
+    .fill(fixture.brands[2].name)
   await expect(page.getByText('Нічого не знайдено')).toBeVisible()
-  await page.getByLabel('Пошук: Бренд').fill(fixture.brands[1].name)
+  await page
+    .getByRole('combobox', { name: 'Пошук: Бренд', exact: true })
+    .fill(fixture.brands[1].name)
   await page.getByRole('option', { name: fixture.brands[1].name, exact: true }).click()
   await expect(page.getByLabel('Назва', { exact: true })).toHaveValue(fixture.prefix + ' shared 1')
   await expect(page.getByLabel('Ціна, грн', { exact: true })).toHaveValue('21')
@@ -110,7 +114,11 @@ for (const width of [390, 1280, 1600]) {
     await summary.scrollIntoViewIfNeeded()
     await expect(summary.getByRole('button', { name: 'Зберегти й провести' })).toBeInViewport()
     expect(
-      await page.locator('main').evaluate((el) => el.scrollWidth - el.clientWidth)
+      await page
+        .locator('main')
+        .evaluateAll((elements) =>
+          Math.max(...elements.map((el) => el.scrollWidth - el.clientWidth))
+        )
     ).toBeLessThanOrEqual(1)
     const buttons = await summary
       .getByRole('button')
