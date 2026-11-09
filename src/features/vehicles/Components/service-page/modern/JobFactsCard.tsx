@@ -266,26 +266,7 @@ export function JobFactsCard({
             <h3 className="font-display text-sm font-semibold tracking-tight">
               {t('basicInfo.vehicle')}
             </h3>
-            <div className="flex items-center gap-3">
-              {selectedVehicleId && (
-                <Link
-                  href={`/vehicles/${selectedVehicleId}`}
-                  className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  {t('modern.serviceHistory')}
-                </Link>
-              )}
-              {vehicle && !changingVehicle && (
-                <button
-                  type="button"
-                  disabled={locked}
-                  onClick={() => setChangingVehicle(true)}
-                  className="cursor-pointer text-xs font-medium text-muted-foreground transition-colors hover:text-foreground disabled:cursor-default disabled:opacity-50"
-                >
-                  {t('modern.changeVehicle')}
-                </button>
-              )}
-            </div>
+
           </div>
 
           {vehicle && (
@@ -359,6 +340,26 @@ export function JobFactsCard({
               {customer && <CustomerDetails customer={customer} formatDate={formatDate} />}
             </div>
             <div className="order-4 border-t border-card-edge px-4 py-3 @xl:order-none">
+            <div className="mb-3 flex flex-wrap items-center gap-3">
+              {selectedVehicleId && (
+                <Link
+                  href={`/vehicles/${selectedVehicleId}`}
+                  className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  {t('modern.serviceHistory')}
+                </Link>
+              )}
+              {vehicle && !changingVehicle && (
+                <button
+                  type="button"
+                  disabled={locked}
+                  onClick={() => setChangingVehicle(true)}
+                  className="cursor-pointer text-xs font-medium text-muted-foreground transition-colors hover:text-foreground disabled:cursor-default disabled:opacity-50"
+                >
+                  {t('modern.changeVehicle')}
+                </button>
+              )}
+            </div>
               {vehicle && (
                 <VehicleDetails
                   vehicle={vehicle}
@@ -560,6 +561,7 @@ function CustomerDetails({
   const tForm = useTranslations('customers.form')
   const tDetail = useTranslations('customers.detail')
   const tCommon = useTranslations('common.form')
+  const tModern = useTranslations('service.modern')
 
   const rows: {
     key: string
@@ -588,6 +590,7 @@ function CustomerDetails({
       value: customer.createdAt ? formatDate(customer.createdAt) : null,
     },
     { key: 'notes', label: tCommon('notes'), value: customer.notes ?? null, multiline: true },
+    { key: 'email', label: tModern('email'), value: customer.email ?? null, copy: true },
   ]
 
   const badges = [
