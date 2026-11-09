@@ -1,13 +1,5 @@
-/**
- * The phone's bottom bar names the vehicle list the way the sidebar does.
- *
- * A marine workshop services vessels, and the sidebar already says so. The
- * bottom bar is the same link on a phone, and it said "Vehicles" to every
- * workshop until it followed the service type too.
- */
-
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { ServiceTypeProvider } from '@/components/service-type-context'
 
 vi.mock('next/navigation', () => ({
@@ -39,6 +31,9 @@ function renderNav(serviceType?: string) {
 describe('MobileBottomNav', () => {
   it('shows Vehicles with a car to an automotive workshop', () => {
     renderNav('automotive')
+    expect(screen.getByRole('link', { name: 'Calendar' })).toHaveAttribute('href', '/calendar')
+    expect(screen.queryByRole('link', { name: 'Vehicles' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'More' }))
     const link = screen.getByRole('link', { name: 'Vehicles' })
     expect(link).toHaveAttribute('href', '/vehicles')
     expect(link.querySelector('.lucide-car')).not.toBeNull()
@@ -47,11 +42,13 @@ describe('MobileBottomNav', () => {
 
   it('treats a workshop with no service type stored as automotive', () => {
     renderNav(undefined)
+    fireEvent.click(screen.getByRole('button', { name: 'More' }))
     expect(screen.getByRole('link', { name: 'Vehicles' })).toBeInTheDocument()
   })
 
   it('shows Vessels with a ship to a marine workshop, on the same list', () => {
     renderNav('marine')
+    fireEvent.click(screen.getByRole('button', { name: 'More' }))
     const link = screen.getByRole('link', { name: 'Vessels' })
     expect(link).toHaveAttribute('href', '/vehicles')
     expect(link.querySelector('.lucide-ship')).not.toBeNull()

@@ -53,6 +53,16 @@ async function open(name = 'Assign mechanic') {
   await screen.findByRole('dialog', { name: 'Choose mechanic' })
 }
 describe('mechanic assignment outside scheduling', () => {
+  it('keeps the assigned mechanic out of planning, with assignment only in the upper section', () => {
+    const { container } = show('one')
+    expect(screen.getByTestId('assigned-mechanic')).toHaveTextContent('Ivan Mechanic')
+    const planning = container.querySelector('details')!
+    fireEvent.click(planning.querySelector('summary')!)
+    expect(planning).not.toHaveTextContent('Ivan Mechanic')
+    expect(planning.querySelector('[role="combobox"][aria-expanded]')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Change mechanic' })).toBeVisible()
+  })
+
   it('is visible while planning is collapsed; search narrows the names', async () => {
     const { container } = show()
     expect(container.querySelector('details')).not.toHaveAttribute('open')

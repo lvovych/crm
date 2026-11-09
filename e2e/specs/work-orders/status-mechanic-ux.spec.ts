@@ -64,6 +64,20 @@ for (const viewport of [
     await saveWorkOrder(page)
     await settle(page)
     await page.setViewportSize(viewport)
+    const facts = page.getByTestId('job-facts')
+    const more = facts.getByRole('button', { name: 'More info', exact: true })
+    if (await facts.getByTestId('vehicle-details').isVisible()) {
+      await facts.getByRole('button', { name: 'Less info', exact: true }).click()
+    }
+    await expect(facts.getByRole('link', { name: 'Service history' })).toHaveCount(0)
+    await expect(facts.getByTestId('customer-detail-email')).toHaveCount(0)
+    await more.click()
+    await expect(facts.getByRole('link', { name: 'Service history' })).toBeVisible()
+    await expect(facts.getByTestId('customer-detail-email')).toBeVisible()
+    await expect(facts.getByTestId('vehicle-detail-purchasePrice')).toHaveCount(0)
+    await expect(facts.getByTestId('vehicle-detail-purchaseDate')).toHaveCount(0)
+    await facts.getByRole('button', { name: 'Less info', exact: true }).click()
+
     const planning = page
       .locator('details')
       .filter({ has: page.locator('summary').filter({ hasText: /^Scheduling/ }) })
