@@ -203,7 +203,9 @@ describe('receipt failures and service entry', () => {
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Документ змінився'))
     expect(screen.getByLabelText('Ціна, грн')).toHaveValue(88.1234)
     expect(push).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: 'Зберегти чернетку' }))
+    const retry = await screen.findByRole('button', { name: 'Зберегти чернетку' })
+    await waitFor(() => expect(retry).toBeEnabled())
+    fireEvent.click(retry)
     await waitFor(() => expect(push).toHaveBeenCalledWith('/receipts/saved'))
   })
   it('offers the existing duplicate without navigating away or discarding data', async () => {
