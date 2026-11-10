@@ -99,7 +99,7 @@ describe('settlement overview interactions', () => {
       reason: 'Потрібна ручна звірка',
     })
     render(<OverviewClient data={data({ parties: [p] })} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Потребує звірки (1)' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Не враховано в підсумках (1)' }))
     fireEvent.click(screen.getByRole('button', { name: 'Документи: Клієнт А' }))
     expect(
       within(screen.getByRole('dialog')).queryByRole('article', { name: 'Наряд А' })
@@ -167,4 +167,16 @@ it('shows both the advance and expected amount for a job in progress', () => {
   expect(dialog.getByText('40,00 грн')).toBeVisible()
   expect(dialog.getByText('Очікувана сума в роботі')).toBeVisible()
   expect(dialog.getByText('100,00 грн')).toBeVisible()
+})
+
+it('uses the exclusion label consistently in the tab, filter and party notice', () => {
+  const p = party('А')
+  p.documents[0].reason = 'Позначено оплаченим вручну'
+  render(<OverviewClient data={data({ parties: [p] })} />)
+  expect(screen.getByRole('button', { name: 'Не враховано в підсумках (1)' })).toBeVisible()
+  expect(screen.getByRole('option', { name: 'Не враховано в підсумках' })).toBeInTheDocument()
+  expect(screen.getByRole('article', { name: 'Клієнт А' })).toHaveTextContent(
+    'Не враховано в підсумках: 1 документів'
+  )
+  expect(screen.queryByText(/Потребу[єють]+ звірки/)).not.toBeInTheDocument()
 })

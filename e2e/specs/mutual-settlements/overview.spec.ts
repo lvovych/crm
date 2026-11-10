@@ -99,7 +99,18 @@ for (const viewport of [
         ).toHaveAttribute('href', `/sales/${order}`)
         await page.keyboard.press('Escape')
         await page.getByRole('button', { name: 'Скинути фільтри' }).click()
-        await page.getByRole('button', { name: 'Потребує звірки (1)' }).click()
+        const excludedTab = page.getByRole('button', { name: 'Не враховано в підсумках (1)' })
+        await expect(excludedTab).toBeVisible()
+        expect(
+          await excludedTab.evaluate(
+            (el) => el.scrollHeight <= el.clientHeight && el.scrollWidth <= el.clientWidth
+          )
+        ).toBe(true)
+        await excludedTab.click()
+        await page.screenshot({
+          path: `/tmp/settlements-excluded-${viewport.name}.png`,
+          fullPage: true,
+        })
         await expect(customerCard).toContainText('TEST-REVIEW')
         await page.getByRole('button', { name: 'Постачальники', exact: true }).click()
         await expect(

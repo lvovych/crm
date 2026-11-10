@@ -144,7 +144,11 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
   const issues = data.parties.reduce((n, p) => n + p.documents.filter((d) => d.reason).length, 0)
   const unavailable = view === 'customer' && data.customersHistoricalUnavailable
   const supplierFailed = view === 'supplier' && !!data.supplierError
-  const tabs = { customer: 'Клієнти', supplier: 'Постачальники', review: 'Потребує звірки' }
+  const tabs = {
+    customer: 'Клієнти',
+    supplier: 'Постачальники',
+    review: 'Не враховано в підсумках',
+  }
   return (
     <div className="mx-auto w-full max-w-7xl space-y-5 p-4 pb-24 sm:p-6">
       <header className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
@@ -179,7 +183,7 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
             key={v}
             aria-pressed={view === v}
             variant={view === v ? 'default' : 'outline'}
-            className="min-h-11 whitespace-normal"
+            className="h-auto min-h-11 whitespace-normal px-2 py-2"
             onClick={() => {
               setView(v)
               setFilter('all')
@@ -331,7 +335,7 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
                   <option value="debt">З боргом</option>
                   <option value="overdue">З простроченням</option>
                   <option value="advance">З авансом</option>
-                  <option value="review">Потребують звірки</option>
+                  <option value="review">Не враховано в підсумках</option>
                 </select>
               </label>
               <label className="text-sm">
@@ -424,8 +428,8 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
                   )}
                   {p.documents.some((d) => d.reason) && (
                     <p className="mt-3 rounded-md bg-amber-500/10 p-2 text-sm">
-                      Потребують звірки: {p.documents.filter((d) => d.reason).length} документів. Не
-                      включені до сум.
+                      Не враховано в підсумках: {p.documents.filter((d) => d.reason).length}{' '}
+                      документів. Не включені до сум.
                     </p>
                   )}
                   {view === 'review' && (
