@@ -557,3 +557,38 @@ describe('company details', () => {
     expect(api.saveFinanceDirectory).not.toHaveBeenCalled()
   })
 })
+
+it('prefills and saves IBAN for an existing bank account', async () => {
+  const data = {
+    ...fixture(),
+    accounts: [
+      {
+        ...fixture().accounts[0],
+        id: 'bank',
+        name: 'Банк',
+        kind: 'bank',
+        iban: 'UA213223130000026007233566001',
+      },
+    ],
+  }
+  api.saveFinanceDirectory.mockResolvedValue({ success: true })
+  render(<FinanceClient settingsOnly initial={data} today="2026-11-10" />)
+  fireEvent.click(screen.getByRole('button', { name: 'Редагувати реквізити рахунку' }))
+  expect(screen.getByLabelText('IBAN')).toHaveValue('UA213223130000026007233566001')
+  fireEvent.change(screen.getByLabelText('IBAN'), { target: { value: '' } })
+  fireEvent.submit(screen.getByLabelText('IBAN').closest('form')!)
+  await waitFor(() =>
+    expect(api.saveFinanceDirectory).toHaveBeenCalledWith({
+      type: 'rename',
+      kind: 'account',
+      id: 'bank',
+      name: 'Банк',
+      iban: '',
+    })
+  )
+})
+it('does not show IBAN when editing a cash account', () => {
+  render(<FinanceClient settingsOnly initial={fixture()} today="2026-11-10" />)
+  fireEvent.click(screen.getByRole('button', { name: 'Редагувати реквізити рахунку' }))
+  expect(screen.queryByLabelText('IBAN')).not.toBeInTheDocument()
+})

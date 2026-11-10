@@ -241,6 +241,10 @@ export function FinanceClient({
         result = await saveFinanceDirectory({
           type: 'rename',
           kind: modal.split(':')[1],
+          ...(modal === 'rename:account' &&
+          data.accounts.find((a) => a.id === selected)?.kind === 'bank'
+            ? { iban: v('iban') }
+            : {}),
           id: selected,
           name: v('name'),
         })
@@ -604,7 +608,11 @@ export function FinanceClient({
                     open(a.kind === 'entity' ? 'editEntity' : `rename:${a.kind}`, a.id)
                   }
                 >
-                  {a.kind === 'entity' ? 'Редагувати реквізити' : 'Змінити назву'}
+                  {a.kind === 'entity'
+                    ? 'Редагувати реквізити'
+                    : a.kind === 'account'
+                      ? 'Редагувати реквізити рахунку'
+                      : 'Змінити назву'}
                 </Button>
               </div>
             ))}
@@ -991,7 +999,9 @@ export function FinanceClient({
           <DialogHeader>
             <DialogTitle>
               {modal.startsWith('rename:')
-                ? 'Змінити назву'
+                ? modal === 'rename:account'
+                  ? 'Редагувати реквізити рахунку'
+                  : 'Змінити назву'
                 : labels[modal] ||
                   {
                     choose: 'Додати операцію',
@@ -1114,6 +1124,17 @@ export function FinanceClient({
                     />
                   </Field>
                 )}
+                {modal === 'rename:account' &&
+                  data.accounts.find((a) => a.id === selected)?.kind === 'bank' && (
+                    <Field label="IBAN">
+                      <Input
+                        name="iban"
+                        defaultValue={data.accounts.find((a) => a.id === selected)?.iban ?? ''}
+                        autoCapitalize="characters"
+                        spellCheck={false}
+                      />
+                    </Field>
+                  )}
                 {modal === 'account' && (
                   <>
                     <Field label="Власний ФОП / компанія">

@@ -29,7 +29,8 @@ for (const viewport of [
       const db = new Client({ connectionString: url })
       await db.connect()
       const entity = randomUUID(),
-        account = randomUUID()
+        account = randomUUID(),
+        bank = randomUUID()
       try {
         await db.query(
           'insert into own_legal_entities(id,"organizationId",name) values($1,$2,$3)',
@@ -38,6 +39,10 @@ for (const viewport of [
         await db.query(
           'insert into money_accounts(id,"organizationId","legalEntityId",name,kind) values($1,$2,$3,$4,$5)',
           [account, owner.organizationId, entity, 'Тестова каса', 'cash']
+        )
+        await db.query(
+          'insert into money_accounts(id,"organizationId","legalEntityId",name,kind) values($1,$2,$3,$4,$5)',
+          [bank, owner.organizationId, entity, 'Тестовий банк', 'bank']
         )
         const before = (await db.query('select * from money_accounts where id=$1', [account])).rows
         await page.goto('/auth/sign-in')
@@ -72,6 +77,35 @@ for (const viewport of [
           path: `/tmp/company-details-${viewport.name}.png`,
           animations: 'disabled',
         })
+        await dialog.getByRole('button', { name: 'Скасувати', exact: true }).click()
+        const bankRow = page
+          .locator('div')
+          .filter({ has: page.getByText('Тестовий банк', { exact: true }) })
+          .filter({
+            has: page.getByRole('button', { name: 'Редагувати реквізити рахунку', exact: true }),
+          })
+          .last()
+        await bankRow
+          .getByRole('button', { name: 'Редагувати реквізити рахунку', exact: true })
+          .click()
+        await expect(dialog.getByLabel('IBAN')).toHaveValue('')
+        await dialog.getByLabel('IBAN').fill('ua21 322313 0000026007233566001')
+        await dialog.getByRole('button', { name: 'Зберегти', exact: true }).click()
+        await expect(dialog).not.toBeVisible()
+        await page.reload()
+        await settle(page)
+        await bankRow
+          .getByRole('button', { name: 'Редагувати реквізити рахунку', exact: true })
+          .click()
+        await expect(dialog.getByLabel('IBAN')).toHaveValue('UA213223130000026007233566001')
+        await page.screenshot({
+          path: `/tmp/bank-details-${viewport.name}.png`,
+          animations: 'disabled',
+        })
+        expect(
+          (await db.query('select "legalEntityId",iban from money_accounts where id=$1', [bank]))
+            .rows
+        ).toEqual([{ legalEntityId: entity, iban: 'UA213223130000026007233566001' }])
         await dialog.getByRole('button', { name: 'Скасувати', exact: true }).click()
         expect(
           (await db.query('select * from money_accounts where id=$1', [account])).rows
