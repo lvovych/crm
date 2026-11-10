@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/react'
+import { act, render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 const api = vi.hoisted(() => ({
   financeReport: vi.fn(),
@@ -19,6 +19,7 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
 import { FinanceClient } from '@/features/finance/FinanceClient'
 import { AccountSelect } from '@/features/finance/AccountSelect'
 const fixture = () => ({
+  asOf: '2026-11-10',
   active: true,
   start: '2026-11-01',
   isAdmin: true,
@@ -43,6 +44,34 @@ beforeEach(() => {
 })
 afterEach(cleanup)
 describe('cash interface', () => {
+  it('ignores stale responses when the as-of date is changed quickly', async () => {
+    let older!: (value: unknown) => void, newer!: (value: unknown) => void
+    api.financeReport
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            older = resolve
+          })
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            newer = resolve
+          })
+      )
+    render(<FinanceClient initial={fixture()} today="2026-11-10" />)
+    fireEvent.change(screen.getByLabelText('Залишки на кінець дати'), {
+      target: { value: '2026-11-11' },
+    })
+    fireEvent.change(screen.getByLabelText('Залишки на кінець дати'), {
+      target: { value: '2026-11-12' },
+    })
+    await act(async () => newer({ success: true, data: { ...fixture(), asOf: '2026-11-12' } }))
+    await act(async () => older({ success: true, data: { ...fixture(), asOf: '2026-11-11' } }))
+    expect(screen.getByText('Рухи до 2026-11-12 включно')).toBeVisible()
+    expect(screen.queryByText('Рухи до 2026-11-11 включно')).not.toBeInTheDocument()
+  })
+
   it('keeps the inactive workflow explicit and disables posting', () => {
     render(
       <FinanceClient initial={{ ...fixture(), active: false, start: null }} today="2026-11-10" />

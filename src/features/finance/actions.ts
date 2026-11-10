@@ -129,6 +129,7 @@ export async function financeReport(asOf: string) {
         select: { id: true, name: true },
       })
       return {
+        asOf,
         drafts: drafts.map((d) => ({
           id: d.id,
           kind: d.kind,
@@ -599,7 +600,7 @@ export async function reverseMoneyDocument(raw: unknown) {
           if (before.locked && !after.locked && before.reason)
             throw new DocumentLockedError(before.reason)
           // An append-only negative payment preserves existing totals and print consumers.
-          await tx.payment.create({
+          const compensation = await tx.payment.create({
             data: {
               serviceRecordId: record.id,
               amount: -Number(old.amount),
@@ -611,14 +612,7 @@ export async function reverseMoneyDocument(raw: unknown) {
               externalId: old.id,
             },
           })
-        }
-        if (old.payment) {
-          // Locate the compensating payment created in this transaction.
-          reversalPaymentId = (
-            await tx.payment.findFirstOrThrow({
-              where: { provider: 'finance-reversal', externalId: old.id },
-            })
-          ).id
+          reversalPaymentId = compensation.id
         }
         if (old.supplierEntry) {
           const { lockSupplier, reverseEntry } = await import('@/features/settlements/ledger')

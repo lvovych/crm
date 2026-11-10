@@ -50,6 +50,7 @@ export function FinanceClient({ initial, today }: { initial: Report; today: stri
     [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [selected, setSelected] = useState('')
+  const reportRequest = useRef(0)
   const key = useRef(''),
     pending = useRef(false)
   const open = (kind: string, id = '') => {
@@ -59,12 +60,14 @@ export function FinanceClient({ initial, today }: { initial: Report; today: stri
     setModal(kind)
   }
   const refresh = async (asOf = date) => {
+    const request = ++reportRequest.current
     const r = await financeReport(asOf)
+    if (request !== reportRequest.current) return
     if (r.success && r.data) setData(r.data)
     else setError(r.error || 'Не вдалося оновити дані.')
   }
   const accounts = data.accounts.filter((a) => !a.archived)
-  const knownBalance = data.active && !!data.start && date >= data.start
+  const knownBalance = data.asOf === date && data.active && !!data.start && date >= data.start
   const rows = data.entries.filter(
     (e) =>
       (!from || e.date >= from) &&
@@ -313,7 +316,7 @@ export function FinanceClient({ initial, today }: { initial: Report; today: stri
               <div key={a.id} className="flex flex-wrap items-center justify-between gap-2">
                 <span>{a.name}</span>
                 <Button variant="outline" onClick={() => open('archive', a.id)}>
-                  Архівувати
+                  {a.archived ? 'Відновити' : 'Архівувати'}
                 </Button>
               </div>
             ))}
@@ -401,6 +404,7 @@ export function FinanceClient({ initial, today }: { initial: Report; today: stri
       )}
       <section className="rounded-xl border p-4">
         <h2 className="text-lg font-semibold">Журнал руху коштів</h2>
+        <p className="text-sm text-muted-foreground">Рухи до {data.asOf} включно</p>
         <div className="my-4 grid gap-3 sm:grid-cols-4">
           <Field label="Операції від">
             <Input type="date" value={from} max={date} onChange={(e) => setFrom(e.target.value)} />
@@ -527,7 +531,9 @@ export function FinanceClient({ initial, today }: { initial: Report; today: stri
                     postDraft: 'Провести чернетку',
                     discardDraft: 'Видалити чернетку',
                     access: 'Доступ ролі до каси',
-                    archive: 'Архівувати рахунок',
+                    archive: data.accounts.find((a) => a.id === selected)?.archived
+                      ? 'Відновити рахунок'
+                      : 'Архівувати рахунок',
                     entity: 'Власні реквізити',
                     account: 'Нова каса / рахунок',
                     category: 'Стаття руху коштів',
@@ -543,7 +549,18 @@ export function FinanceClient({ initial, today }: { initial: Report; today: stri
               {(['entity', 'account', 'category'].includes(modal) ||
                 modal.startsWith('rename:')) && (
                 <Field label="Назва">
-                  <Input name="name" required maxLength={150} />
+                  <Input
+                    name="name"
+                    required
+                    maxLength={150}
+                    defaultValue={
+                      modal.startsWith('rename:')
+                        ? ([...data.accounts, ...data.entities, ...data.categories].find(
+                            (a) => a.id === selected
+                          )?.name ?? '')
+                        : ''
+                    }
+                  />
                 </Field>
               )}
               {['postDraft', 'discardDraft'].includes(modal) && (
