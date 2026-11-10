@@ -345,6 +345,7 @@ export async function processRecurringInvoices() {
         const serviceRecord = await db.$transaction(async (tx) => {
           const sr = await tx.serviceRecord.create({
             data: {
+              customerLedgerTracked: true,
               organizationId,
               title: ri.title,
               description: ri.description,

@@ -131,6 +131,7 @@ export async function deletePayment(paymentId: string) {
           serviceRecord: {
             select: {
               vehicleId: true,
+              customerLedgerTracked: true,
               id: true,
               sentAt: true,
               manuallyPaid: true,
@@ -163,7 +164,17 @@ export async function deletePayment(paymentId: string) {
 
       if (await db.financialDocument.findFirst({ where: { organizationId, paymentId } }))
         throw new Error('Проведену оплату не можна видалити. Використайте сторно в розділі кас.')
-      await db.payment.delete({ where: { id: paymentId } })
+      if (payment.serviceRecord.customerLedgerTracked) {
+        await db.$transaction(async (tx) => {
+          // Stamp the deleting actor without changing financial data; the database
+          // then appends the compensating event in the same transaction.
+          await tx.payment.update({
+            where: { id: paymentId },
+            data: { ledgerActorId: null, ledgerActorName: null },
+          })
+          await tx.payment.delete({ where: { id: paymentId } })
+        })
+      } else await db.payment.delete({ where: { id: paymentId } })
 
       const { vehicleId, id: serviceId } = payment.serviceRecord
       revalidatePath(

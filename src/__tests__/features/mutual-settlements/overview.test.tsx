@@ -180,3 +180,60 @@ it('uses the exclusion label consistently in the tab, filter and party notice', 
   )
   expect(screen.queryByText(/Потребу[єють]+ звірки/)).not.toBeInTheDocument()
 })
+
+describe('tracked customer history UI', () => {
+  it('separates new obligations from legacy totals and shows the history', () => {
+    const tracked = party('Новий')
+    tracked.documents[0].provisional = false
+    tracked.documents[0].history = [
+      {
+        id: '1',
+        kind: 'completed',
+        date: '2026-11-10',
+        recordedAt: '2026-11-10T10:00:00Z',
+        chargeDelta: '150.00',
+        paidDelta: '0.00',
+        amount: '150.00',
+        status: 'completed',
+        due: null,
+        manualPaid: false,
+        paymentId: null,
+        sourceDate: null,
+        actor: 'Менеджер',
+        note: null,
+      },
+    ]
+    render(<OverviewClient data={data({ trackedParties: [tracked] })} />)
+    expect(screen.getByRole('article', { name: 'Клієнт Новий' })).toBeVisible()
+    expect(screen.queryByRole('article', { name: 'Клієнт А' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Документи: Клієнт Новий' }))
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByText(/Історія зобов’язань і оплат/)).toBeVisible()
+    fireEvent.click(within(dialog).getByText(/Історія зобов’язань і оплат/))
+    expect(within(dialog).getByText(/Менеджер/)).toBeVisible()
+  })
+  it('allows legacy access without mixing balances', () => {
+    render(<OverviewClient data={data({ trackedParties: [] })} />)
+    expect(screen.queryByRole('article', { name: 'Клієнт А' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Старі документи · попередні суми' }))
+    expect(screen.getByRole('article', { name: 'Клієнт А' })).toBeVisible()
+    expect(screen.getByText('Клієнтські суми попередні.')).toBeVisible()
+  })
+  it('supports dated tracked history while clearly warning on legacy history', () => {
+    render(
+      <OverviewClient
+        data={data({
+          asOf: '2026-11-01',
+          customersHistoricalUnavailable: true,
+          trackedParties: [party('Новий')],
+        })}
+      />
+    )
+    expect(screen.getByRole('article', { name: 'Клієнт Новий' })).toBeVisible()
+    expect(
+      screen.queryByText('Історичний клієнтський борг поки недоступний')
+    ).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Старі документи · попередні суми' }))
+    expect(screen.getByText('Історичний клієнтський борг поки недоступний')).toBeVisible()
+  })
+})

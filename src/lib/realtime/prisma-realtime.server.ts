@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { ledgerWriteMetadata } from '@/features/customer-ledger/write-metadata'
 import { Prisma } from '@/generated/prisma/client'
 import { currentActor } from './actor.server'
 import { publishRecordChange } from './publish.server'
@@ -199,7 +200,7 @@ export function realtimeQueryHook(hooks: RealtimeHooks) {
     // request it was: every save came out as the system's, so no page could
     // tell its own change from a colleague's.
     const by = currentActor()
-    const result = await query(args)
+    const result = await query(ledgerWriteMetadata(model, operation, args, by))
     try {
       if (model) await announce(model, operation, (args ?? {}) as Row, result, hooks, by)
     } catch (error) {

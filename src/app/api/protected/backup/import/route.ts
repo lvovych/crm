@@ -451,6 +451,7 @@ export async function POST(request: NextRequest) {
       if (
         (await tx.financeSettings.findUnique({ where: { organizationId } })) ||
         (await tx.moneyAccount.count({ where: { organizationId } })) ||
+        (await tx.customerLedgerDocument.count({ where: { organizationId } })) ||
         ((data as Record<string, unknown>).finance &&
           JSON.stringify((data as Record<string, unknown>).finance).includes('"id":'))
       )

@@ -19,6 +19,7 @@ import { allReferencedSuffixes, FILE_REFERENCES, referencedSuffixes } from '@/li
 
 /** Columns that look as if they could hold a file and do not, and why. */
 const NOT_FILES: Record<string, string> = {
+  'CustomerLedgerEvent.documentId': 'Foreign key to an obligation document, not a file',
   'FinanceCutoverBatch.balances': 'Account IDs and decimal opening balances; no file references',
   'MoneyEntry.documentId': 'Foreign key to a financial ledger document, not a file',
   'AuditLog.metadata': 'history of what happened; never a live use of a file',

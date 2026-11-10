@@ -203,6 +203,7 @@ export async function confirmBooking(raw: unknown) {
   if (settings.bookingMode === 'direct') {
     const record = await db.serviceRecord.create({
       data: {
+        customerLedgerTracked: true,
         title,
         description: note,
         type: 'inspection',

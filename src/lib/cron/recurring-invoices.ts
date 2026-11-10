@@ -104,6 +104,7 @@ export function processRecurringInvoices() {
           await db.$transaction(async (tx) => {
             await tx.serviceRecord.create({
               data: {
+                customerLedgerTracked: true,
                 organizationId,
                 title: ri.title,
                 description: ri.description,

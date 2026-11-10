@@ -100,6 +100,50 @@ function Document({ row }: { row: DocumentRow }) {
           </>
         )}
       </dl>
+      {row.history && (
+        <details className="mt-4 rounded-lg border p-3">
+          <summary className="min-h-11 cursor-pointer font-medium">
+            Історія зобов’язань і оплат ({row.history.length})
+          </summary>
+          <ol className="mt-3 space-y-3" aria-label="Історія документа">
+            {row.history.map((event) => (
+              <li key={event.id} className="border-t pt-3 text-sm">
+                <p className="font-medium">
+                  {(
+                    {
+                      created: 'Створено наряд',
+                      completed: 'Виникло зобов’язання',
+                      adjusted: 'Змінено суму або умови',
+                      status_changed: 'Змінено статус',
+                      cancelled: 'Скасовано зобов’язання',
+                      payment: 'Отримано оплату',
+                      payment_reversed: 'Сторновано запис оплати',
+                      refund: 'Повернення клієнту',
+                      deleted: 'Видалено порожній наряд',
+                    } as Record<string, string>
+                  )[event.kind] ?? event.kind}{' '}
+                  · {dayLabel(event.date)}
+                </p>
+                <p>
+                  Зміна зобов’язання: <Amount value={event.chargeDelta} /> · Зміна оплат:{' '}
+                  <Amount value={event.paidDelta} />
+                </p>
+                <p className="text-muted-foreground">
+                  {event.actor ?? 'Система / автор не зафіксований'} · Зареєстровано{' '}
+                  {event.recordedAt.replace('T', ' ').replace('Z', ' UTC')}
+                </p>
+                {event.sourceDate && event.sourceDate !== event.date && (
+                  <p>Дата первинної оплати: {dayLabel(event.sourceDate)}</p>
+                )}
+                {event.manualPaid && (
+                  <p>Ручна позначка «Оплачено» не замінює фактичну оплату й не зменшує борг.</p>
+                )}
+                {event.note && <p className="break-words">{event.note}</p>}
+              </li>
+            ))}
+          </ol>
+        </details>
+      )}
     </article>
   )
 }
@@ -112,12 +156,23 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
   const [view, setView] = useState<View>(
     available.includes(initialView as View) ? (initialView as View) : available[0]
   )
+  const [customerScope, setCustomerScope] = useState(
+    data.trackedParties === undefined ? 'legacy' : 'tracked'
+  )
+  const tracked = view === 'customer' && customerScope === 'tracked'
+  const sourceParties = tracked ? (data.trackedParties ?? []) : data.parties
+  const reviewMap = new Map<string, PartyRow>()
+  for (const p of [...data.parties, ...(data.trackedParties ?? [])]) {
+    const key = p.kind + ':' + p.id
+    const prior = reviewMap.get(key)
+    reviewMap.set(key, prior ? { ...prior, documents: [...prior.documents, ...p.documents] } : p)
+  }
   const [query, setQuery] = useState(''),
     [filter, setFilter] = useState('all'),
     [sort, setSort] = useState('debt'),
     [page, setPage] = useState(1)
   const [selected, setSelected] = useState<PartyRow | null>(null)
-  const relevant = data.parties.filter(
+  const relevant = (view === 'review' ? [...reviewMap.values()] : sourceParties).filter(
     (p) =>
       (view === 'review' ? p.documents.some((d) => d.reason) : p.kind === view) && matches(p, query)
   )
@@ -141,8 +196,11 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)),
     currentPage = Math.min(page, pages)
   const shown = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
-  const issues = data.parties.reduce((n, p) => n + p.documents.filter((d) => d.reason).length, 0)
-  const unavailable = view === 'customer' && data.customersHistoricalUnavailable
+  const issues = [...reviewMap.values()].reduce(
+    (n, p) => n + p.documents.filter((d) => d.reason).length,
+    0
+  )
+  const unavailable = view === 'customer' && !tracked && data.customersHistoricalUnavailable
   const supplierFailed = view === 'supplier' && !!data.supplierError
   const tabs = {
     customer: 'Клієнти',
@@ -195,7 +253,42 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
           </Button>
         ))}
       </nav>
-      {view === 'customer' && !unavailable && (
+      {view === 'customer' && data.trackedParties !== undefined && (
+        <section aria-label="Область клієнтського обліку" className="grid grid-cols-2 gap-2">
+          <Button
+            variant={tracked ? 'default' : 'outline'}
+            className="h-auto min-h-11 whitespace-normal"
+            aria-pressed={tracked}
+            onClick={() => {
+              setCustomerScope('tracked')
+              setPage(1)
+              setSelected(null)
+            }}
+          >
+            Новий облік з історією
+          </Button>
+          <Button
+            variant={!tracked ? 'default' : 'outline'}
+            className="h-auto min-h-11 whitespace-normal"
+            aria-pressed={!tracked}
+            onClick={() => {
+              setCustomerScope('legacy')
+              setPage(1)
+              setSelected(null)
+            }}
+          >
+            Старі документи · попередні суми
+          </Button>
+        </section>
+      )}
+      {tracked && (
+        <p className="rounded-lg border p-4 text-sm">
+          Тільки документи нового обліку. Історія показана за датою реєстрації операцій; оплати
+          майбутньою датою враховуються з цієї дати. Старі документи та їхні суми показані окремо.
+          Аванси різних нарядів не зараховуються автоматично.
+        </p>
+      )}
+      {view === 'customer' && !tracked && !unavailable && (
         <aside
           className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm"
           role="note"
@@ -217,8 +310,8 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
         <div className="rounded-xl border p-5" role="status">
           <h2 className="font-semibold">Історичний клієнтський борг поки недоступний</h2>
           <p className="my-2 text-sm text-muted-foreground">
-            Поточні наряди не містять повної історії змін сум і клієнтів. Щоб не показувати
-            недостовірний залишок, клієнтський огляд доступний лише на сьогодні.
+            Старі наряди не містять повної історії змін сум і клієнтів. Щоб не показувати
+            недостовірний залишок, огляд старих нарядів доступний лише на сьогодні.
           </p>
           <Button asChild variant="outline">
             <Link href="/mutual-settlements?view=customer">Показати на сьогодні</Link>
@@ -232,8 +325,8 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
       )}
       {view === 'review' && data.customersHistoricalUnavailable && (
         <p role="note" className="rounded-lg border p-4">
-          На цю дату перевірка клієнтських документів недоступна. Тут показано лише доступні
-          постачальницькі документи.
+          На цю дату старі клієнтські документи недоступні. Тут показано документи нового
+          клієнтського обліку та доступні документи постачальників.
         </p>
       )}
       {!unavailable && !supplierFailed && (
@@ -247,7 +340,9 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
                 {
                   label:
                     view === 'customer'
-                      ? 'Попередньо клієнти винні нам'
+                      ? tracked
+                        ? 'Клієнти винні нам'
+                        : 'Попередньо клієнти винні нам'
                       : 'Ми винні постачальникам',
                   value: total(filtered, 'debt'),
                   Icon: view === 'customer' ? ArrowDownLeft : ArrowUpRight,
@@ -406,7 +501,7 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
                     <dl className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
                       <div>
                         <dt className="text-muted-foreground">
-                          {p.kind === 'customer' ? 'Попередній борг' : 'Борг'}
+                          {p.kind === 'customer' && !tracked ? 'Попередній борг' : 'Борг'}
                         </dt>
                         <dd className="font-semibold">
                           <Amount value={p.debt} />
@@ -486,7 +581,9 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
             <DialogDescription>
               Документи на {dayLabel(data.asOf)}.{' '}
               {selected?.kind === 'customer'
-                ? 'Попередній розрахунок, без історичного підтвердження.'
+                ? selected.documents.some((d) => d.history)
+                  ? 'Зобов’язання й оплати з історією. Старі документи позначено окремо.'
+                  : 'Попередній розрахунок, без історичного підтвердження.'
                 : 'За даними чинного обліку постачальників.'}
             </DialogDescription>
           </DialogHeader>

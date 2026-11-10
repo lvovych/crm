@@ -1,3 +1,4 @@
+import type { LedgerEvent } from '@/features/customer-ledger/projection'
 export type DocumentRow = {
   id: string
   label: string
@@ -11,6 +12,7 @@ export type DocumentRow = {
   expected: string
   reason: string | null
   provisional: boolean
+  history?: LedgerEvent[]
 }
 export type PartyRow = {
   id: string
@@ -32,4 +34,5 @@ export type Overview = {
   customersHistoricalUnavailable: boolean
   supplierError: string | null
   parties: PartyRow[]
+  trackedParties?: PartyRow[]
 }

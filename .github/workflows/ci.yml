@@ -71,4 +71,4 @@ jobs:
       - run: npm ci
       - run: npx prisma generate
       - run: npx prisma migrate deploy
-      - run: npx vitest run src/__tests__/features/finance
+      - run: npx vitest run src/__tests__/features/finance src/__tests__/features/customer-ledger
