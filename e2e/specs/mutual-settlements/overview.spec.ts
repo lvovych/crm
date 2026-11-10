@@ -64,6 +64,11 @@ for (const viewport of [
           'insert into supplier_entries(id,"organizationId","supplierId","receiptId",kind,amount,date,due,reference,"createdById") values($1,$2,$3,$4,\'receipt\',5000,current_date-1,current_date-1,\'TEST-RECEIPT\',$5)',
           [randomUUID(), owner.organizationId, supplier, receipt, owner.userId]
         )
+        // Renaming/reformatting contacts must not alter identity or exclude the order.
+        await db.query('update service_records set "issuedData"=$1::jsonb where id=$2', [
+          JSON.stringify({ customer: { name: 'Old customer name', phone: '+380 (67) 123-45-67' } }),
+          order,
+        ])
         const before = await db.query(
           'select id,"totalAmount","manuallyPaid" from service_records where "organizationId"=$1 order by id',
           [owner.organizationId]

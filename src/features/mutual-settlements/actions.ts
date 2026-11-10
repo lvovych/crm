@@ -46,7 +46,6 @@ export async function mutualSettlementsReport(requestedDate?: string) {
           invoiceDate: true,
           serviceDate: true,
           vehicleId: true,
-          issuedData: true,
           customer: { select: { id: true, name: true, phone: true, organizationId: true } },
           vehicle: {
             select: {

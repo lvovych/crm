@@ -16,7 +16,6 @@ export type CustomerSource = {
   invoiceDate: Date | null
   serviceDate: Date
   vehicleId: string | null
-  issuedData: unknown
   customer: { id: string; name: string; phone: string | null } | null
   payments: { amount: number; amountExact: string | null; date: Date }[]
 }
@@ -71,14 +70,6 @@ export function projectCustomers(
     const reasons: string[] = []
     if (!customer) reasons.push('Не визначений клієнт')
     if (r.manuallyPaid) reasons.push('Позначено оплаченим вручну — потрібна звірка')
-    const snapshot = r.issuedData as { customer?: { name?: string; phone?: string } } | null
-    if (
-      snapshot?.customer &&
-      customer &&
-      ((snapshot.customer.name && snapshot.customer.name !== customer.name) ||
-        (snapshot.customer.phone && customer.phone && snapshot.customer.phone !== customer.phone))
-    )
-      reasons.push('Дані клієнта відрізняються від виданого документа')
     let amount: bigint | null = null,
       paid: bigint | null = null
     try {

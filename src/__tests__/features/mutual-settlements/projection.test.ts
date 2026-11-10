@@ -19,7 +19,6 @@ const source = (extra: Partial<CustomerSource> = {}): CustomerSource => ({
   invoiceDate: null,
   serviceDate: new Date('2026-11-08T12:00:00Z'),
   vehicleId: 'v',
-  issuedData: null,
   customer: { id: 'c', name: 'Customer', phone: '+380 67 111 22 33' },
   payments: [],
   ...extra,
@@ -108,11 +107,42 @@ describe('read-only client settlement projection', () => {
     expect(p.documents[0].reason).toContain('клієнт')
     expect(p.debt).toBe('0.00')
   })
-  it('flags a customer changed since issue', () => {
-    expect(
-      project([source({ issuedData: { customer: { name: 'Previous owner' } } })])[0].documents[0]
-        .reason
-    ).toContain('відрізняються')
+  it.each([
+    { name: 'Renamed customer', phone: '+380 67 111 22 33' },
+    { name: 'Customer', phone: '+380991234567' },
+    { name: 'Renamed customer', phone: null },
+    { name: 'Customer', phone: '+380671112233' },
+  ])('keeps debt with the same customer ID after contact changes: %j', (contact) => {
+    const record = {
+      ...source({ customer: { id: 'c', ...contact }, payments: [payment(3000)] }),
+      issuedData: { customer: { name: 'Customer', phone: '+380 67 111 22 33' } },
+    }
+    const p = project([record])[0]
+    expect(p).toMatchObject({
+      id: 'c',
+      name: contact.name,
+      phone: contact.phone || '',
+      debt: '9000.00',
+      overdue: '9000.00',
+    })
+    expect(p.documents[0].reason).toBeNull()
+  })
+  it('does not merge different IDs with identical names and phones', () => {
+    const first = source()
+    const second = source({ id: 'second', customer: { ...first.customer!, id: 'other' } })
+    const parties = project([first, second])
+    expect(parties).toHaveLength(2)
+    expect(new Set(parties.map((p) => p.id))).toEqual(new Set(['c', 'other']))
+    expect(parties.every((p) => p.debt === '12000.00')).toBe(true)
+  })
+  it('groups documents by customer ID even when display contact details differ', () => {
+    const parties = project([
+      source(),
+      source({ id: 'second', customer: { id: 'c', name: 'New name', phone: 'new phone' } }),
+    ])
+    expect(parties).toHaveLength(1)
+    expect(parties[0]).toMatchObject({ id: 'c', debt: '24000.00' })
+    expect(parties[0].documents.every((d) => d.reason === null)).toBe(true)
   })
   it('does not count cancelled jobs but retains payments on them for review', () => {
     expect(project([source({ status: 'cancelled' })])).toEqual([])

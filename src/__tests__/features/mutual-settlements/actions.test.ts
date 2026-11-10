@@ -61,6 +61,7 @@ describe('overview authorization and source isolation', () => {
     expect(m.records).toHaveBeenCalledWith(
       expect.objectContaining({ where: { organizationId: 'org' } })
     )
+    expect(m.records.mock.calls[0][0].select).not.toHaveProperty('issuedData')
     expect(m.suppliers).not.toHaveBeenCalled()
   })
   it('supplier-only access never fetches customer records', async () => {
