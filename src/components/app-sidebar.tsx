@@ -64,6 +64,7 @@ import {
   Plus,
   Receipt,
   WalletCards,
+  Scale,
   Settings,
   ShieldCheck,
   Timer,
@@ -129,6 +130,7 @@ export function AppSidebar({
   isSuperAdmin,
   features,
   receiptsEnabled = false,
+  mutualSettlementsEnabled = false,
   supplierDirectoryEnabled = false,
   tireHotelEnabled = false,
   aiEnabled = false,
@@ -139,6 +141,7 @@ export function AppSidebar({
   isTechnician = false,
   ...props
 }: React.ComponentProps<typeof Sidebar> & {
+  mutualSettlementsEnabled?: boolean
   receiptsEnabled?: boolean
   supplierDirectoryEnabled?: boolean
   companyLogo?: string
@@ -240,6 +243,16 @@ export function AppSidebar({
   ].filter((item) => !item.subject || canAccess(item.subject))
 
   const businessItems: NavItem[] = [
+    ...(mutualSettlementsEnabled
+      ? [
+          {
+            titleKey: 'sidebar.mutualSettlements' as const,
+            url: '/mutual-settlements',
+            icon: Scale,
+            subject: '',
+          },
+        ]
+      : []),
     {
       titleKey: 'sidebar.finance' as const,
       url: '/finance',

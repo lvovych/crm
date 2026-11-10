@@ -23,6 +23,7 @@ import {
   Pencil,
   Plus,
   Receipt,
+  Scale,
   ScanBarcode,
   Settings,
   ShieldCheck,
@@ -79,7 +80,13 @@ const businessItems = [
   { href: '/audit-log', icon: History, labelKey: 'auditLog' },
 ] as const
 
+const mutualItem = {
+  href: '/mutual-settlements',
+  icon: Scale,
+  labelKey: 'mutualSettlements',
+} as const
 const allDrawerItems = [
+  mutualItem,
   vehiclesItem,
   ...workshopItems,
   tireHotelItem,
@@ -91,8 +98,10 @@ const allDrawerItems = [
 export function MobileBottomNav({
   isSuperAdmin,
   tireHotelEnabled,
+  mutualSettlementsEnabled = false,
 }: {
   isSuperAdmin?: boolean
+  mutualSettlementsEnabled?: boolean
   tireHotelEnabled?: boolean
 }) {
   const pathname = usePathname()
@@ -228,25 +237,27 @@ export function MobileBottomNav({
                 {t('business')}
               </p>
               <nav className="grid grid-cols-4 gap-2">
-                {businessItems.map(({ href, icon: Icon, labelKey }) => {
-                  const isActive = pathname === href || pathname.startsWith(`${href}/`)
-                  return (
-                    <Link
-                      key={href}
-                      href={href}
-                      onClick={() => setDrawerOpen(false)}
-                      className={cn(
-                        'flex flex-col items-center gap-1.5 rounded-lg py-3 text-xs transition-colors',
-                        isActive
-                          ? 'bg-primary/10 text-primary'
-                          : 'text-muted-foreground hover:bg-accent'
-                      )}
-                    >
-                      <Icon className="h-5 w-5" />
-                      <span>{t(labelKey)}</span>
-                    </Link>
-                  )
-                })}
+                {(mutualSettlementsEnabled ? [mutualItem, ...businessItems] : businessItems).map(
+                  ({ href, icon: Icon, labelKey }) => {
+                    const isActive = pathname === href || pathname.startsWith(`${href}/`)
+                    return (
+                      <Link
+                        key={href}
+                        href={href}
+                        onClick={() => setDrawerOpen(false)}
+                        className={cn(
+                          'flex flex-col items-center gap-1.5 rounded-lg py-3 text-xs transition-colors',
+                          isActive
+                            ? 'bg-primary/10 text-primary'
+                            : 'text-muted-foreground hover:bg-accent'
+                        )}
+                      >
+                        <Icon className="h-5 w-5" />
+                        <span className="w-full break-words text-center">{t(labelKey)}</span>
+                      </Link>
+                    )
+                  }
+                )}
               </nav>
             </div>
 

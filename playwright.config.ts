@@ -215,6 +215,7 @@ export default defineConfig({
             DISABLE_BACKGROUND_JOBS: '1',
             SUPPLIER_DIRECTORY_ORGANIZATIONS: '*',
             SUPPLIER_RECEIPT_ORGANIZATIONS: '*',
+            SUPPLIER_SETTLEMENT_ORGANIZATIONS: '*',
             // Demo mode blocks invites, billing and outbound messages. Tests want
             // the real behaviour, so it stays off.
             DEMO_MODE: 'false',
