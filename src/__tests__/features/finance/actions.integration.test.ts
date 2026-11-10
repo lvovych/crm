@@ -46,6 +46,10 @@ vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 import { postMoney } from '@/features/finance/ledger'
 import {
   prepareCashOpening,
+  saveFinanceDraft,
+  updateFinanceDraft,
+  postSavedFinanceDraft,
+  financeReport,
   activateCashOpening,
   refundMoneyDocument,
   reverseMoneyDocument,
@@ -199,5 +203,69 @@ const url = process.env.FINANCE_TEST_DATABASE_URL
     await expect(state.db.payment.delete({ where: { id: reversed.paymentId! } })).rejects.toThrow(
       'immutable'
     )
+  })
+  it('edits a draft atomically, keeps its identity, and forbids editing posted or foreign documents', async () => {
+    const category = await state.db.cashFlowCategory.create({
+      data: { organizationId: state.org, name: 'Draft income', direction: 'income' },
+    })
+    const requestId = randomUUID()
+    const payload = {
+      requestId,
+      kind: 'income',
+      date: today,
+      amount: '1.00',
+      targetAccountId: cash,
+      categoryId: category.id,
+      note: 'Draft edit test',
+    }
+    expect((await saveFinanceDraft(payload)).success).toBe(true)
+    const draft = await state.db.financialDocument.findUniqueOrThrow({
+      where: { organizationId_requestId: { organizationId: state.org, requestId } },
+    })
+    const before = await state.db.moneyEntry.count({ where: { organizationId: state.org } })
+    expect(
+      (await updateFinanceDraft(draft.id, { ...payload, requestId: randomUUID(), amount: '1,01' }))
+        .success
+    ).toBe(true)
+    const edited = await state.db.financialDocument.findUniqueOrThrow({ where: { id: draft.id } })
+    expect(edited.amount.toFixed(2)).toBe('1.01')
+    expect(edited.requestId).toBe(requestId)
+    expect(await state.db.moneyEntry.count({ where: { organizationId: state.org } })).toBe(before)
+    const org = state.org
+    try {
+      state.org = 'foreign-org'
+      expect((await updateFinanceDraft(draft.id, payload)).success).toBe(false)
+    } finally {
+      state.org = org
+    }
+    expect((await postSavedFinanceDraft(draft.id)).success).toBe(true)
+    expect((await updateFinanceDraft(draft.id, { ...payload, amount: '99' })).success).toBe(false)
+    expect(
+      (
+        await state.db.financialDocument.findUniqueOrThrow({ where: { id: draft.id } })
+      ).amount.toFixed(2)
+    ).toBe('1.01')
+  })
+  it('reports persisted account permissions to administrators', async () => {
+    const role = await state.db.role.create({
+      data: { name: 'Finance UX role', organizationId: state.org },
+    })
+    await state.db.moneyAccountAccess.create({
+      data: {
+        organizationId: state.org,
+        accountId: cash,
+        roleId: role.id,
+        canRead: true,
+        canPost: false,
+      },
+    })
+    const report = await financeReport(today)
+    expect(report.success).toBe(true)
+    expect(report.data?.accountAccess).toContainEqual({
+      accountId: cash,
+      roleId: role.id,
+      canRead: true,
+      canPost: false,
+    })
   })
 })

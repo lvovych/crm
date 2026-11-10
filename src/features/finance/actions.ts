@@ -117,6 +117,24 @@ export async function financeReport(asOf: string) {
               orderBy: { createdAt: 'desc' },
             })
           : []
+      // Readers see that balances are incomplete without receiving payment details.
+      const unlinkedCount = capabilities.manage
+        ? unlinked.length
+        : settings?.activatedAt
+          ? await db.payment.count({
+              where: {
+                serviceRecord: { organizationId: ctx.organizationId },
+                financialDocument: null,
+                amount: { not: 0 },
+                createdAt: {
+                  gte: toSafeWorkshopDate(
+                    dateKey(settings.activatedOn!),
+                    await workshopTimeZone(ctx.organizationId)
+                  )!,
+                },
+              },
+            })
+          : 0
       const running = new Map<string, string>(),
         balances = new Map<string, bigint>()
       for (const e of [...entries].reverse()) {
@@ -130,12 +148,17 @@ export async function financeReport(asOf: string) {
       })
       return {
         asOf,
+        unlinkedCount,
         drafts: drafts.map((d) => ({
           id: d.id,
           kind: d.kind,
           date: dateKey(d.date),
           amount: d.amount.toFixed(2),
           note: d.note,
+          sourceAccountId: d.sourceAccountId,
+          targetAccountId: d.targetAccountId,
+          categoryId: d.categoryId,
+          counterpartyLabel: d.counterpartyLabel,
         })),
         unlinked: unlinked.map((p) => ({
           id: p.id,
@@ -149,6 +172,12 @@ export async function financeReport(asOf: string) {
         isAdmin: capabilities.manage,
         capabilities,
         roles,
+        accountAccess: capabilities.manage
+          ? await db.moneyAccountAccess.findMany({
+              where: { ...scope, accountId: { in: ids } },
+              select: { accountId: true, roleId: true, canRead: true, canPost: true },
+            })
+          : [],
         postAccountIds: postAccounts.filter((a) => !a.isArchived).map((a) => a.id),
         accounts: accounts.map((a) => ({
           id: a.id,
@@ -880,6 +909,52 @@ export async function saveFinanceDraft(raw: unknown) {
     { requiredPermissions: [{ action: A.CREATE, subject: S.FINANCE }] }
   )
 }
+/** Updates only an unposted draft under the same organization lock as posting. */
+export async function updateFinanceDraft(id: string, raw: unknown) {
+  return withAuth(
+    async (ctx) => {
+      const input = transactionInput.parse(raw)
+      await db.$transaction(async (tx) => {
+        await lockFinance(tx, ctx.organizationId)
+        const draft = await tx.financialDocument.findFirstOrThrow({
+          where: { id, organizationId: ctx.organizationId, status: 'draft' },
+        })
+        await assertAccountAccess(
+          ctx,
+          [draft.sourceAccountId ?? undefined, draft.targetAccountId ?? undefined],
+          tx
+        )
+        await assertAccountAccess(ctx, [input.sourceAccountId, input.targetAccountId], tx)
+        if (input.kind === 'transfer')
+          await assertFinancePermission(ctx, A.CREATE, S.FINANCE_TRANSFER)
+        if (
+          input.categoryId &&
+          !(await tx.cashFlowCategory.findFirst({
+            where: { id: input.categoryId, organizationId: ctx.organizationId, isArchived: false },
+          }))
+        )
+          throw new Error('Стаття недоступна.')
+        const data = { ...input, requestId: draft.requestId }
+        await tx.financialDocument.update({
+          where: { id: draft.id },
+          data: {
+            ...data,
+            date: new Date(data.date + 'T00:00:00Z'),
+            fingerprint: fingerprint(data),
+            sourceAccountId: data.sourceAccountId ?? null,
+            targetAccountId: data.targetAccountId ?? null,
+            categoryId: data.categoryId ?? null,
+            counterpartyLabel: data.counterpartyLabel ?? null,
+          },
+        })
+      })
+      revalidatePath('/finance')
+      return true
+    },
+    { requiredPermissions: [{ action: A.CREATE, subject: S.FINANCE }] }
+  )
+}
+
 export async function postSavedFinanceDraft(id: string) {
   return withAuth(
     async (ctx) => {

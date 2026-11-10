@@ -12,9 +12,11 @@ for (const viewport of [
       await page.goto('/finance')
       await settle(page)
       await expect(page.getByRole('heading', { name: 'Підготовка касового обліку' })).toBeVisible()
-      await expect(page.getByRole('button', { name: 'Надходження', exact: true })).toBeDisabled()
-      await page.getByText('Налаштування та початкові залишки', { exact: true }).click()
-      await page.getByRole('button', { name: 'Додати власні реквізити', exact: true }).click()
+      await expect(
+        page.getByRole('button', { name: '＋ Додати операцію', exact: true })
+      ).toBeDisabled()
+      await page.getByRole('button', { name: 'Налаштування', exact: true }).click()
+      await page.getByRole('button', { name: 'Додати власний ФОП / компанію', exact: true }).click()
       let dialog = page.getByRole('dialog')
       const entity = `Demo finance ${viewport.name} ${Date.now()}`
       await dialog.getByLabel('Назва', { exact: true }).fill(entity)
@@ -27,8 +29,13 @@ for (const viewport of [
       dialog = page.getByRole('dialog')
       const account = `Cash ${viewport.name} ${Date.now()}`
       await dialog.getByLabel('Назва', { exact: true }).fill(account)
+      await expect(dialog.getByLabel('IBAN', { exact: true })).toHaveCount(0)
+      await dialog.getByRole('combobox', { name: 'Тип', exact: true }).selectOption('bank')
+      await expect(dialog.getByLabel('IBAN', { exact: true })).toBeVisible()
+      await dialog.getByRole('combobox', { name: 'Тип', exact: true }).selectOption('cash')
+      await expect(dialog.getByLabel('IBAN', { exact: true })).toHaveCount(0)
       await dialog
-        .getByRole('combobox', { name: 'Власні реквізити', exact: true })
+        .getByRole('combobox', { name: 'Власний ФОП / компанія', exact: true })
         .selectOption({ label: entity })
       const bounds = await dialog.boundingBox()
       expect(bounds!.x).toBeGreaterThanOrEqual(0)
@@ -38,7 +45,9 @@ for (const viewport of [
       await page.reload()
       await settle(page)
       await expect(page.getByRole('button', { name: new RegExp(account) })).toBeVisible()
-      await expect(page.getByRole('button', { name: 'Виплата', exact: true })).toBeDisabled()
+      await expect(
+        page.getByRole('button', { name: '＋ Додати операцію', exact: true })
+      ).toBeDisabled()
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)
       ).toBe(false)
