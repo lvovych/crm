@@ -106,6 +106,58 @@ const url = process.env.FINANCE_TEST_DATABASE_URL
   afterAll(async () => {
     await state.db?.$disconnect()
   })
+  it('updates company details by tenant and ID without touching accounts or cash state', async () => {
+    const account = await state.db.moneyAccount.findUniqueOrThrow({ where: { id: cash } })
+    const before = {
+      settings: await state.db.financeSettings.count(),
+      entries: await state.db.moneyEntry.count(),
+      batches: await state.db.financeCutoverBatch.count(),
+    }
+    const payload = {
+      type: 'editEntity',
+      id: account.legalEntityId,
+      name: ' Updated company ',
+      taxId: ' 1631608939 ',
+    }
+    expect((await saveFinanceDirectory(payload)).success).toBe(true)
+    expect(
+      await state.db.ownLegalEntity.findUnique({ where: { id: account.legalEntityId } })
+    ).toMatchObject({ name: 'Updated company', taxId: '1631608939' })
+    expect(await state.db.moneyAccount.findUnique({ where: { id: cash } })).toEqual(account)
+    expect((await saveFinanceDirectory({ ...payload, taxId: '0012345678' })).success).toBe(true)
+    expect(
+      (await state.db.ownLegalEntity.findUniqueOrThrow({ where: { id: account.legalEntityId } }))
+        .taxId
+    ).toBe('0012345678')
+    for (const patch of [{ name: ' ' }, { taxId: 'x'.repeat(31) }, { id: 'missing' }])
+      expect((await saveFinanceDirectory({ ...payload, ...patch })).success).toBe(false)
+    const foreign = await state.db.organization.create({ data: { name: 'Foreign company test' } })
+    const entity = await state.db.ownLegalEntity.create({
+      data: { organizationId: foreign.id, name: 'Foreign' },
+    })
+    expect((await saveFinanceDirectory({ ...payload, id: entity.id })).success).toBe(false)
+    expect(
+      (await state.db.ownLegalEntity.findUniqueOrThrow({ where: { id: entity.id } })).name
+    ).toBe('Foreign')
+    state.admin = false
+    state.permissions = [{ action: 'update', subject: 'finance' }]
+    try {
+      expect((await saveFinanceDirectory(payload)).success).toBe(false)
+    } finally {
+      state.admin = true
+      state.permissions = []
+    }
+    expect((await saveFinanceDirectory({ ...payload, taxId: '' })).success).toBe(true)
+    expect(
+      (await state.db.ownLegalEntity.findUniqueOrThrow({ where: { id: account.legalEntityId } }))
+        .taxId
+    ).toBeNull()
+    expect({
+      settings: await state.db.financeSettings.count(),
+      entries: await state.db.moneyEntry.count(),
+      batches: await state.db.financeCutoverBatch.count(),
+    }).toEqual(before)
+  })
   it('preparing balances does not activate or create movements', async () => {
     const result = await prepareCashOpening({
       date: today,

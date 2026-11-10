@@ -230,6 +230,13 @@ export function FinanceClient({
           direction: v('direction'),
           allowNegative: f.get('allowNegative') === 'on',
         })
+      else if (modal === 'editEntity')
+        result = await saveFinanceDirectory({
+          type: 'editEntity',
+          id: selected,
+          name: v('name'),
+          taxId: v('taxId'),
+        })
       else if (modal.startsWith('rename:'))
         result = await saveFinanceDirectory({
           type: 'rename',
@@ -591,8 +598,13 @@ export function FinanceClient({
             ].map((a) => (
               <div key={a.id} className="flex flex-wrap items-center justify-between gap-2">
                 <span>{a.name}</span>
-                <Button variant="outline" onClick={() => open(`rename:${a.kind}`, a.id)}>
-                  Змінити назву
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    open(a.kind === 'entity' ? 'editEntity' : `rename:${a.kind}`, a.id)
+                  }
+                >
+                  {a.kind === 'entity' ? 'Редагувати реквізити' : 'Змінити назву'}
                 </Button>
               </div>
             ))}
@@ -990,6 +1002,7 @@ export function FinanceClient({
                       ? 'Відновити рахунок'
                       : 'Архівувати рахунок',
                     entity: 'Власні реквізити',
+                    editEntity: 'Редагувати реквізити компанії',
                     account: 'Нова каса / рахунок',
                     category: 'Стаття руху коштів',
                     opening: 'Початкові залишки',
@@ -1055,7 +1068,7 @@ export function FinanceClient({
               className="space-y-4"
             >
               <fieldset disabled={busy} className="space-y-4">
-                {(['entity', 'account', 'category'].includes(modal) ||
+                {(['entity', 'editEntity', 'account', 'category'].includes(modal) ||
                   modal.startsWith('rename:')) && (
                   <Field label="Назва">
                     <Input
@@ -1063,7 +1076,7 @@ export function FinanceClient({
                       required
                       maxLength={150}
                       defaultValue={
-                        modal.startsWith('rename:')
+                        modal === 'editEntity' || modal.startsWith('rename:')
                           ? ([...data.accounts, ...data.entities, ...data.categories].find(
                               (a) => a.id === selected
                             )?.name ?? '')
@@ -1088,9 +1101,17 @@ export function FinanceClient({
                     access={data.accountAccess ?? []}
                   />
                 )}
-                {modal === 'entity' && (
-                  <Field label="Податковий номер">
-                    <Input name="taxId" />
+                {['entity', 'editEntity'].includes(modal) && (
+                  <Field label="Код / податковий номер">
+                    <Input
+                      name="taxId"
+                      maxLength={30}
+                      defaultValue={
+                        modal === 'editEntity'
+                          ? (data.entities.find((e) => e.id === selected)?.taxId ?? '')
+                          : ''
+                      }
+                    />
                   </Field>
                 )}
                 {modal === 'account' && (

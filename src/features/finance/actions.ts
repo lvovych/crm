@@ -269,7 +269,7 @@ export async function financeReport(asOf: string, settingsOnly = false) {
           direction: c.direction,
           archived: c.isArchived,
         })),
-        entities: entities.map((e) => ({ id: e.id, name: e.name })),
+        entities: entities.map((e) => ({ id: e.id, name: e.name, taxId: e.taxId })),
         pending: pending.map((d) => ({
           id: d.id,
           date: dateKey(d.date),
@@ -304,6 +304,12 @@ export async function saveFinanceDirectory(raw: unknown) {
             kind: z.enum(['account', 'entity', 'category']),
             id: z.string(),
             name: z.string().trim().min(1).max(150),
+          }),
+          z.object({
+            type: z.literal('editEntity'),
+            id: z.string().min(1),
+            name: z.string().trim().min(1).max(150),
+            taxId: z.string().trim().max(30),
           }),
           z.object({
             type: z.literal('entity'),
@@ -345,6 +351,13 @@ export async function saveFinanceDirectory(raw: unknown) {
                 ? await tx.ownLegalEntity.updateMany(args)
                 : await tx.cashFlowCategory.updateMany(args)
           if (result.count !== 1) throw new Error('Запис недоступний.')
+        }
+        if (input.type === 'editEntity') {
+          const updated = await tx.ownLegalEntity.updateMany({
+            where: { id: input.id, organizationId: org },
+            data: { name: input.name, taxId: input.taxId || null },
+          })
+          if (updated.count !== 1) throw new Error('Запис недоступний.')
         }
         if (input.type === 'entity')
           await tx.ownLegalEntity.create({
@@ -397,6 +410,7 @@ export async function saveFinanceDirectory(raw: unknown) {
         }
       })
       revalidatePath('/finance')
+      revalidatePath('/settings/finance')
       return true
     },
     {
