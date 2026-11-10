@@ -1,6 +1,9 @@
 import { z } from 'zod'
 
 export const createPaymentSchema = z.object({
+  moneyAccountId: z.string().optional(),
+  requestId: z.string().uuid().optional(),
+  amountExact: z.string().optional(),
   serviceRecordId: z.string(),
   amount: z.coerce.number().min(0.01, 'Amount must be greater than 0'),
   date: z.string().default(() => new Date().toISOString()),

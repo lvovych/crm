@@ -79,6 +79,22 @@ export async function POST(request: NextRequest) {
   }
 
   const data: Record<string, unknown> = {}
+  // Preserve the immutable journal in every export, regardless of selected business tables.
+  const financeScope = { organizationId: ctx.organizationId }
+  data.finance = await db.$transaction(
+    async (tx) => ({
+      restoreMode: 'postgresql-snapshot',
+      settings: await tx.financeSettings.findUnique({ where: financeScope }),
+      entities: await tx.ownLegalEntity.findMany({ where: financeScope }),
+      accounts: await tx.moneyAccount.findMany({ where: financeScope }),
+      access: await tx.moneyAccountAccess.findMany({ where: financeScope }),
+      categories: await tx.cashFlowCategory.findMany({ where: financeScope }),
+      documents: await tx.financialDocument.findMany({ where: financeScope }),
+      entries: await tx.moneyEntry.findMany({ where: financeScope }),
+      cutovers: await tx.financeCutoverBatch.findMany({ where: financeScope }),
+    }),
+    { isolationLevel: 'RepeatableRead' }
+  )
 
   const queries: Promise<void>[] = []
 

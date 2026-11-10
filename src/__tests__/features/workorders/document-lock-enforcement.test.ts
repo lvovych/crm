@@ -44,6 +44,8 @@ vi.mock('@/lib/db', () => ({
     },
     quote: { findFirst: vi.fn(), update: vi.fn(), updateMany: vi.fn(), deleteMany: vi.fn() },
     servicePart: { findMany: vi.fn(), create: vi.fn() },
+    financeSettings: { findUnique: vi.fn().mockResolvedValue(null) },
+    financialDocument: { findFirst: vi.fn().mockResolvedValue(null) },
     payment: { create: vi.fn(), findFirst: vi.fn(), delete: vi.fn() },
     $transaction: vi.fn(),
   },

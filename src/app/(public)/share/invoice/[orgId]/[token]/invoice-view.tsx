@@ -1,5 +1,6 @@
 'use client'
 
+import { paymentTotal } from '@/features/finance/payment-total'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import {
   Camera,
@@ -327,7 +328,7 @@ export function InvoiceView({
   const tz = timezone || undefined
   const effectiveInvoiceDate = record.invoiceDate ?? record.startDateTime ?? record.serviceDate
   const serviceDate = fmtDate(effectiveInvoiceDate, df, tz)
-  const paidFromPayments = record.payments.reduce((sum, p) => sum + p.amount, 0)
+  const paidFromPayments = paymentTotal(record.payments)
   const totalPaid = record.manuallyPaid ? displayTotal : paidFromPayments
   const balanceDue = displayTotal - totalPaid
   const shopName = workshop.name || record.shopName || 'Torqvoice'

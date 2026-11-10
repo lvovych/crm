@@ -1,5 +1,6 @@
 'use server'
 
+import { paymentTotal } from '@/features/finance/payment-total'
 import { db } from '@/lib/db'
 import { listOrgEntries } from '@/features/time-tracking/Lib/timeEntries'
 import { withAuth } from '@/lib/with-auth'
@@ -103,7 +104,7 @@ export async function getRevenueReport(params: ReportRange) {
 
       for (const r of records) {
         const total = r.totalAmount > 0 ? r.totalAmount : r.cost
-        const paid = r.manuallyPaid ? total : r.payments.reduce((s, p) => s + p.amount, 0)
+        const paid = r.manuallyPaid ? total : paymentTotal(r.payments)
         const partsCost = r.partItems.reduce((s, p) => s + p.unitCost * p.quantity, 0)
         const partsRevenue = r.partItems.reduce(
           (s, p) => s + netLineTotal(p.total, r.taxRate, r.taxInclusive),
@@ -786,7 +787,7 @@ export async function getPastDueInvoicesReport() {
 
       for (const r of records) {
         const total = r.totalAmount > 0 ? r.totalAmount : r.cost
-        const paid = r.manuallyPaid ? total : r.payments.reduce((s, p) => s + p.amount, 0)
+        const paid = r.manuallyPaid ? total : paymentTotal(r.payments)
         const amountDue = total - paid
 
         if (amountDue <= 0) continue

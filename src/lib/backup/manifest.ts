@@ -443,6 +443,22 @@ export const BACKUP_ENTITIES: readonly BackupEntity[] = [
  * oversight, and the next person reading this needs to tell them apart.
  */
 export const EXCLUDED_MODELS: Readonly<Record<string, string>> = {
+  FinanceSettings:
+    'Immutable finance data exported in the separate finance envelope; restore requires a consistent PostgreSQL snapshot, never replacement through application import.',
+  OwnLegalEntity:
+    'Immutable finance data exported in the separate finance envelope; restore requires a consistent PostgreSQL snapshot, never replacement through application import.',
+  MoneyAccount:
+    'Immutable finance data exported in the separate finance envelope; restore requires a consistent PostgreSQL snapshot, never replacement through application import.',
+  MoneyAccountAccess:
+    'Immutable finance data exported in the separate finance envelope; restore requires a consistent PostgreSQL snapshot, never replacement through application import.',
+  CashFlowCategory:
+    'Immutable finance data exported in the separate finance envelope; restore requires a consistent PostgreSQL snapshot, never replacement through application import.',
+  FinancialDocument:
+    'Immutable finance data exported in the separate finance envelope; restore requires a consistent PostgreSQL snapshot, never replacement through application import.',
+  MoneyEntry:
+    'Immutable finance data exported in the separate finance envelope; restore requires a consistent PostgreSQL snapshot, never replacement through application import.',
+  FinanceCutoverBatch:
+    'Immutable finance data exported in the separate finance envelope; restore requires a consistent PostgreSQL snapshot, never replacement through application import.',
   AiChat: 'Assistant conversation history, not a workshop record.',
   AiChatMessage:
     'The turns of that history; reached through the vehicle or customer the chat was about.',

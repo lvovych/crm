@@ -1,3 +1,4 @@
+import { paymentTotal } from '@/features/finance/payment-total'
 /**
  * Whether a finished invoice or quote may still be edited.
  *
@@ -135,7 +136,7 @@ export function invoicePaymentStatus(invoice: {
 }): PaymentStatus {
   const total = invoice.totalAmount > 0 ? invoice.totalAmount : invoice.cost
   if (invoice.manuallyPaid) return 'paid'
-  const paid = (invoice.payments ?? []).reduce((sum, p) => sum + p.amount, 0)
+  const paid = paymentTotal(invoice.payments)
   if (paid <= 0) return 'unpaid'
   // A payment against a zero-total document is a deposit on work not yet
   // priced, not a settled bill: without the total > 0 guard a prepayment on an

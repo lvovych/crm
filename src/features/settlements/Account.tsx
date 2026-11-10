@@ -2,6 +2,7 @@
 import { useState, useTransition, useRef, type ReactNode } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { AccountSelect } from '@/features/finance/AccountSelect'
 import { recordSettlement, type settlementReport, type settlementAccess } from './actions'
 import {
   suggestedDistribution,
@@ -141,6 +142,7 @@ function PaymentForm({
         label="Зареєструвати оплату"
         build={(f) => ({
           op: 'payment',
+          moneyAccountId: field(f, 'moneyAccountId') || undefined,
           target: selected?.id,
           expectedOpen: selected?.open,
           amount: field(f, 'amount'),
@@ -154,6 +156,7 @@ function PaymentForm({
         <DateField />
         <label>
           Спосіб
+          <AccountSelect />
           <select name="method" className={'block ' + box}>
             <option value="bank">Банк</option>
             <option value="cash">Готівка</option>

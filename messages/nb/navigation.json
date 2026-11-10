@@ -158,6 +158,7 @@
     },
     "receipts": "Varemottak",
     "suppliers": "Suppliers",
-    "directories": "Directories"
+    "directories": "Directories",
+    "finance": "Cash accounts"
   }
 }

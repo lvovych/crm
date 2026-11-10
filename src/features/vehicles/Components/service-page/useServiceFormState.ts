@@ -1,3 +1,4 @@
+import { paymentTotal } from '@/features/finance/payment-total'
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { calculateTotals, discountAmountFor } from '@/lib/tax'
 import { normalizeWarranty, type WarrantyFields } from '@/lib/warranty'
@@ -330,7 +331,7 @@ export function useServiceFormState({
   const [localManuallyPaid, setLocalManuallyPaid] = useState(record.manuallyPaid)
   const displayTotal =
     moneyChanged || partItems.length > 0 || laborItems.length > 0 ? totalAmount : record.cost
-  const paidFromPayments = record.payments?.reduce((sum, p) => sum + p.amount, 0) || 0
+  const paidFromPayments = paymentTotal(record.payments)
   const totalPaid = localManuallyPaid ? displayTotal : paidFromPayments
   const balanceDue = displayTotal - totalPaid
   const paymentStatus = localManuallyPaid

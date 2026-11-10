@@ -1,0 +1,203 @@
+// @vitest-environment node
+import { beforeAll, afterAll, describe, it, expect, vi } from 'vitest'
+import { randomUUID } from 'node:crypto'
+import { PrismaClient } from '@/generated/prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
+const state = vi.hoisted(() => ({
+  db: null as unknown as PrismaClient,
+  org: '',
+  actor: 'finance-test-actor',
+}))
+vi.mock('@/lib/db', () => ({
+  db: new Proxy(
+    {},
+    {
+      get: (_target, key) => {
+        const value = Reflect.get(state.db, key)
+        return typeof value === 'function' ? value.bind(state.db) : value
+      },
+    }
+  ),
+}))
+vi.mock('@/lib/with-auth', () => ({
+  withAuth: async (fn: (ctx: unknown) => Promise<unknown>) => {
+    try {
+      return {
+        success: true,
+        data: await fn({
+          organizationId: state.org,
+          userId: state.actor,
+          isAdmin: true,
+          role: 'owner',
+          isSuperAdmin: false,
+        }),
+      }
+    } catch (error) {
+      return { success: false, error: (error as Error).message }
+    }
+  },
+}))
+vi.mock('@/lib/cached-session', () => ({ getCachedMembership: vi.fn() }))
+vi.mock('@/lib/workshop-timezone', () => ({ workshopTimeZone: async () => 'Europe/Kyiv' }))
+vi.mock('@/lib/workshop-currency', () => ({
+  workshopCurrencySettings: async () => ({ currencyCode: 'UAH' }),
+}))
+vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
+import { postMoney } from '@/features/finance/ledger'
+import {
+  prepareCashOpening,
+  activateCashOpening,
+  refundMoneyDocument,
+  reverseMoneyDocument,
+  assignUnlinkedPayment,
+} from '@/features/finance/actions'
+import { zonedDayKey } from '@/lib/timezone'
+import type { TxClient } from '@/lib/db'
+const url = process.env.FINANCE_TEST_DATABASE_URL
+;(url ? describe : describe.skip)('finance action transactions', () => {
+  let cash: string, paymentDocument: string, record: string
+  const today = zonedDayKey(new Date(), 'Europe/Kyiv')
+  beforeAll(async () => {
+    if (
+      !url ||
+      !['localhost', '127.0.0.1'].includes(new URL(url).hostname) ||
+      !new URL(url).pathname.includes('test')
+    )
+      throw Error('Only local test database')
+    state.db = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) })
+    state.org = (await state.db.organization.create({ data: { name: 'Finance action test' } })).id
+    const entity = await state.db.ownLegalEntity.create({
+      data: { organizationId: state.org, name: 'Test' },
+    })
+    cash = (
+      await state.db.moneyAccount.create({
+        data: { organizationId: state.org, legalEntityId: entity.id, name: 'Cash', kind: 'cash' },
+      })
+    ).id
+  })
+  afterAll(async () => {
+    await state.db?.$disconnect()
+  })
+  it('preparing balances does not activate or create movements', async () => {
+    const result = await prepareCashOpening({
+      date: today,
+      balances: [{ accountId: cash, amount: '100.00' }],
+    })
+    expect(result.success).toBe(true)
+    expect(await state.db.moneyEntry.count({ where: { organizationId: state.org } })).toBe(0)
+    expect(
+      await state.db.financeSettings.findUnique({ where: { organizationId: state.org } })
+    ).toBeNull()
+    const previous = process.env.FINANCE_ACTIVATION_ALLOWED
+    delete process.env.FINANCE_ACTIVATION_ALLOWED
+    try {
+      const blocked = await activateCashOpening(result.data!.id)
+      expect(blocked.success).toBe(false)
+      expect(blocked.error).toContain('погодження')
+    } finally {
+      if (previous !== undefined) process.env.FINANCE_ACTIVATION_ALLOWED = previous
+    }
+  })
+  it('rejects a cutover with missing or duplicated accounts', async () => {
+    expect(
+      (
+        await prepareCashOpening({
+          date: today,
+          balances: [
+            { accountId: cash, amount: '1' },
+            { accountId: cash, amount: '1' },
+          ],
+        })
+      ).success
+    ).toBe(false)
+    expect(
+      (await prepareCashOpening({ date: today, balances: [{ accountId: 'foreign', amount: '1' }] }))
+        .success
+    ).toBe(false)
+  })
+  it('links an external payment idempotently without duplicating the work order payment', async () => {
+    await state.db.financeSettings.create({
+      data: { organizationId: state.org, activatedOn: new Date(today), activatedAt: new Date() },
+    })
+    record = (
+      await state.db.serviceRecord.create({
+        data: { organizationId: state.org, title: 'Refund test', totalAmount: 200 },
+      })
+    ).id
+    const p = await state.db.payment.create({
+      data: {
+        serviceRecordId: record,
+        amount: 100.01,
+        method: 'card',
+        provider: 'test',
+        externalId: randomUUID(),
+      },
+    })
+    const input = { paymentId: p.id, accountId: cash, requestId: randomUUID() }
+    expect((await assignUnlinkedPayment(input)).success).toBe(true)
+    expect((await assignUnlinkedPayment(input)).success).toBe(true)
+    expect(await state.db.payment.count({ where: { serviceRecordId: record } })).toBe(1)
+    const d = await state.db.financialDocument.findUniqueOrThrow({ where: { paymentId: p.id } })
+    paymentDocument = d.id
+    expect(d.amount.toFixed(2)).toBe('100.01')
+  })
+  it('partial refund updates both cash and work order once, then rejects over-refund', async () => {
+    const input = {
+      id: paymentDocument,
+      requestId: randomUUID(),
+      date: today,
+      amount: '30.01',
+      reason: 'Partial refund',
+    }
+    const result = await refundMoneyDocument(input)
+    expect(result).toMatchObject({ success: true })
+    expect((await refundMoneyDocument(input)).success).toBe(true)
+    const payments = await state.db.payment.findMany({ where: { serviceRecordId: record } })
+    expect(payments).toHaveLength(2)
+    expect(payments.reduce((s, p) => s + Math.round(Number(p.amountExact) * 100), 0)).toBe(7000)
+    const cashTotal = await state.db.moneyEntry.aggregate({
+      where: { organizationId: state.org, accountId: cash },
+      _sum: { amount: true },
+    })
+    expect(cashTotal._sum.amount?.toFixed(2)).toBe('70.00')
+    expect(
+      (await refundMoneyDocument({ ...input, requestId: randomUUID(), amount: '70.01' })).success
+    ).toBe(false)
+    expect(
+      (
+        await reverseMoneyDocument({
+          id: paymentDocument,
+          requestId: randomUUID(),
+          date: today,
+          reason: 'Cannot reverse refunded payment',
+        })
+      ).success
+    ).toBe(false)
+  })
+  it('reversal of a separate payment appends a protected compensating payment', async () => {
+    const d = await state.db.$transaction(async (tx) => {
+      const p = await tx.payment.create({
+        data: { serviceRecordId: record, amount: 20, amountExact: '20.00', method: 'cash' },
+      })
+      return postMoney(tx as unknown as TxClient, state.org, state.actor, {
+        requestId: randomUUID(),
+        kind: 'customer_payment',
+        date: today,
+        amount: '20.00',
+        targetAccountId: cash,
+        paymentId: p.id,
+        note: 'Reverse me',
+      })
+    })
+    const input = { id: d.id, requestId: randomUUID(), date: today, reason: 'Correction' }
+    expect((await reverseMoneyDocument(input)).success).toBe(true)
+    expect((await reverseMoneyDocument(input)).success).toBe(true)
+    const reversed = await state.db.financialDocument.findUniqueOrThrow({
+      where: { reversalOfId: d.id },
+    })
+    expect(reversed.paymentId).toBeTruthy()
+    await expect(state.db.payment.delete({ where: { id: reversed.paymentId! } })).rejects.toThrow(
+      'immutable'
+    )
+  })
+})

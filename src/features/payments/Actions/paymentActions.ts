@@ -1,5 +1,14 @@
 'use server'
 
+import { paymentTotal } from '@/features/finance/payment-total'
+import { financeActive, lockFinance, postMoney } from '@/features/finance/ledger'
+import {
+  assertAccountAccess,
+  assertFinancePermission,
+  assertOperationDate,
+} from '@/features/finance/access'
+import { normalizeMoney } from '@/features/finance/money'
+import { zonedDayKey } from '@/lib/timezone'
 import { workshopTimeZone } from '@/lib/workshop-timezone'
 import { toSafeWorkshopDate } from '@/lib/workshop-datetime'
 import { db } from '@/lib/db'
@@ -13,7 +22,8 @@ import { DocumentLockedError, invoiceLockState } from '@/lib/document-lock'
 
 export async function createPayment(input: unknown) {
   return withAuth(
-    async ({ organizationId }) => {
+    async (ctx) => {
+      const { organizationId } = ctx
       const data = createPaymentSchema.parse(input)
 
       // Verify ownership: serviceRecord -> vehicle -> organizationId
@@ -23,14 +33,54 @@ export async function createPayment(input: unknown) {
       })
       if (!serviceRecord) throw new Error('Service record not found')
 
-      const payment = await db.payment.create({
-        data: {
-          serviceRecordId: data.serviceRecordId,
-          amount: data.amount,
-          date: toSafeWorkshopDate(data.date, await workshopTimeZone(organizationId)) ?? new Date(),
-          method: data.method,
-          note: data.note || null,
-        },
+      const write = {
+        serviceRecordId: data.serviceRecordId,
+        amount: data.amount,
+        date: toSafeWorkshopDate(data.date, await workshopTimeZone(organizationId)) ?? new Date(),
+        method: data.method,
+        note: data.note || null,
+      }
+      const payment = await db.$transaction(async (tx) => {
+        await lockFinance(tx, organizationId)
+        if (!(await financeActive(tx, organizationId))) return tx.payment.create({ data: write })
+        await assertFinancePermission(ctx, PermissionAction.UPDATE)
+        if (!data.moneyAccountId || !data.requestId)
+          throw new Error('Оберіть касу та повторіть оплату.')
+        const amount = normalizeMoney(data.amountExact ?? String(data.amount))
+        if (Number(amount).toFixed(2) !== amount || Number(amount) !== data.amount)
+          throw new Error('Сума оплати не відповідає точній сумі або перевищує допустиму точність.')
+        const date = zonedDayKey(write.date, await workshopTimeZone(organizationId))
+        await assertOperationDate(ctx, date)
+        await assertAccountAccess(ctx, [data.moneyAccountId], tx)
+        const old = await tx.financialDocument.findUnique({
+          where: { organizationId_requestId: { organizationId, requestId: data.requestId } },
+          include: { payment: true },
+        })
+        if (old) {
+          if (
+            old.payment?.serviceRecordId !== data.serviceRecordId ||
+            old.amount.toFixed(2) !== amount ||
+            old.targetAccountId !== data.moneyAccountId ||
+            old.note !== (data.note || 'Оплата клієнта') ||
+            old.date.toISOString().slice(0, 10) !== date ||
+            old.payment.method !== data.method
+          )
+            throw new Error('Запит уже виконано з іншими даними.')
+          return old.payment
+        }
+        const created = await tx.payment.create({
+          data: { ...write, amount: Number(amount), amountExact: amount },
+        })
+        await postMoney(tx, organizationId, ctx.userId, {
+          requestId: data.requestId,
+          kind: 'customer_payment',
+          date,
+          amount,
+          targetAccountId: data.moneyAccountId,
+          paymentId: created.id,
+          note: data.note || 'Оплата клієнта',
+        })
+        return created
       })
       // Money against it makes the invoice the customer's document, even one
       // handed over on paper and never sent through the app.
@@ -43,8 +93,9 @@ export async function createPayment(input: unknown) {
       )
       return {
         ...payment,
+        amountExact: payment.amountExact?.toFixed(2) ?? null,
         serviceRecordId: data.serviceRecordId,
-        amount: data.amount,
+        amount: payment.amount,
         method: data.method,
       }
     },
@@ -86,7 +137,7 @@ export async function deletePayment(paymentId: string) {
               totalAmount: true,
               cost: true,
               editUnlockedAt: true,
-              payments: { select: { id: true, amount: true } },
+              payments: { select: { id: true, amount: true, amountExact: true } },
             },
           },
         },
@@ -110,6 +161,8 @@ export async function deletePayment(paymentId: string) {
         throw new DocumentLockedError(before.reason)
       }
 
+      if (await db.financialDocument.findFirst({ where: { organizationId, paymentId } }))
+        throw new Error('Проведену оплату не можна видалити. Використайте сторно в розділі кас.')
       await db.payment.delete({ where: { id: paymentId } })
 
       const { vehicleId, id: serviceId } = payment.serviceRecord
@@ -145,11 +198,11 @@ export async function getPaidTotal(serviceRecordId: string) {
     async ({ organizationId }) => {
       const record = await db.serviceRecord.findFirst({
         where: { id: serviceRecordId, organizationId },
-        select: { manuallyPaid: true, payments: { select: { amount: true } } },
+        select: { manuallyPaid: true, payments: { select: { amount: true, amountExact: true } } },
       })
       if (!record) throw new Error('Service record not found')
       return {
-        paid: Math.round(record.payments.reduce((sum, p) => sum + p.amount, 0) * 100) / 100,
+        paid: Math.round(paymentTotal(record.payments) * 100) / 100,
         payments: record.payments.length,
         manuallyPaid: record.manuallyPaid,
       }

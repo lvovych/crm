@@ -1,3 +1,4 @@
+import { paymentTotal } from '@/features/finance/payment-total'
 /**
  * One place that turns an invoice into what the renderers take.
  *
@@ -301,7 +302,7 @@ function paymentSummaryOf(
   timezone: string | undefined
 ): PaymentSummary | undefined {
   if (record.payments.length === 0 && !record.manuallyPaid) return undefined
-  const paidFromPayments = record.payments.reduce((sum, p) => sum + p.amount, 0)
+  const paidFromPayments = paymentTotal(record.payments)
   const effectiveTotal = record.totalAmount > 0 ? record.totalAmount : record.cost
   return {
     totalPaid: record.manuallyPaid ? effectiveTotal : paidFromPayments,

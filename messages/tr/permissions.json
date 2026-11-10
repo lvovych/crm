@@ -19,7 +19,10 @@
     "supplier_settlements": "Supplier settlements",
     "receipts": "Tedarikçi teslimatları",
     "suppliers": "Suppliers",
-    "brands": "Brands (shared directory)"
+    "brands": "Brands (shared directory)",
+    "finance": "Finance",
+    "finance_backdate": "Finance Backdate",
+    "finance_transfer": "Finance Transfer"
   },
   "actions": {
     "create": "Oluşturma",

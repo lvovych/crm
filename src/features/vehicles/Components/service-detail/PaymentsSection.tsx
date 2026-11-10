@@ -1,5 +1,6 @@
 'use client'
 
+import { AccountSelect } from '@/features/finance/AccountSelect'
 import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Badge } from '@/components/ui/badge'
@@ -32,6 +33,9 @@ interface PaymentsSectionProps {
   currencyCode: string
   onCreatePayment: (data: {
     amount: number
+    amountExact?: string
+    moneyAccountId?: string
+    requestId?: string
     date: string
     method: string
     note?: string
@@ -71,6 +75,8 @@ export function PaymentsSection({
   const tc = useTranslations('common.buttons')
   const modern = useModernWorkOrder()
   const [showForm, setShowForm] = useState(false)
+  const [moneyAccountId, setMoneyAccountId] = useState('')
+  const requestId = useRef<string>('')
   const [paymentMethod, setPaymentMethod] = useState('other')
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0])
   const { formatDate } = useFormatDate()
@@ -93,13 +99,18 @@ export function PaymentsSection({
     const date = formRef.current.querySelector<HTMLInputElement>('[name="paymentDate"]')
     const note = formRef.current.querySelector<HTMLInputElement>('[name="paymentNote"]')
     if (!amount?.value || Number(amount.value) <= 0) return
+    if (!requestId.current) requestId.current = crypto.randomUUID()
     const success = await onCreatePayment({
+      moneyAccountId: moneyAccountId || undefined,
+      requestId: requestId.current,
+      amountExact: amount.value,
       amount: Number(amount.value),
       date: date?.value || new Date().toISOString(),
       method: paymentMethod,
       note: note?.value || undefined,
     })
     if (success) {
+      requestId.current = ''
       setShowForm(false)
       setPaymentMethod('other')
     }
@@ -146,6 +157,7 @@ export function PaymentsSection({
         </div>
         <div className="space-y-1">
           <Label className="text-xs">{t('method')}</Label>
+          <AccountSelect value={moneyAccountId} onChange={setMoneyAccountId} />
           <Select value={paymentMethod} onValueChange={setPaymentMethod}>
             <SelectTrigger>
               <SelectValue />

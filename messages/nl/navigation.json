@@ -158,6 +158,7 @@
     },
     "receipts": "Goederenontvangsten",
     "suppliers": "Suppliers",
-    "directories": "Directories"
+    "directories": "Directories",
+    "finance": "Cash accounts"
   }
 }

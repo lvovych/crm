@@ -447,6 +447,16 @@ export async function POST(request: NextRequest) {
   try {
     await db.$transaction(async (tx) => {
       const organizationId = ctx.organizationId
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${organizationId}), hashtext('finance'))`
+      if (
+        (await tx.financeSettings.findUnique({ where: { organizationId } })) ||
+        (await tx.moneyAccount.count({ where: { organizationId } })) ||
+        ((data as Record<string, unknown>).finance &&
+          JSON.stringify((data as Record<string, unknown>).finance).includes('"id":'))
+      )
+        throw new Error(
+          'Фінансові дані потребують узгодженого відновлення PostgreSQL. Імпорт через інтерфейс не змінюватиме каси або пов’язані документи.'
+        )
 
       // 1. Clear what this backup can put back, and nothing else.
       //

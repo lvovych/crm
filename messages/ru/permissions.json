@@ -19,7 +19,10 @@
     "supplier_settlements": "Supplier settlements",
     "receipts": "Поступления",
     "suppliers": "Suppliers",
-    "brands": "Бренды (общий справочник)"
+    "brands": "Бренды (общий справочник)",
+    "finance": "Finance",
+    "finance_backdate": "Finance Backdate",
+    "finance_transfer": "Finance Transfer"
   },
   "actions": {
     "create": "Создание",

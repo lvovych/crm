@@ -167,6 +167,7 @@ export const TABLE_COLUMNS: Readonly<Record<string, readonly string[]>> = {
     'serviceRecordId',
   ],
   payments: [
+    'amountExact',
     'id',
     'amount',
     'date',

@@ -1,0 +1,135 @@
+// Finance is opt-in per organization. Installing the schema never activates it.
+model FinanceSettings {
+  organizationId String @id
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  activatedOn DateTime? @db.Date
+  activatedAt DateTime?
+  activatedById String?
+  closedThrough DateTime? @db.Date
+  version Int @default(0)
+  @@map("finance_settings")
+}
+model OwnLegalEntity {
+  id String @id @default(cuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  name String
+  taxId String?
+  isArchived Boolean @default(false)
+  accounts MoneyAccount[]
+  @@unique([organizationId,id])
+  @@map("own_legal_entities")
+}
+model MoneyAccount {
+  id String @id @default(cuid())
+  organizationId String
+  legalEntityId String
+  legalEntity OwnLegalEntity @relation(fields:[organizationId,legalEntityId],references:[organizationId,id],onDelete:Restrict)
+  name String
+  kind String
+  currency String @default("UAH")
+  iban String?
+  bankName String?
+  allowNegative Boolean @default(false)
+  isArchived Boolean @default(false)
+  createdAt DateTime @default(now())
+  access MoneyAccountAccess[]
+  entries MoneyEntry[]
+  outgoing FinancialDocument[] @relation("sourceAccount")
+  incoming FinancialDocument[] @relation("targetAccount")
+  @@unique([organizationId,id])
+  @@index([organizationId,isArchived])
+  @@map("money_accounts")
+}
+model MoneyAccountAccess {
+  id String @id @default(cuid())
+  organizationId String
+  accountId String
+  roleId String
+  account MoneyAccount @relation(fields:[organizationId,accountId],references:[organizationId,id],onDelete:Restrict)
+  role Role @relation(fields:[roleId],references:[id],onDelete:Cascade)
+  canRead Boolean @default(true)
+  canPost Boolean @default(false)
+  @@unique([accountId,roleId])
+  @@map("money_account_access")
+}
+model CashFlowCategory {
+  id String @id @default(cuid())
+  organizationId String
+  organization Organization @relation(fields:[organizationId],references:[id],onDelete:Restrict)
+  name String
+  direction String
+  systemCode String?
+  isArchived Boolean @default(false)
+  documents FinancialDocument[]
+  @@unique([organizationId,id])
+  @@unique([organizationId,systemCode])
+  @@map("cash_flow_categories")
+}
+model FinancialDocument {
+  id String @id @default(cuid())
+  organizationId String
+  organization Organization @relation(fields:[organizationId],references:[id],onDelete:Restrict)
+  requestId String
+  fingerprint String
+  kind String
+  status String @default("draft")
+  date DateTime @db.Date
+  amount Decimal @db.Decimal(22,2)
+  sourceAccountId String?
+  targetAccountId String?
+  sourceAccount MoneyAccount? @relation("sourceAccount",fields:[organizationId,sourceAccountId],references:[organizationId,id],onDelete:Restrict)
+  targetAccount MoneyAccount? @relation("targetAccount",fields:[organizationId,targetAccountId],references:[organizationId,id],onDelete:Restrict)
+  categoryId String?
+  category CashFlowCategory? @relation(fields:[organizationId,categoryId],references:[organizationId,id],onDelete:Restrict)
+  counterpartyLabel String?
+  note String
+  createdById String
+  createdAt DateTime @default(now())
+  postedById String?
+  postedAt DateTime?
+  reversalOfId String? @unique
+  reversalOf FinancialDocument? @relation("financeReversal",fields:[reversalOfId],references:[id],onDelete:Restrict)
+  reversal FinancialDocument? @relation("financeReversal")
+  originalId String?
+  original FinancialDocument? @relation("financeRefund",fields:[originalId],references:[id],onDelete:Restrict)
+  refunds FinancialDocument[] @relation("financeRefund")
+  paymentId String? @unique
+  payment Payment? @relation(fields:[paymentId],references:[id],onDelete:Restrict)
+  supplierEntryId String? @unique
+  supplierEntry SupplierEntry? @relation(fields:[supplierEntryId],references:[id],onDelete:Restrict)
+  entries MoneyEntry[]
+  @@unique([organizationId,id])
+  @@unique([organizationId,requestId])
+  @@index([organizationId,date])
+  @@map("financial_documents")
+}
+model MoneyEntry {
+  id String @id @default(cuid())
+  organizationId String
+  documentId String
+  accountId String
+  document FinancialDocument @relation(fields:[organizationId,documentId],references:[organizationId,id],onDelete:Restrict)
+  account MoneyAccount @relation(fields:[organizationId,accountId],references:[organizationId,id],onDelete:Restrict)
+  date DateTime @db.Date
+  amount Decimal @db.Decimal(22,2)
+  createdAt DateTime @default(now())
+  @@unique([documentId,accountId])
+  @@index([organizationId,accountId,date])
+  @@map("money_entries")
+}
+model FinanceCutoverBatch {
+  id String @id @default(cuid())
+  organizationId String
+  organization Organization @relation(fields:[organizationId],references:[id],onDelete:Restrict)
+  date DateTime @db.Date
+  status String @default("draft")
+  balances Json
+  fingerprint String
+  createdById String
+  createdAt DateTime @default(now())
+  approvedById String?
+  approvedAt DateTime?
+  @@index([organizationId,status])
+  @@map("finance_cutover_batches")
+}
