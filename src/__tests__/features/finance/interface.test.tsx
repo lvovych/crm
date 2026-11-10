@@ -25,7 +25,14 @@ const fixture = () => ({
   active: true,
   start: '2026-11-01',
   isAdmin: true,
-  capabilities: { manage: true, post: true, draft: true, reverse: true, transfer: true },
+  capabilities: {
+    manageAccounts: true,
+    manage: true,
+    post: true,
+    draft: true,
+    reverse: true,
+    transfer: true,
+  },
   accountAccess: [],
   roles: [{ id: 'role', name: 'Менеджер' }],
   postAccountIds: ['cash'],
@@ -88,6 +95,7 @@ describe('cash interface', () => {
     const data = fixture()
     data.isAdmin = false
     data.capabilities = {
+      manageAccounts: false,
       manage: false,
       post: false,
       draft: false,
@@ -213,8 +221,7 @@ describe('cash usability safeguards', () => {
       ],
       accountAccess: [{ accountId: 'cash', roleId: 'role', canRead: true, canPost: true }],
     }
-    render(<FinanceClient initial={data} today="2026-11-10" />)
-    fireEvent.click(screen.getByRole('button', { name: 'Налаштування' }))
+    render(<FinanceClient settingsOnly initial={data} today="2026-11-10" />)
     fireEvent.click(screen.getByRole('button', { name: 'Доступ ролей до кас' }))
     expect(screen.getByLabelText('Проведення операцій')).toBeChecked()
     fireEvent.change(screen.getByLabelText('Роль'), { target: { value: 'viewer' } })
@@ -223,8 +230,7 @@ describe('cash usability safeguards', () => {
     expect(api.saveFinanceDirectory).not.toHaveBeenCalled()
   })
   it('shows bank-only fields only for a bank account', () => {
-    render(<FinanceClient initial={fixture()} today="2026-11-10" />)
-    fireEvent.click(screen.getByRole('button', { name: 'Налаштування' }))
+    render(<FinanceClient settingsOnly initial={fixture()} today="2026-11-10" />)
     fireEvent.click(screen.getByRole('button', { name: 'Додати касу / рахунок' }))
     expect(screen.queryByLabelText('IBAN')).not.toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('Тип'), { target: { value: 'bank' } })
@@ -306,6 +312,7 @@ describe('read-only reconciliation notice', () => {
           unlinkedCount: 2,
           unlinked: [],
           capabilities: {
+            manageAccounts: false,
             manage: false,
             post: false,
             draft: false,
@@ -431,7 +438,7 @@ describe('account list and journal filters', () => {
     fireEvent.change(screen.getByLabelText('За конкретну дату'), {
       target: { value: '2026-11-10' },
     })
-    await waitFor(() => expect(api.financeReport).toHaveBeenCalledWith('2026-11-10'))
+    await waitFor(() => expect(api.financeReport).toHaveBeenCalledWith('2026-11-10', false))
     expect(screen.queryByText('older-payment')).not.toBeInTheDocument()
     expect(screen.getByLabelText('Операції від')).toHaveValue('2026-11-10')
     fireEvent.change(screen.getByLabelText('Тип контрагента'), { target: { value: 'supplier' } })
@@ -441,5 +448,79 @@ describe('account list and journal filters', () => {
     expect(screen.getByLabelText('Операції від')).toHaveValue('')
     expect(screen.getByLabelText('Рахунок')).toHaveValue('')
     expect(screen.getAllByText('older-payment').length).toBeGreaterThan(0)
+  })
+})
+
+describe('account action icons', () => {
+  it('keeps all actions labelled for assistive technology while showing only icons', () => {
+    render(<FinanceClient initial={fixture()} today="2026-11-10" />)
+    const actions = within(screen.getByRole('group', { name: 'Дії: Офіс' }))
+    for (const name of ['Списання', 'Надходження', 'Переміщення', 'Історія']) {
+      const button = actions.getByRole('button', { name })
+      expect(button).toHaveAttribute('title', name)
+      expect(button.textContent).toBe('')
+      expect(button.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
+      expect(button).toHaveClass('size-11')
+    }
+  })
+})
+
+describe('cash settings location', () => {
+  it('never offers account creation or settings on the operational page, including the empty state', () => {
+    render(
+      <FinanceClient initial={{ ...fixture(), accounts: [], active: false }} today="2026-11-10" />
+    )
+    expect(screen.queryByRole('button', { name: 'Додати касу / рахунок' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Налаштування' })).not.toBeInTheDocument()
+    expect(screen.getByText(/першу касу в налаштуваннях/)).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: /Журнал операцій/ }))
+    expect(screen.queryByRole('button', { name: 'Додати касу / рахунок' })).not.toBeInTheDocument()
+  })
+  it('offers account creation only in the settings view for authorized users', () => {
+    render(<FinanceClient settingsOnly initial={fixture()} today="2026-11-10" />)
+    expect(screen.getByRole('heading', { name: 'Налаштування кас і рахунків' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Додати касу / рахунок' })).toBeEnabled()
+    expect(screen.queryByRole('button', { name: /Журнал операцій/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /До кас і рахунків/ })).toHaveAttribute(
+      'href',
+      '/finance'
+    )
+  })
+  it('rejects the settings view without finance management permission', () => {
+    render(
+      <FinanceClient settingsOnly initial={{ ...fixture(), isAdmin: false }} today="2026-11-10" />
+    )
+    expect(screen.getByRole('alert')).toHaveTextContent('Немає доступу')
+    expect(screen.queryByRole('button', { name: 'Додати касу / рахунок' })).not.toBeInTheDocument()
+  })
+})
+
+describe('independent account configuration permission', () => {
+  it('allows configuration without posting or activating balances', () => {
+    const report = fixture()
+    render(
+      <FinanceClient
+        settingsOnly
+        today="2026-11-10"
+        initial={{
+          ...report,
+          active: false,
+          capabilities: {
+            manageAccounts: true,
+            manage: false,
+            post: false,
+            draft: false,
+            reverse: false,
+            transfer: false,
+          },
+        }}
+      />
+    )
+    expect(screen.getByRole('button', { name: 'Додати касу / рахунок' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Підготувати залишки' })).toBeDisabled()
+    expect(
+      screen.queryByRole('button', { name: 'Активувати погоджені залишки' })
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '＋ Додати операцію' })).not.toBeInTheDocument()
   })
 })

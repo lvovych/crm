@@ -46,6 +46,9 @@ type SettingsNavItem = {
   href: string
   icon: React.ComponentType<{ className?: string }>
   gate?: keyof PlanFeatures
+  financeOnly?: boolean
+  title?: string
+  description?: string
   cloudOnly?: boolean
   selfHostedOnly?: boolean
   /**
@@ -76,6 +79,14 @@ const settingsCategories: SettingsCategory[] = [
   {
     key: 'billing',
     items: [
+      {
+        key: 'finance',
+        href: '/settings/finance',
+        icon: Banknote,
+        financeOnly: true,
+        title: 'Каси та рахунки',
+        description: 'Рахунки, статті та доступи',
+      },
       { key: 'invoice', href: '/settings/invoice', icon: FileText },
       { key: 'templates', href: '/settings/templates', icon: Layout, gate: 'customTemplates' },
       { key: 'payment', href: '/settings/payment', icon: Banknote, gate: 'payments' },
@@ -137,11 +148,13 @@ const settingsCategories: SettingsCategory[] = [
 
 export function SettingsNav({
   features,
+  canManageFinance = false,
   isCloud,
   supportEnabled,
   newItems = [],
   mobile,
 }: {
+  canManageFinance?: boolean
   features?: PlanFeatures
   isCloud?: boolean
   supportEnabled?: boolean
@@ -164,6 +177,7 @@ export function SettingsNav({
     ) : null
 
   const filterItem = (item: SettingsNavItem) => {
+    if (item.financeOnly && !canManageFinance) return false
     if (item.cloudOnly && !isCloud) return false
     if (item.selfHostedOnly && isCloud) return false
     if (item.supportOnly && !supportEnabled) return false
@@ -186,7 +200,7 @@ export function SettingsNav({
             return visibleItems.map((item) => (
               <SelectItem key={item.href} value={item.href}>
                 <span className="flex items-center gap-2">
-                  {t(`nav.items.${item.key}.title`)}
+                  {item.title ?? t(`nav.items.${item.key}.title`)}
                   {newPill(item)}
                 </span>
               </SelectItem>
@@ -228,7 +242,7 @@ export function SettingsNav({
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <p className={cn('truncate', isActive && 'font-medium')}>
-                          {t(`nav.items.${item.key}.title`)}
+                          {item.title ?? t(`nav.items.${item.key}.title`)}
                         </p>
                         {isLocked && (
                           <span className="shrink-0 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-600">
@@ -238,7 +252,7 @@ export function SettingsNav({
                         {newPill(item)}
                       </div>
                       <p className="hidden truncate text-xs text-muted-foreground lg:block">
-                        {t(`nav.items.${item.key}.description`)}
+                        {item.description ?? t(`nav.items.${item.key}.description`)}
                       </p>
                     </div>
                   </Link>

@@ -49,14 +49,20 @@ const counterpartyRelations = {
   supplierEntry: { select: { supplierId: true, supplier: { select: { id: true, name: true } } } },
 } as const
 
-export async function financeReport(asOf: string) {
+export async function financeReport(asOf: string, settingsOnly = false) {
   return withAuth(
     async (ctx) => {
       z.string().date().parse(asOf)
       const capabilities = await financeCapabilities(ctx)
-      const accounts = await accessibleAccounts(ctx)
-      const postAccounts = await accessibleAccounts(ctx, true)
-      const roles = capabilities.manage
+      const accounts = settingsOnly
+        ? await db.moneyAccount.findMany({
+            where: { organizationId: ctx.organizationId },
+            include: { legalEntity: { select: { name: true } } },
+            orderBy: { name: 'asc' },
+          })
+        : await accessibleAccounts(ctx)
+      const postAccounts = settingsOnly ? [] : await accessibleAccounts(ctx, true)
+      const roles = capabilities.manageAccounts
         ? await db.role.findMany({
             where: { organizationId: ctx.organizationId },
             select: { id: true, name: true },
@@ -64,35 +70,43 @@ export async function financeReport(asOf: string) {
         : []
       const ids = accounts.map((a) => a.id)
       const scope = { organizationId: ctx.organizationId }
-      const drafts = await db.financialDocument.findMany({
-        where: {
-          ...scope,
-          status: 'draft',
-          AND: [
-            { OR: [{ sourceAccountId: null }, { sourceAccountId: { in: ids } }] },
-            { OR: [{ targetAccountId: null }, { targetAccountId: { in: ids } }] },
-          ],
-        },
-        orderBy: { createdAt: 'desc' },
-      })
+      const drafts = settingsOnly
+        ? []
+        : await db.financialDocument.findMany({
+            where: {
+              ...scope,
+              status: 'draft',
+              AND: [
+                { OR: [{ sourceAccountId: null }, { sourceAccountId: { in: ids } }] },
+                { OR: [{ targetAccountId: null }, { targetAccountId: { in: ids } }] },
+              ],
+            },
+            orderBy: { createdAt: 'desc' },
+          })
       const [settings, entries, categories, entities, pending, batches] = await Promise.all([
         db.financeSettings.findUnique({ where: scope }),
-        db.moneyEntry.findMany({
-          where: { ...scope, accountId: { in: ids }, date: { lte: new Date(asOf + 'T00:00:00Z') } },
-          include: {
-            document: {
-              include: {
-                category: true,
-                reversal: { select: { id: true } },
-                refunds: { select: { amount: true } },
-                ...counterpartyRelations,
-                original: { select: counterpartyRelations },
-                reversalOf: { select: counterpartyRelations },
+        settingsOnly
+          ? Promise.resolve([])
+          : db.moneyEntry.findMany({
+              where: {
+                ...scope,
+                accountId: { in: ids },
+                date: { lte: new Date(asOf + 'T00:00:00Z') },
               },
-            },
-          },
-          orderBy: [{ date: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
-        }),
+              include: {
+                document: {
+                  include: {
+                    category: true,
+                    reversal: { select: { id: true } },
+                    refunds: { select: { amount: true } },
+                    ...counterpartyRelations,
+                    original: { select: counterpartyRelations },
+                    reversalOf: { select: counterpartyRelations },
+                  },
+                },
+              },
+              orderBy: [{ date: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+            }),
         db.cashFlowCategory.findMany({ where: scope, orderBy: { name: 'asc' } }),
         db.ownLegalEntity.findMany({ where: scope }),
         capabilities.manage
@@ -110,7 +124,7 @@ export async function financeReport(asOf: string) {
           : Promise.resolve([]),
       ])
       const unlinked =
-        capabilities.manage && settings?.activatedAt
+        !settingsOnly && capabilities.manage && settings?.activatedAt
           ? await db.payment.findMany({
               where: {
                 serviceRecord: { organizationId: ctx.organizationId },
@@ -135,23 +149,25 @@ export async function financeReport(asOf: string) {
             })
           : []
       // Readers see that balances are incomplete without receiving payment details.
-      const unlinkedCount = capabilities.manage
-        ? unlinked.length
-        : settings?.activatedAt
-          ? await db.payment.count({
-              where: {
-                serviceRecord: { organizationId: ctx.organizationId },
-                financialDocument: null,
-                amount: { not: 0 },
-                createdAt: {
-                  gte: toSafeWorkshopDate(
-                    dateKey(settings.activatedOn!),
-                    await workshopTimeZone(ctx.organizationId)
-                  )!,
+      const unlinkedCount = settingsOnly
+        ? 0
+        : capabilities.manage
+          ? unlinked.length
+          : settings?.activatedAt
+            ? await db.payment.count({
+                where: {
+                  serviceRecord: { organizationId: ctx.organizationId },
+                  financialDocument: null,
+                  amount: { not: 0 },
+                  createdAt: {
+                    gte: toSafeWorkshopDate(
+                      dateKey(settings.activatedOn!),
+                      await workshopTimeZone(ctx.organizationId)
+                    )!,
+                  },
                 },
-              },
-            })
-          : 0
+              })
+            : 0
       const running = new Map<string, string>(),
         balances = new Map<string, bigint>()
       for (const e of [...entries].reverse()) {
@@ -186,10 +202,10 @@ export async function financeReport(asOf: string) {
         })),
         active: !!settings?.activatedOn,
         start: settings?.activatedOn ? dateKey(settings.activatedOn) : null,
-        isAdmin: capabilities.manage,
+        isAdmin: capabilities.manageAccounts,
         capabilities,
         roles,
-        accountAccess: capabilities.manage
+        accountAccess: capabilities.manageAccounts
           ? await db.moneyAccountAccess.findMany({
               where: { ...scope, accountId: { in: ids } },
               select: { accountId: true, roleId: true, canRead: true, canPost: true },
@@ -268,7 +284,14 @@ export async function financeReport(asOf: string) {
         })),
       }
     },
-    { requiredPermissions: [{ action: A.READ, subject: S.FINANCE }] }
+    {
+      requiredPermissions: [
+        {
+          action: settingsOnly ? A.MANAGE : A.READ,
+          subject: settingsOnly ? S.FINANCE_ACCOUNTS : S.FINANCE,
+        },
+      ],
+    }
   )
 }
 export async function saveFinanceDirectory(raw: unknown) {
@@ -377,7 +400,7 @@ export async function saveFinanceDirectory(raw: unknown) {
       return true
     },
     {
-      requiredPermissions: [{ action: A.MANAGE, subject: S.FINANCE }],
+      requiredPermissions: [{ action: A.MANAGE, subject: S.FINANCE_ACCOUNTS }],
       audit: {
         action: 'finance.saveFinanceDirectory',
         entity: 'Finance',

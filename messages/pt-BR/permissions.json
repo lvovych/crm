@@ -22,7 +22,8 @@
     "brands": "Brands (shared directory)",
     "finance": "Finance",
     "finance_backdate": "Finance Backdate",
-    "finance_transfer": "Finance Transfer"
+    "finance_transfer": "Finance Transfer",
+    "finance_accounts": "Cash account configuration"
   },
   "actions": {
     "create": "Criar",
@@ -31,6 +32,12 @@
     "delete": "Excluir",
     "manage": "Gerenciar",
     "manage_storage": "Gerenciar o layout da armazenagem",
-    "deactivate_brand": "Delete (deactivate)"
+    "deactivate_brand": "Delete (deactivate)",
+    "finance_read": "View balances and journal",
+    "finance_draft": "Prepare and edit drafts",
+    "finance_post": "Post money operations",
+    "finance_reverse": "Reverse and refund",
+    "finance_reconcile": "Reconcile payments and activate opening balances",
+    "finance_accounts_manage": "Create and edit accounts, categories and account access"
   }
 }

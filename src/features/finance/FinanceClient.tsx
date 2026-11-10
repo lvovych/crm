@@ -1,6 +1,14 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import {
+  BanknoteArrowDown,
+  BanknoteArrowUp,
+  ArrowLeftRight,
+  History,
+  type LucideIcon,
+} from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -42,7 +50,46 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </label>
   )
 }
-export function FinanceClient({ initial, today }: { initial: Report; today: string }) {
+function AccountAction({
+  label,
+  icon: Icon,
+  disabled,
+  onClick,
+}: {
+  label: string
+  icon: LucideIcon
+  disabled?: boolean
+  onClick: () => void
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="size-11 shrink-0 [&_svg]:size-5"
+          aria-label={label}
+          title={label}
+          disabled={disabled}
+          onClick={onClick}
+        >
+          <Icon aria-hidden="true" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  )
+}
+export function FinanceClient({
+  initial,
+  today,
+  settingsOnly = false,
+}: {
+  initial: Report
+  today: string
+  settingsOnly?: boolean
+}) {
   const [data, setData] = useState(initial),
     [date, setDate] = useState(today),
     [filter, setFilter] = useState(''),
@@ -58,7 +105,7 @@ export function FinanceClient({ initial, today }: { initial: Report; today: stri
     if (error && modal) errorRef.current?.focus()
   }, [error, modal])
   const [editingDraft, setEditingDraft] = useState('')
-  const [tab, setTab] = useState('accounts')
+  const [tab, setTab] = useState(settingsOnly ? 'settings' : 'accounts')
   const [partyType, setPartyType] = useState('')
   const [partyId, setPartyId] = useState('')
   const [actionAccount, setActionAccount] = useState('')
@@ -84,7 +131,7 @@ export function FinanceClient({ initial, today }: { initial: Report; today: stri
     setLoading(true)
     setReportError('')
     try {
-      const r = await financeReport(asOf)
+      const r = await financeReport(asOf, settingsOnly)
       if (request !== reportRequest.current) return
       if (r.success && r.data) setData(r.data)
       else setReportError(r.error || 'Не вдалося оновити дані.')
@@ -270,49 +317,56 @@ export function FinanceClient({ initial, today }: { initial: Report; today: stri
       setBusy(false)
     }
   }
+  if (settingsOnly && !data.isAdmin) return <p role="alert">Немає доступу до налаштувань кас.</p>
   return (
     <main className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Каси та рахунки</h1>
-          <p className="text-muted-foreground">Залишки грошей і журнал операцій</p>
+          <h1 className="text-2xl font-semibold">
+            {settingsOnly ? 'Налаштування кас і рахунків' : 'Каси та рахунки'}
+          </h1>
+          <p className="text-muted-foreground">
+            {settingsOnly
+              ? 'Рахунки, власні реквізити, статті руху коштів і доступи'
+              : 'Залишки грошей і журнал операцій'}
+          </p>
         </div>
-        <Field label="Залишки на кінець дати">
-          <Input
-            type="date"
-            value={date}
-            onChange={(e) => {
-              setDate(e.target.value)
-              if (e.target.value) void refresh(e.target.value)
-            }}
-          />
-        </Field>
-      </div>
-      <nav aria-label="Розділи кас" className="flex flex-wrap gap-2 border-b pb-3">
-        <Button
-          variant={tab === 'accounts' ? 'default' : 'outline'}
-          aria-pressed={tab === 'accounts'}
-          onClick={() => setTab('accounts')}
-        >
-          Каси та рахунки
-        </Button>
-        <Button
-          variant={tab === 'operations' ? 'default' : 'outline'}
-          aria-pressed={tab === 'operations'}
-          onClick={() => setTab('operations')}
-        >
-          Журнал операцій{data.drafts.length ? ` · Чернетки: ${data.drafts.length}` : ''}
-        </Button>
-        {data.isAdmin && (
-          <Button
-            variant={tab === 'settings' ? 'default' : 'outline'}
-            aria-pressed={tab === 'settings'}
-            onClick={() => setTab('settings')}
-          >
-            Налаштування
-          </Button>
+        {!settingsOnly && (
+          <Field label="Залишки на кінець дати">
+            <Input
+              type="date"
+              value={date}
+              onChange={(e) => {
+                setDate(e.target.value)
+                if (e.target.value) void refresh(e.target.value)
+              }}
+            />
+          </Field>
         )}
-      </nav>
+      </div>
+      {!settingsOnly && (
+        <nav aria-label="Розділи кас" className="flex flex-wrap gap-2 border-b pb-3">
+          <Button
+            variant={tab === 'accounts' ? 'default' : 'outline'}
+            aria-pressed={tab === 'accounts'}
+            onClick={() => setTab('accounts')}
+          >
+            Каси та рахунки
+          </Button>
+          <Button
+            variant={tab === 'operations' ? 'default' : 'outline'}
+            aria-pressed={tab === 'operations'}
+            onClick={() => setTab('operations')}
+          >
+            Журнал операцій{data.drafts.length ? ` · Чернетки: ${data.drafts.length}` : ''}
+          </Button>
+        </nav>
+      )}
+      {settingsOnly && (
+        <Link className="inline-flex min-h-11 items-center rounded-md border px-3" href="/finance">
+          ← До кас і рахунків
+        </Link>
+      )}
       {!data.active ? (
         <section className="rounded-xl border border-amber-500/50 bg-amber-500/10 p-4">
           <h2 className="font-semibold">Підготовка касового обліку</h2>
@@ -335,11 +389,11 @@ export function FinanceClient({ initial, today }: { initial: Report; today: stri
           </Button>
         </div>
       )}
-      {data.unlinkedCount > 0 && (
+      {!settingsOnly && data.unlinkedCount > 0 && (
         <aside role="status" className="rounded-xl border border-amber-500 bg-amber-500/10 p-4">
           <strong>Оплат без каси: {data.unlinkedCount} — залишки потребують звірки</strong>
           <p className="text-sm">Ці оплати ще не включені в залишки. Не створюйте їх повторно.</p>
-          {data.isAdmin ? (
+          {data.capabilities.manage ? (
             <Button
               variant="outline"
               className="mt-2 min-h-11"
@@ -420,44 +474,42 @@ export function FinanceClient({ initial, today }: { initial: Report; today: stri
                       {knownBalance ? moneyLabel(a.balance) : '—'}
                     </strong>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-                    <Button
-                      className="min-h-11"
-                      variant="outline"
-                      disabled={!canPost}
-                      onClick={() => open('expense', '', a.id)}
+                  <TooltipProvider delayDuration={200}>
+                    <div
+                      className="flex flex-wrap gap-2"
+                      role="group"
+                      aria-label={`Дії: ${a.name}`}
                     >
-                      − Списання
-                    </Button>
-                    <Button
-                      className="min-h-11"
-                      variant="outline"
-                      disabled={!canPost}
-                      onClick={() => open('income', '', a.id)}
-                    >
-                      ＋ Надходження
-                    </Button>
-                    <Button
-                      className="min-h-11"
-                      variant="outline"
-                      disabled={
-                        !canPost || !data.capabilities.transfer || permittedAccounts.length < 2
-                      }
-                      onClick={() => open('transfer', '', a.id)}
-                    >
-                      ↔ Переміщення
-                    </Button>
-                    <Button
-                      className="min-h-11"
-                      variant="outline"
-                      onClick={() => {
-                        setFilter(a.id)
-                        setTab('operations')
-                      }}
-                    >
-                      Історія →
-                    </Button>
-                  </div>
+                      <AccountAction
+                        label="Списання"
+                        icon={BanknoteArrowUp}
+                        disabled={!canPost}
+                        onClick={() => open('expense', '', a.id)}
+                      />
+                      <AccountAction
+                        label="Надходження"
+                        icon={BanknoteArrowDown}
+                        disabled={!canPost}
+                        onClick={() => open('income', '', a.id)}
+                      />
+                      <AccountAction
+                        label="Переміщення"
+                        icon={ArrowLeftRight}
+                        disabled={
+                          !canPost || !data.capabilities.transfer || permittedAccounts.length < 2
+                        }
+                        onClick={() => open('transfer', '', a.id)}
+                      />
+                      <AccountAction
+                        label="Історія"
+                        icon={History}
+                        onClick={() => {
+                          setFilter(a.id)
+                          setTab('operations')
+                        }}
+                      />
+                    </div>
+                  </TooltipProvider>
                   {!a.archived &&
                     data.active &&
                     data.capabilities.post &&
@@ -507,12 +559,17 @@ export function FinanceClient({ initial, today }: { initial: Report; today: stri
             </Button>
             <Button
               variant="outline"
-              disabled={data.active || !accounts.length}
+              disabled={!data.capabilities.manage || data.active || !accounts.length}
               onClick={() => open('opening')}
             >
               Підготувати залишки
             </Button>
           </div>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Керування касами не дає права проводити операції. Для операцій потрібні відповідні права
+            ролі та доступ до конкретної каси. Початкові залишки й активація потребують окремого
+            права звірки.
+          </p>
           <Button className="mt-3" variant="outline" onClick={() => open('access')}>
             Доступ ролей до кас
           </Button>
@@ -540,26 +597,27 @@ export function FinanceClient({ initial, today }: { initial: Report; today: stri
               </div>
             ))}
           </div>
-          {data.batches.map((b) => (
-            <div key={b.id} className="mt-3 rounded border p-3">
-              <p>
-                Залишки на початок {b.date} ·{' '}
-                {b.status === 'activated' ? 'Активовано' : 'Потребує погодження'}
-              </p>
-              <ul className="my-2 text-sm">
-                {(b.balances as { accountId: string; amount: string }[]).map((x) => (
-                  <li key={x.accountId}>
-                    {data.accounts.find((a) => a.id === x.accountId)?.name}: {x.amount} ₴
-                  </li>
-                ))}
-              </ul>
-              {!data.active && (
-                <Button variant="outline" onClick={() => open('activate', b.id)}>
-                  Активувати погоджені залишки
-                </Button>
-              )}
-            </div>
-          ))}
+          {data.capabilities.manage &&
+            data.batches.map((b) => (
+              <div key={b.id} className="mt-3 rounded border p-3">
+                <p>
+                  Залишки на початок {b.date} ·{' '}
+                  {b.status === 'activated' ? 'Активовано' : 'Потребує погодження'}
+                </p>
+                <ul className="my-2 text-sm">
+                  {(b.balances as { accountId: string; amount: string }[]).map((x) => (
+                    <li key={x.accountId}>
+                      {data.accounts.find((a) => a.id === x.accountId)?.name}: {x.amount} ₴
+                    </li>
+                  ))}
+                </ul>
+                {!data.active && (
+                  <Button variant="outline" onClick={() => open('activate', b.id)}>
+                    Активувати погоджені залишки
+                  </Button>
+                )}
+              </div>
+            ))}
         </details>
       )}
       {tab === 'operations' && (

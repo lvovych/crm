@@ -6,6 +6,33 @@ for (const viewport of [
 ]) {
   test.describe(`cash preparation ${viewport.name}`, () => {
     test.use({ viewport: { width: viewport.width, height: viewport.height } })
+    test('shows independent posting and account configuration permissions', async ({ page }) => {
+      await page.goto('/settings/team')
+      await settle(page)
+      await page.getByRole('button', { name: 'New Role', exact: true }).click()
+      const posting = page.getByRole('checkbox', {
+        name: 'Post money operations',
+        exact: true,
+      })
+      const accounts = page.getByRole('checkbox', {
+        name: 'Create and edit accounts, categories and account access',
+        exact: true,
+      })
+      const reconcile = page.getByRole('checkbox', {
+        name: 'Reconcile payments and activate opening balances',
+        exact: true,
+      })
+      await accounts.check()
+      await expect(posting).not.toBeChecked()
+      await expect(reconcile).not.toBeChecked()
+      await accounts.uncheck()
+      await posting.check()
+      await expect(accounts).not.toBeChecked()
+      await expect(reconcile).not.toBeChecked()
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)
+      ).toBe(false)
+    })
     test('creates an account without activating balances or changing payment workflow', async ({
       page,
     }) => {
@@ -13,7 +40,12 @@ for (const viewport of [
       await settle(page)
       await expect(page.getByRole('heading', { name: 'Підготовка касового обліку' })).toBeVisible()
       await expect(page.getByRole('heading', { name: 'Журнал руху коштів' })).toHaveCount(0)
-      await page.getByRole('button', { name: 'Налаштування', exact: true }).click()
+      await expect(page.getByRole('button', { name: 'Налаштування', exact: true })).toHaveCount(0)
+      await page.goto('/settings/finance')
+      await settle(page)
+      await expect(
+        page.getByRole('heading', { name: 'Налаштування кас і рахунків', exact: true })
+      ).toBeVisible()
       await page.getByRole('button', { name: 'Додати власний ФОП / компанію', exact: true }).click()
       let dialog = page.getByRole('dialog')
       const entity = `Demo finance ${viewport.name} ${Date.now()}`
@@ -40,11 +72,11 @@ for (const viewport of [
       expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(viewport.width + 1)
       await dialog.getByRole('button', { name: 'Зберегти', exact: true }).click()
       await expect(dialog).not.toBeVisible()
-      await page.reload()
+      await page.getByRole('link', { name: '← До кас і рахунків', exact: true }).click()
       await settle(page)
       await expect(page.getByRole('article', { name: account, exact: true })).toBeVisible()
       await expect(
-        page.getByRole('button', { name: '− Списання', exact: true }).first()
+        page.getByRole('button', { name: 'Списання', exact: true }).first()
       ).toBeDisabled()
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)

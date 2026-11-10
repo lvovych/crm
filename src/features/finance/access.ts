@@ -13,6 +13,7 @@ export async function financeCapabilities(ctx: AuthContext) {
       hasPermission(member.customRole?.permissions ?? [], { action, subject }))
   return {
     manage: allows(A.MANAGE),
+    manageAccounts: allows(A.MANAGE, S.FINANCE_ACCOUNTS),
     post: allows(A.UPDATE),
     draft: allows(A.CREATE),
     reverse: allows(A.DELETE),

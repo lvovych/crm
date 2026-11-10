@@ -64,17 +64,17 @@ for (const viewport of [
         await expect(page.getByRole('heading', { name: 'Журнал руху коштів' })).toHaveCount(0)
         const cashRow = page.getByRole('article', { name: 'Test cash', exact: true })
         const bankRow = page.getByRole('article', { name: 'Test bank', exact: true })
-        await cashRow.getByRole('button', { name: '− Списання', exact: true }).click()
+        await cashRow.getByRole('button', { name: 'Списання', exact: true }).click()
         await expect(
           page.getByRole('dialog').getByRole('combobox', { name: 'З рахунку', exact: true })
         ).toHaveValue(cash)
         await page.getByRole('button', { name: 'Скасувати', exact: true }).click()
-        await bankRow.getByRole('button', { name: '＋ Надходження', exact: true }).click()
+        await bankRow.getByRole('button', { name: 'Надходження', exact: true }).click()
         await expect(
           page.getByRole('dialog').getByRole('combobox', { name: 'На рахунок', exact: true })
         ).toHaveValue(bank)
         await page.getByRole('button', { name: 'Скасувати', exact: true }).click()
-        await cashRow.getByRole('button', { name: '↔ Переміщення', exact: true }).click()
+        await cashRow.getByRole('button', { name: 'Переміщення', exact: true }).click()
         await expect(
           page.getByRole('dialog').getByRole('combobox', { name: 'З рахунку', exact: true })
         ).toHaveValue(cash)

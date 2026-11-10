@@ -40,6 +40,14 @@ export default async function SettingsLayout({ children }: { children: React.Rea
     // Members without a custom role keep full access (defaults to true)
   }
 
+  const financeMember = isOwnerOrAdmin ? null : await getCachedMembership(data.userId)
+  const canManageFinance =
+    isOwnerOrAdmin ||
+    (financeMember?.organizationId === data.organizationId &&
+      hasPermission(financeMember.customRole?.permissions ?? [], {
+        action: PermissionAction.MANAGE,
+        subject: PermissionSubject.FINANCE_ACCOUNTS,
+      }))
   const features = await getFeatures(data.organizationId)
   const supportEnabled = await isSupportEnabled()
   // Subscription pages only on the app torqvoice.com bills for, not on any
@@ -60,6 +68,7 @@ export default async function SettingsLayout({ children }: { children: React.Rea
           <div className="flex min-h-0 flex-1 flex-col gap-6 md:flex-row">
             <aside className="hidden shrink-0 overflow-y-auto md:block md:w-56 lg:w-64">
               <SettingsNav
+                canManageFinance={canManageFinance}
                 features={features}
                 isCloud={cloudLinked}
                 supportEnabled={supportEnabled}
@@ -69,6 +78,7 @@ export default async function SettingsLayout({ children }: { children: React.Rea
             <div className="min-w-0 flex-1 overflow-y-auto pb-8">
               <div className="mb-4 md:hidden">
                 <SettingsNav
+                  canManageFinance={canManageFinance}
                   features={features}
                   isCloud={cloudLinked}
                   supportEnabled={supportEnabled}

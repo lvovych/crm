@@ -17,6 +17,7 @@ export enum PermissionSubject {
   INVENTORY = 'inventory',
   BRANDS = 'brands',
   FINANCE = 'finance',
+  FINANCE_ACCOUNTS = 'finance_accounts',
   FINANCE_BACKDATE = 'finance_backdate',
   FINANCE_TRANSFER = 'finance_transfer',
   SETTLEMENTS = 'supplier_settlements',
@@ -48,14 +49,21 @@ export type PermissionGroup = {
 
 export const permissionGroups: PermissionGroup[] = [
   {
-    name: 'Cash accounts',
+    name: 'Money operations',
     subject: PermissionSubject.FINANCE,
     permissions: [
       { action: PermissionAction.READ, label: 'View balances' },
       { action: PermissionAction.CREATE, label: 'Prepare documents' },
       { action: PermissionAction.UPDATE, label: 'Post payments' },
       { action: PermissionAction.DELETE, label: 'Reverse and refund' },
-      { action: PermissionAction.MANAGE, label: 'Manage accounts and activation' },
+      { action: PermissionAction.MANAGE, label: 'Reconcile payments and activate balances' },
+    ],
+  },
+  {
+    name: 'Cash account configuration',
+    subject: PermissionSubject.FINANCE_ACCOUNTS,
+    permissions: [
+      { action: PermissionAction.MANAGE, label: 'Create and edit accounts and access' },
     ],
   },
   {

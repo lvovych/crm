@@ -94,3 +94,36 @@ describe('finance permissions', () => {
     await expect(assertOperationDate(ctx, '2020-01-01')).resolves.toBeUndefined()
   })
 })
+
+describe('account management is independent from money operations', () => {
+  it.each([
+    [A.UPDATE, S.FINANCE, false, true, false],
+    [A.MANAGE, S.FINANCE_ACCOUNTS, true, false, false],
+    [A.MANAGE, S.FINANCE, false, false, true],
+    [A.READ, S.FINANCE, false, false, false],
+  ])('separates %s on %s', async (action, subject, manageAccounts, post, manage) => {
+    mocks.membership.mockResolvedValue({
+      organizationId: 'own',
+      roleId: 'role',
+      customRole: { permissions: [{ action, subject }] },
+    })
+    expect(await financeCapabilities(ctx)).toMatchObject({ manageAccounts, post, manage })
+    if (!manageAccounts)
+      await expect(assertFinancePermission(ctx, A.MANAGE, S.FINANCE_ACCOUNTS)).rejects.toThrow()
+    if (!post) await expect(assertFinancePermission(ctx, A.UPDATE)).rejects.toThrow()
+  })
+  it('does not let account ACL alone grant a global operation permission', async () => {
+    mocks.findMany.mockResolvedValue([{ id: 'cash', isArchived: false }])
+    await expect(assertAccountAccess(ctx, ['cash'])).resolves.toBeUndefined()
+    await expect(assertFinancePermission(ctx, A.UPDATE)).rejects.toThrow()
+  })
+  it('requires account access even when the role may post money', async () => {
+    mocks.membership.mockResolvedValue({
+      organizationId: 'own',
+      roleId: 'role',
+      customRole: { permissions: [{ action: A.UPDATE, subject: S.FINANCE }] },
+    })
+    await expect(assertFinancePermission(ctx, A.UPDATE)).resolves.toBeUndefined()
+    await expect(assertAccountAccess(ctx, ['cash'])).rejects.toThrow()
+  })
+})

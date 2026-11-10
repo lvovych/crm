@@ -6,6 +6,8 @@ import { PrismaPg } from '@prisma/adapter-pg'
 const state = vi.hoisted(() => ({
   db: null as unknown as PrismaClient,
   org: '',
+  admin: true,
+  permissions: [] as { action: string; subject: string }[],
   actor: 'finance-test-actor',
 }))
 vi.mock('@/lib/db', () => ({
@@ -20,14 +22,28 @@ vi.mock('@/lib/db', () => ({
   ),
 }))
 vi.mock('@/lib/with-auth', () => ({
-  withAuth: async (fn: (ctx: unknown) => Promise<unknown>) => {
+  withAuth: async (
+    fn: (ctx: unknown) => Promise<unknown>,
+    options?: {
+      requiredPermissions?: { action: string; subject: string }[]
+    }
+  ) => {
     try {
+      if (
+        !state.admin &&
+        !options?.requiredPermissions?.every((required) =>
+          state.permissions.some(
+            (p) => p.action === required.action && p.subject === required.subject
+          )
+        )
+      )
+        throw new Error('Permission denied')
       return {
         success: true,
         data: await fn({
           organizationId: state.org,
           userId: state.actor,
-          isAdmin: true,
+          isAdmin: state.admin,
           role: 'owner',
           isSuperAdmin: false,
         }),
@@ -37,7 +53,13 @@ vi.mock('@/lib/with-auth', () => ({
     }
   },
 }))
-vi.mock('@/lib/cached-session', () => ({ getCachedMembership: vi.fn() }))
+vi.mock('@/lib/cached-session', () => ({
+  getCachedMembership: vi.fn(async () => ({
+    organizationId: state.org,
+    roleId: 'configuration-role',
+    customRole: { permissions: state.permissions },
+  })),
+}))
 vi.mock('@/lib/workshop-timezone', () => ({ workshopTimeZone: async () => 'Europe/Kyiv' }))
 vi.mock('@/lib/workshop-currency', () => ({
   workshopCurrencySettings: async () => ({ currencyCode: 'UAH' }),
@@ -45,6 +67,8 @@ vi.mock('@/lib/workshop-currency', () => ({
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 import { postMoney } from '@/features/finance/ledger'
 import {
+  saveFinanceDirectory,
+  postFinanceDocument,
   prepareCashOpening,
   saveFinanceDraft,
   updateFinanceDraft,
@@ -326,5 +350,58 @@ const url = process.env.FINANCE_TEST_DATABASE_URL
         }),
       ])
     )
+  })
+  it('allows account configuration without disclosing ledger or granting money operations', async () => {
+    state.admin = false
+    state.permissions = [{ action: 'manage', subject: 'finance_accounts' }]
+    try {
+      const report = await financeReport(today, true)
+      expect(report.success).toBe(true)
+      expect(report.data!.accounts.some((a) => a.id === cash)).toBe(true)
+      expect(report.data!.entries).toEqual([])
+      expect(report.data!.drafts).toEqual([])
+      expect(report.data!.batches).toEqual([])
+      expect(report.data!.pending).toEqual([])
+      expect(report.data!.unlinked).toEqual([])
+      expect(report.data!.postAccountIds).toEqual([])
+      expect(report.data!.accounts.every((a) => a.balance === '0.00')).toBe(true)
+      expect((await financeReport(today)).success).toBe(false)
+      expect(
+        (await saveFinanceDirectory({ type: 'entity', name: 'Configuration only' })).success
+      ).toBe(true)
+      expect((await postFinanceDocument({})).success).toBe(false)
+      expect((await saveFinanceDraft({})).success).toBe(false)
+      expect((await prepareCashOpening({})).success).toBe(false)
+      expect((await activateCashOpening('missing')).success).toBe(false)
+      expect((await assignUnlinkedPayment({})).success).toBe(false)
+      expect((await refundMoneyDocument({})).success).toBe(false)
+      expect((await reverseMoneyDocument({})).success).toBe(false)
+    } finally {
+      state.admin = true
+      state.permissions = []
+    }
+  })
+  it('denies account changes to an operations-only role', async () => {
+    state.admin = false
+    state.permissions = ['read', 'create', 'update', 'delete', 'manage'].map((action) => ({
+      action,
+      subject: 'finance',
+    }))
+    try {
+      expect((await financeReport(today, true)).success).toBe(false)
+      for (const input of [
+        { type: 'entity', name: 'Denied' },
+        { type: 'rename', kind: 'account', id: cash, name: 'Denied' },
+        { type: 'archive', accountId: cash, archived: true },
+        { type: 'access', accountId: cash, roleId: 'role', canRead: true, canPost: true },
+      ])
+        expect((await saveFinanceDirectory(input)).success).toBe(false)
+      expect(
+        (await state.db.moneyAccount.findUniqueOrThrow({ where: { id: cash } })).isArchived
+      ).toBe(false)
+    } finally {
+      state.admin = true
+      state.permissions = []
+    }
   })
 })
