@@ -159,6 +159,7 @@
     "receipts": "Przyjęcia dostaw",
     "suppliers": "Suppliers",
     "directories": "Directories",
-    "finance": "Cash accounts"
+    "finance": "Cash accounts",
+    "mutualSettlements": "Settlements"
   }
 }

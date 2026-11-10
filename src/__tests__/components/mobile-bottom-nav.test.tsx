@@ -55,3 +55,20 @@ describe('MobileBottomNav', () => {
     expect(screen.queryByRole('link', { name: 'Vehicles' })).toBeNull()
   })
 })
+
+it('shows settlements in More only when access is granted', () => {
+  const { unmount } = render(
+    <ServiceTypeProvider>
+      <MobileBottomNav mutualSettlementsEnabled />
+    </ServiceTypeProvider>
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'More' }))
+  expect(screen.getByRole('link', { name: 'Settlements' })).toHaveAttribute(
+    'href',
+    '/mutual-settlements'
+  )
+  unmount()
+  renderNav()
+  fireEvent.click(screen.getByRole('button', { name: 'More' }))
+  expect(screen.queryByRole('link', { name: 'Settlements' })).not.toBeInTheDocument()
+})

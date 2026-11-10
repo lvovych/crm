@@ -159,6 +159,7 @@
     "receipts": "Надходження",
     "suppliers": "Постачальники",
     "directories": "Довідники",
-    "finance": "Каси та рахунки"
+    "finance": "Каси та рахунки",
+    "mutualSettlements": "Взаєморозрахунки"
   }
 }

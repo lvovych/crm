@@ -1,4 +1,5 @@
-import {receiptsEnabled} from '@/features/receipts/enabled'
+import { settlementsEnabled } from '@/features/settlements/ledger'
+import { receiptsEnabled } from '@/features/receipts/enabled'
 import { supplierDirectoryEnabled } from '@/features/suppliers/Lib/enabled'
 import { redirect } from 'next/navigation'
 import { NoAccess } from './no-access'
@@ -338,8 +339,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
                               activeOrgId={data.organizationId}
                               isSuperAdmin={data.isSuperAdmin}
                               features={features}
+                              mutualSettlementsEnabled={
+                                !visibleSubjects ||
+                                visibleSubjects.includes('billing') ||
+                                (settlementsEnabled(data.organizationId) &&
+                                  visibleSubjects.includes('supplier_settlements'))
+                              }
                               receiptsEnabled={receiptsEnabled(data.organizationId)}
-                              supplierDirectoryEnabled={supplierDirectoryEnabled(data.organizationId)}
+                              supplierDirectoryEnabled={supplierDirectoryEnabled(
+                                data.organizationId
+                              )}
                               tireHotelEnabled={tireHotelEnabled}
                               aiEnabled={aiEnabled}
                               visibleSubjects={visibleSubjects}
@@ -371,7 +380,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 </CurrencySettingsProvider>
               </DateSettingsProvider>
             </SidebarProvider>
-            <MobileBottomNav isSuperAdmin={data.isSuperAdmin} tireHotelEnabled={tireHotelEnabled} />
+            <MobileBottomNav
+              mutualSettlementsEnabled={
+                !visibleSubjects ||
+                visibleSubjects.includes('billing') ||
+                (settlementsEnabled(data.organizationId) &&
+                  visibleSubjects.includes('supplier_settlements'))
+              }
+              isSuperAdmin={data.isSuperAdmin}
+              tireHotelEnabled={tireHotelEnabled}
+            />
             {supportEnabled && <SupportBubble />}
           </WhiteLabelCtaProvider>
         </LicenseExpiryProvider>
