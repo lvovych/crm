@@ -1,5 +1,6 @@
 // Debit entries are open obligations, credit entries are available advances.
 model SupplierEntry {
+  financialDocument FinancialDocument?
   id String @id @default(cuid())
   organizationId String
   supplierId String

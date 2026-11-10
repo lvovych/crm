@@ -54,6 +54,12 @@ import { permissionGroups, PermissionAction } from '@/lib/permissions'
 const ACTION_LABEL_OVERRIDES: Record<string, string> = {
   'tire_hotel:manage': 'manage_storage',
   'brands:delete': 'deactivate_brand',
+  'finance:read': 'finance_read',
+  'finance:create': 'finance_draft',
+  'finance:update': 'finance_post',
+  'finance:delete': 'finance_reverse',
+  'finance:manage': 'finance_reconcile',
+  'finance_accounts:manage': 'finance_accounts_manage',
 }
 
 function labelKey(subject: string, action: string): string {

@@ -1,3 +1,4 @@
+import { paymentTotal } from '@/features/finance/payment-total'
 import { PortalShell } from '@/features/portal/Components/PortalShell'
 import { getPortalInvoices } from '@/features/portal/Actions/portalActions'
 import { Badge } from '@/components/ui/badge'
@@ -41,7 +42,7 @@ export default async function PortalInvoicesPage({
 
   function getPaymentStatus(inv: (typeof invoices)[number]) {
     if (inv.manuallyPaid) return 'paid' as const
-    const paid = inv.payments.reduce((sum, p) => sum + p.amount, 0)
+    const paid = paymentTotal(inv.payments)
     if (paid >= inv.totalAmount) return 'paid' as const
     if (paid > 0) return 'partial' as const
     return 'unpaid' as const

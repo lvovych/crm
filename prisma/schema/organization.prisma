@@ -32,6 +32,11 @@ model DashboardWidget {
 }
 
 model Organization {
+  financeSettings FinanceSettings?
+  ownLegalEntities OwnLegalEntity[]
+  cashFlowCategories CashFlowCategory[]
+  financialDocuments FinancialDocument[]
+  financeCutoverBatches FinanceCutoverBatch[]
   id         String   @id @default(cuid())
   name       String
   portalSlug String?  @unique
@@ -132,6 +137,7 @@ model MemberSignature {
 }
 
 model Role {
+  moneyAccountAccess MoneyAccountAccess[]
   id        String   @id @default(cuid())
   name      String
   isAdmin   Boolean  @default(false)

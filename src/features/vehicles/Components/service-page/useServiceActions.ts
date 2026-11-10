@@ -292,6 +292,9 @@ export function useServiceActions({
   }
 
   const handleCreatePayment = async (data: {
+    moneyAccountId?: string
+    requestId?: string
+    amountExact?: string
     amount: number
     date: string
     method: string

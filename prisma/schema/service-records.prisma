@@ -239,6 +239,8 @@ model ServiceConcern {
 }
 
 model Payment {
+  amountExact Decimal? @db.Decimal(22,2)
+  financialDocument FinancialDocument?
   id         String   @id @default(cuid())
   amount     Float
   date       DateTime @default(now())

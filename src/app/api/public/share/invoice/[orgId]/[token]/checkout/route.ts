@@ -1,3 +1,4 @@
+import { paymentTotal } from '@/features/finance/payment-total'
 import { NextResponse } from 'next/server'
 import { workshopCurrencySettings } from '@/lib/workshop-currency'
 import { z } from 'zod'
@@ -82,7 +83,7 @@ export async function POST(
     })
     const displayTotal =
       record.totalAmount > 0 ? record.totalAmount : computedTotal > 0 ? computedTotal : record.cost
-    const paidFromPayments = record.payments.reduce((sum, p) => sum + p.amount, 0)
+    const paidFromPayments = paymentTotal(record.payments)
     const totalPaid = record.manuallyPaid ? displayTotal : paidFromPayments
     const balanceDue = displayTotal - totalPaid
 

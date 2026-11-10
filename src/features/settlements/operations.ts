@@ -12,6 +12,7 @@ export const operationDate = z
 export const operation = z.discriminatedUnion('op', [
   z.object({
     op: z.literal('payment'),
+    moneyAccountId: z.string().optional(),
     amount: positive,
     method: z.enum(['bank', 'cash', 'card']),
     reference: z.string().trim().max(150),

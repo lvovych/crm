@@ -1,3 +1,4 @@
+import { paymentTotal } from '@/features/finance/payment-total'
 import 'server-only'
 import { db } from '@/lib/db'
 import { zonedDayKey } from '@/lib/timezone'
@@ -166,7 +167,7 @@ function effectiveTotal(job: JobRow): number {
 
 function paymentState(job: JobRow): string {
   if (job.manuallyPaid) return 'paid'
-  const paid = job.payments.reduce((sum, p) => sum + p.amount, 0)
+  const paid = paymentTotal(job.payments)
   const total = effectiveTotal(job)
   if (total <= 0) return 'nothing to pay'
   if (paid >= total) return 'paid'

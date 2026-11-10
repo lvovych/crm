@@ -340,6 +340,14 @@ export async function getServiceRecord(recordId: string) {
       })
 
       return record
+        ? {
+            ...record,
+            payments: (record.payments ?? []).map((p) => ({
+              ...p,
+              amountExact: p.amountExact?.toFixed(2) ?? null,
+            })),
+          }
+        : null
     },
     {
       requiredPermissions: [{ action: PermissionAction.READ, subject: PermissionSubject.SERVICES }],
@@ -1276,6 +1284,9 @@ export async function toggleManuallyPaid(recordId: string) {
         include: { payments: { select: { amount: true } } },
       })
       if (!record) throw new Error('Record not found')
+      const { financeActive } = await import('@/features/finance/ledger')
+      if (await financeActive(db, organizationId))
+        throw new Error('Касовий облік активний. Зареєструйте фактичну оплату з вибором каси.')
 
       // Marking paid is always allowed — it only ever locks the document
       // further. But a flip that would *release* the lock is the admin-only

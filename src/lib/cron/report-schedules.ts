@@ -1,3 +1,4 @@
+import { paymentTotal } from '@/features/finance/payment-total'
 import { resolveCurrencyCode, resolveCurrencyFormat } from '@/lib/currencies'
 import { CronJob } from 'cron'
 import { db } from '@/lib/db'
@@ -153,7 +154,7 @@ async function fetchRevenue(orgId: string, start: Date, end: Date, timeZone: str
 
   for (const r of records) {
     const total = r.totalAmount > 0 ? r.totalAmount : r.cost
-    const paid = r.manuallyPaid ? total : r.payments.reduce((s, p) => s + p.amount, 0)
+    const paid = r.manuallyPaid ? total : paymentTotal(r.payments)
     const partsCost = r.partItems.reduce((s, p) => s + p.unitCost * p.quantity, 0)
     // Net (pre-tax) parts/labor so profit math works in both tax modes.
     const partsRevenue = r.partItems.reduce(
@@ -568,7 +569,7 @@ async function fetchPastDue(orgId: string, timeZone: string) {
     over90 = 0
   for (const r of records) {
     const total = r.totalAmount > 0 ? r.totalAmount : r.cost
-    const paid = r.manuallyPaid ? total : r.payments.reduce((s, p) => s + p.amount, 0)
+    const paid = r.manuallyPaid ? total : paymentTotal(r.payments)
     const amountDue = total - paid
     if (amountDue <= 0) continue
     const dueDate = r.invoiceDueDate!

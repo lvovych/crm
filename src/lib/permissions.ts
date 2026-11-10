@@ -16,6 +16,10 @@ export enum PermissionSubject {
   BILLING = 'billing',
   INVENTORY = 'inventory',
   BRANDS = 'brands',
+  FINANCE = 'finance',
+  FINANCE_ACCOUNTS = 'finance_accounts',
+  FINANCE_BACKDATE = 'finance_backdate',
+  FINANCE_TRANSFER = 'finance_transfer',
   SETTLEMENTS = 'supplier_settlements',
   RECEIPTS = 'receipts',
   SUPPLIERS = 'suppliers',
@@ -44,6 +48,34 @@ export type PermissionGroup = {
 }
 
 export const permissionGroups: PermissionGroup[] = [
+  {
+    name: 'Money operations',
+    subject: PermissionSubject.FINANCE,
+    permissions: [
+      { action: PermissionAction.READ, label: 'View balances' },
+      { action: PermissionAction.CREATE, label: 'Prepare documents' },
+      { action: PermissionAction.UPDATE, label: 'Post payments' },
+      { action: PermissionAction.DELETE, label: 'Reverse and refund' },
+      { action: PermissionAction.MANAGE, label: 'Reconcile payments and activate balances' },
+    ],
+  },
+  {
+    name: 'Cash account configuration',
+    subject: PermissionSubject.FINANCE_ACCOUNTS,
+    permissions: [
+      { action: PermissionAction.MANAGE, label: 'Create and edit accounts and access' },
+    ],
+  },
+  {
+    name: 'Backdated money operations',
+    subject: PermissionSubject.FINANCE_BACKDATE,
+    permissions: [{ action: PermissionAction.CREATE, label: 'Post in prior days' }],
+  },
+  {
+    name: 'Account transfers',
+    subject: PermissionSubject.FINANCE_TRANSFER,
+    permissions: [{ action: PermissionAction.CREATE, label: 'Transfer money' }],
+  },
   {
     name: 'Brands (shared directory)',
     subject: PermissionSubject.BRANDS,

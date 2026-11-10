@@ -1,5 +1,6 @@
 'use server'
 
+import { paymentTotal } from '@/features/finance/payment-total'
 import { workshopTimeZone } from '@/lib/workshop-timezone'
 import { toSafeWorkshopDate } from '@/lib/workshop-datetime'
 import { db } from '@/lib/db'
@@ -146,7 +147,7 @@ export async function getPortalDashboard() {
 
     const openInvoiceCount = completedInvoices.filter((inv) => {
       if (inv.manuallyPaid) return false
-      const paid = inv.payments.reduce((sum, p) => sum + p.amount, 0)
+      const paid = paymentTotal(inv.payments)
       return paid < inv.totalAmount
     }).length
 

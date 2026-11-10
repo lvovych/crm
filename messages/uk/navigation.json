@@ -121,7 +121,7 @@
     "workBoard": "Дошка робіт",
     "business": "Бізнес",
     "quotes": "Пропозиції",
-    "billing": "Рахунки",
+    "billing": "Рахунки клієнтам",
     "inventory": "Склад",
     "laborPresets": "Шаблони робіт",
     "reports": "Звіти",
@@ -158,6 +158,7 @@
     },
     "receipts": "Надходження",
     "suppliers": "Постачальники",
-    "directories": "Довідники"
+    "directories": "Довідники",
+    "finance": "Каси та рахунки"
   }
 }

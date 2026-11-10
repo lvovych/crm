@@ -197,7 +197,14 @@
     "supplier_create": "Created supplier",
     "supplier_update": "Updated supplier",
     "supplier_archive": "Archived supplier",
-    "supplier_restore": "Restored supplier"
+    "supplier_restore": "Restored supplier",
+    "finance_saveFinanceDirectory": "Finance: saveFinanceDirectory",
+    "finance_postFinanceDocument": "Finance: postFinanceDocument",
+    "finance_prepareCashOpening": "Finance: prepareCashOpening",
+    "finance_activateCashOpening": "Finance: activateCashOpening",
+    "finance_reverseMoneyDocument": "Finance: reverseMoneyDocument",
+    "finance_assignUnlinkedPayment": "Finance: assignUnlinkedPayment",
+    "finance_refundMoneyDocument": "Finance: refundMoneyDocument"
   },
   "summary": {
     "customField_create": "Aangepast veld \"{name}\" aangemaakt",

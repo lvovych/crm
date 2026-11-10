@@ -158,6 +158,7 @@
     },
     "receipts": "Ricevimenti fornitori",
     "suppliers": "Suppliers",
-    "directories": "Directories"
+    "directories": "Directories",
+    "finance": "Cash accounts"
   }
 }

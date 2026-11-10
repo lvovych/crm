@@ -197,7 +197,14 @@
     "supplier_create": "Створено постачальника",
     "supplier_update": "Змінено постачальника",
     "supplier_archive": "Архівовано постачальника",
-    "supplier_restore": "Відновлено постачальника"
+    "supplier_restore": "Відновлено постачальника",
+    "finance_saveFinanceDirectory": "Налаштування кас",
+    "finance_postFinanceDocument": "Проведення грошової операції",
+    "finance_prepareCashOpening": "Підготовка початкових залишків",
+    "finance_activateCashOpening": "Активація касового обліку",
+    "finance_reverseMoneyDocument": "Сторно грошової операції",
+    "finance_assignUnlinkedPayment": "Звірка зовнішньої оплати",
+    "finance_refundMoneyDocument": "Повернення оплати"
   },
   "summary": {
     "customField_create": "Створено поле налаштування «.{name}»",

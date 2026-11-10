@@ -1,5 +1,11 @@
 'use server'
 import { z } from 'zod'
+import { financeActive, lockFinance, postMoney } from '@/features/finance/ledger'
+import {
+  assertAccountAccess,
+  assertFinancePermission,
+  assertOperationDate,
+} from '@/features/finance/access'
 import { db } from '@/lib/db'
 import { withAuth, type AuthContext } from '@/lib/with-auth'
 import { PermissionSubject as S, PermissionAction as A, hasPermission } from '@/lib/permissions'
@@ -46,9 +52,37 @@ export async function recordSettlement(supplierId: string, requestId: string, ra
       : ['opening', 'reconcile', 'due'].includes(d.op)
         ? A.MANAGE
         : A.CREATE
-  return access(action, async ({ organizationId, userId }) => {
+  return access(action, async (ctx) => {
+    const { organizationId, userId } = ctx
     await db.$transaction(async (tx) => {
+      await lockFinance(tx, organizationId)
+      const active = await financeActive(tx, organizationId)
+      if (
+        active &&
+        d.op === 'reverse' &&
+        d.kind === 'entry' &&
+        (await tx.financialDocument.findFirst({ where: { organizationId, supplierEntryId: d.id } }))
+      )
+        throw new Error(
+          'Сторнуйте оплату через розділ кас, щоб одночасно відновити залишок грошей.'
+        )
+      if (active && d.op === 'payment') {
+        await assertFinancePermission(ctx, A.UPDATE)
+        if (!d.moneyAccountId) throw new Error('Оберіть рахунок списання.')
+        await assertOperationDate(ctx, day(d.date))
+        await assertAccountAccess(ctx, [d.moneyAccountId], tx)
+      }
       await applyOperation(tx, organizationId, supplierId, userId, requestId, d)
+      if (active && d.op === 'payment')
+        await postMoney(tx, organizationId, userId, {
+          requestId,
+          kind: 'supplier_payment',
+          date: day(d.date),
+          amount: d.amount,
+          sourceAccountId: d.moneyAccountId,
+          supplierEntryId: requestId,
+          note: d.note || 'Оплата постачальнику',
+        })
     })
     revalidatePath('/settlements')
     revalidatePath('/receipts')
