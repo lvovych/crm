@@ -71,6 +71,7 @@ describe('cash interface', () => {
     })
     await act(async () => newer({ success: true, data: { ...fixture(), asOf: '2026-11-12' } }))
     await act(async () => older({ success: true, data: { ...fixture(), asOf: '2026-11-11' } }))
+    fireEvent.click(screen.getByRole('button', { name: /Журнал операцій/ }))
     expect(screen.getByText('Рухи до 12.11.2026 включно')).toBeVisible()
     expect(screen.queryByText('Рухи до 11.11.2026 включно')).not.toBeInTheDocument()
   })
@@ -80,7 +81,7 @@ describe('cash interface', () => {
       <FinanceClient initial={{ ...fixture(), active: false, start: null }} today="2026-11-10" />
     )
     expect(screen.getByText('Підготовка касового обліку')).toBeVisible()
-    expect(screen.getByRole('button', { name: /Додати операцію/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /Списання/ })).toBeDisabled()
     expect(screen.getAllByText('Облік ще не активовано').length).toBeGreaterThan(0)
   })
   it('does not offer posting or settings to a read-only role', () => {
@@ -94,12 +95,14 @@ describe('cash interface', () => {
       transfer: false,
     }
     render(<FinanceClient initial={data} today="2026-11-10" />)
-    expect(screen.getByRole('button', { name: /Додати операцію/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /Списання/ })).toBeDisabled()
     expect(screen.queryByText('Налаштування та початкові залишки')).not.toBeInTheDocument()
   })
   it('sends decimal input unchanged and preserves fields on rejection', async () => {
     api.postFinanceDocument.mockResolvedValue({ success: false, error: 'Недостатньо коштів' })
     render(<FinanceClient initial={fixture()} today="2026-11-10" />)
+    if (!screen.queryByRole('button', { name: /Додати операцію/ }))
+      fireEvent.click(screen.getByRole('button', { name: /Журнал операцій/ }))
     fireEvent.click(screen.getByRole('button', { name: /Додати операцію/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Інша витрата' }))
     fireEvent.change(screen.getByLabelText('Сума, грн'), { target: { value: '10,01' } })
@@ -118,6 +121,8 @@ describe('cash interface', () => {
   })
   it('cancel never sends a financial operation', () => {
     render(<FinanceClient initial={fixture()} today="2026-11-10" />)
+    if (!screen.queryByRole('button', { name: /Додати операцію/ }))
+      fireEvent.click(screen.getByRole('button', { name: /Журнал операцій/ }))
     fireEvent.click(screen.getByRole('button', { name: /Додати операцію/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Інше надходження коштів' }))
     fireEvent.click(screen.getByRole('button', { name: 'Скасувати' }))
@@ -172,6 +177,8 @@ describe('account selection in existing payment forms', () => {
 describe('cash usability safeguards', () => {
   it('routes document payments to existing workflows without creating a duplicate', () => {
     render(<FinanceClient initial={fixture()} today="2026-11-10" />)
+    if (!screen.queryByRole('button', { name: /Додати операцію/ }))
+      fireEvent.click(screen.getByRole('button', { name: /Журнал операцій/ }))
     fireEvent.click(screen.getByRole('button', { name: /Додати операцію/ }))
     expect(screen.getByRole('link', { name: /Оплата від клієнта/ })).toHaveAttribute(
       'href',
@@ -185,8 +192,12 @@ describe('cash usability safeguards', () => {
   })
   it('prefills the selected account and previews exact before/after balances', () => {
     render(<FinanceClient initial={fixture()} today="2026-11-10" />)
-    fireEvent.click(screen.getByRole('button', { name: /Офіс.*Показати операції/ }))
+    fireEvent.click(
+      within(screen.getByRole('article', { name: 'Офіс' })).getByRole('button', { name: /Історія/ })
+    )
     expect(screen.getByRole('button', { name: /Операції: Офіс/ })).toBeVisible()
+    if (!screen.queryByRole('button', { name: /Додати операцію/ }))
+      fireEvent.click(screen.getByRole('button', { name: /Журнал операцій/ }))
     fireEvent.click(screen.getByRole('button', { name: /Додати операцію/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Інша витрата' }))
     expect(screen.getByLabelText('З рахунку')).toHaveValue('cash')
@@ -268,6 +279,7 @@ describe('cash usability safeguards', () => {
         today="2026-11-10"
       />
     )
+    fireEvent.click(screen.getByRole('button', { name: /Журнал операцій/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Редагувати' }))
     expect(screen.getByLabelText('Сума, грн')).toHaveValue('1.00')
     expect(screen.getByLabelText('Призначення')).toHaveValue('Original')
@@ -308,5 +320,126 @@ describe('read-only reconciliation notice', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Зверніться до відповідального')
     expect(screen.queryByRole('button', { name: 'Звірити оплати' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Визначити касу' })).not.toBeInTheDocument()
+  })
+})
+
+describe('account list and journal filters', () => {
+  const bank = {
+    id: 'bank',
+    name: 'Банк',
+    kind: 'bank',
+    entity: 'ФОП',
+    archived: false,
+    balance: '200.00',
+  }
+  const row = (
+    id: string,
+    type: string,
+    party: string,
+    accountId = 'cash',
+    date = '2026-11-10'
+  ) => ({
+    id,
+    documentId: id,
+    accountId,
+    date,
+    amount: '1.00',
+    kind: type === 'customer' ? 'customer_payment' : 'supplier_payment',
+    note: id,
+    category: '',
+    counterparty: 'Однакове ім’я',
+    counterpartyType: type,
+    counterpartyId: party,
+    author: 'Тест',
+    reversalOfId: null,
+    reversed: false,
+    refunded: false,
+    runningBalance: '1.00',
+    link: null,
+  })
+  it('keeps journal off the home screen and prefills the correct account for all three actions', () => {
+    render(
+      <FinanceClient
+        initial={{
+          ...fixture(),
+          accounts: [...fixture().accounts, bank],
+          postAccountIds: ['cash', 'bank'],
+        }}
+        today="2026-11-10"
+      />
+    )
+    expect(screen.queryByRole('heading', { name: 'Журнал руху коштів' })).not.toBeInTheDocument()
+    const target = within(screen.getByRole('article', { name: 'Банк' }))
+    for (const [button, field] of [
+      ['Списання', 'З рахунку'],
+      ['Надходження', 'На рахунок'],
+      ['Переміщення', 'З рахунку'],
+    ]) {
+      fireEvent.click(target.getByRole('button', { name: new RegExp(button) }))
+      expect(screen.getByLabelText(field)).toHaveValue('bank')
+      if (button === 'Переміщення') expect(screen.getByLabelText('На рахунок')).toHaveValue('')
+      fireEvent.click(screen.getByRole('button', { name: 'Скасувати' }))
+    }
+    expect(api.postFinanceDocument).not.toHaveBeenCalled()
+  })
+  it('disables movements for archived and read-only accounts', () => {
+    render(
+      <FinanceClient
+        initial={{
+          ...fixture(),
+          accounts: [
+            ...fixture().accounts,
+            bank,
+            { ...bank, id: 'old', name: 'Архів', archived: true },
+          ],
+          postAccountIds: ['cash'],
+        }}
+        today="2026-11-10"
+      />
+    )
+    for (const name of ['Банк', 'Архів']) {
+      const target = within(screen.getByRole('article', { name }))
+      for (const action of ['Списання', 'Надходження', 'Переміщення'])
+        expect(target.getByRole('button', { name: new RegExp(action) })).toBeDisabled()
+      expect(target.getByRole('button', { name: /Історія/ })).toBeEnabled()
+    }
+  })
+  it('combines account, party type, identity and date filters and resets them', async () => {
+    const entries = [
+      row('customer-one', 'customer', 'one'),
+      row('customer-two', 'customer', 'two'),
+      row('supplier-one', 'supplier', 'one'),
+      row('bank-payment', 'customer', 'one', 'bank'),
+      row('older-payment', 'customer', 'one', 'cash', '2026-11-09'),
+    ]
+    const data = { ...fixture(), accounts: [...fixture().accounts, bank], entries }
+    api.financeReport.mockImplementation(async (asOf) => ({
+      success: true,
+      data: { ...data, asOf },
+    }))
+    render(<FinanceClient initial={data} today="2026-11-10" />)
+    fireEvent.click(
+      within(screen.getByRole('article', { name: 'Офіс' })).getByRole('button', { name: /Історія/ })
+    )
+    expect(screen.queryByText('bank-payment')).not.toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Тип контрагента'), { target: { value: 'customer' } })
+    fireEvent.change(screen.getByLabelText('Контрагент', { exact: true }), {
+      target: { value: 'customer:one' },
+    })
+    expect(screen.queryByText('supplier-one')).not.toBeInTheDocument()
+    expect(screen.queryByText('customer-two')).not.toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('За конкретну дату'), {
+      target: { value: '2026-11-10' },
+    })
+    await waitFor(() => expect(api.financeReport).toHaveBeenCalledWith('2026-11-10'))
+    expect(screen.queryByText('older-payment')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Операції від')).toHaveValue('2026-11-10')
+    fireEvent.change(screen.getByLabelText('Тип контрагента'), { target: { value: 'supplier' } })
+    expect(screen.getByLabelText('Контрагент', { exact: true })).toHaveValue('')
+    fireEvent.click(screen.getByRole('button', { name: 'Скинути фільтри' }))
+    expect(screen.getByLabelText('Тип контрагента')).toHaveValue('')
+    expect(screen.getByLabelText('Операції від')).toHaveValue('')
+    expect(screen.getByLabelText('Рахунок')).toHaveValue('')
+    expect(screen.getAllByText('older-payment').length).toBeGreaterThan(0)
   })
 })

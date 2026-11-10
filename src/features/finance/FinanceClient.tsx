@@ -58,7 +58,10 @@ export function FinanceClient({ initial, today }: { initial: Report; today: stri
     if (error && modal) errorRef.current?.focus()
   }, [error, modal])
   const [editingDraft, setEditingDraft] = useState('')
-  const [tab, setTab] = useState('operations')
+  const [tab, setTab] = useState('accounts')
+  const [partyType, setPartyType] = useState('')
+  const [partyId, setPartyId] = useState('')
+  const [actionAccount, setActionAccount] = useState('')
   const [accountKind, setAccountKind] = useState('cash')
   const [loading, setLoading] = useState(false)
   const [reportError, setReportError] = useState('')
@@ -66,7 +69,8 @@ export function FinanceClient({ initial, today }: { initial: Report; today: stri
   const reportRequest = useRef(0)
   const key = useRef(''),
     pending = useRef(false)
-  const open = (kind: string, id = '') => {
+  const open = (kind: string, id = '', accountId = filter) => {
+    setActionAccount(accountId)
     key.current = crypto.randomUUID()
     setError('')
     setSelected(id)
@@ -109,13 +113,26 @@ export function FinanceClient({ initial, today }: { initial: Report; today: stri
         : 'Немає підтвердженого залишку на цю дату'
   const permittedAccounts = accounts.filter((a) => data.postAccountIds.includes(a.id))
   const contextAccount =
-    permittedAccounts.find((a) => a.id === filter)?.id ??
+    permittedAccounts.find((a) => a.id === (actionAccount || filter))?.id ??
     (permittedAccounts.length === 1 ? permittedAccounts[0].id : '')
   const draft = data.drafts.find((d) => d.id === editingDraft)
   const selectedDocument = data.entries.find((e) => e.documentId === selected)
+  const parties = [
+    ...new Map(
+      data.entries
+        .filter((e) => e.counterpartyId && (!partyType || e.counterpartyType === partyType))
+        .map((e) => [
+          `${e.counterpartyType}:${e.counterpartyId}`,
+          { id: `${e.counterpartyType}:${e.counterpartyId}`, name: e.counterparty },
+        ])
+    ).values(),
+  ].sort((a, b) => a.name.localeCompare(b.name, 'uk'))
   const rows = data.entries.filter(
     (e) =>
+      e.date <= date &&
       (!from || e.date >= from) &&
+      (!partyType || e.counterpartyType === partyType) &&
+      (!partyId || `${e.counterpartyType}:${e.counterpartyId}` === partyId) &&
       (!filter || e.accountId === filter) &&
       (!category || e.category === category) &&
       (!query ||
@@ -271,13 +288,20 @@ export function FinanceClient({ initial, today }: { initial: Report; today: stri
           />
         </Field>
       </div>
-      <nav aria-label="Розділи кас" className="flex gap-2 border-b pb-3">
+      <nav aria-label="Розділи кас" className="flex flex-wrap gap-2 border-b pb-3">
+        <Button
+          variant={tab === 'accounts' ? 'default' : 'outline'}
+          aria-pressed={tab === 'accounts'}
+          onClick={() => setTab('accounts')}
+        >
+          Каси та рахунки
+        </Button>
         <Button
           variant={tab === 'operations' ? 'default' : 'outline'}
           aria-pressed={tab === 'operations'}
           onClick={() => setTab('operations')}
         >
-          Операції
+          Журнал операцій{data.drafts.length ? ` · Чернетки: ${data.drafts.length}` : ''}
         </Button>
         {data.isAdmin && (
           <Button
@@ -331,7 +355,7 @@ export function FinanceClient({ initial, today }: { initial: Report; today: stri
           )}
         </aside>
       )}
-      {tab === 'operations' && (
+      {tab === 'accounts' && (
         <>
           <section
             className="grid grid-cols-2 gap-2 sm:grid-cols-3"
@@ -361,52 +385,95 @@ export function FinanceClient({ initial, today }: { initial: Report; today: stri
               </div>
             ))}
           </section>
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              className="min-h-11"
-              disabled={!data.active || !data.capabilities.post}
-              onClick={() => open('choose')}
-            >
-              ＋ Додати операцію
-            </Button>
-            {(!data.active || !data.capabilities.post) && (
-              <p className="text-sm text-muted-foreground">
-                {!data.active
-                  ? 'Проведення буде доступне після погодження та активації обліку.'
-                  : 'Ваша роль має доступ лише до перегляду.'}
-              </p>
-            )}
-            {filter && (
-              <Button variant="outline" onClick={() => setFilter('')}>
-                Операції: {data.accounts.find((a) => a.id === filter)?.name} · Скинути ×
-              </Button>
-            )}
-          </div>
-          <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-label="Рахунки">
-            {data.accounts.map((a) => (
-              <button
-                key={a.id}
-                onClick={() => setFilter(filter === a.id ? '' : a.id)}
-                aria-pressed={filter === a.id}
-                className={`rounded-xl border p-4 text-left ${filter === a.id ? 'border-primary bg-primary/10' : ''}`}
-              >
-                <div className="font-semibold">
-                  {a.name}
-                  {a.archived ? ' · Архів' : ''}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {a.entity} · {a.kind === 'cash' ? 'Готівка' : 'Банк'}
-                </div>
-                <div className="mt-2 text-xl font-semibold">
-                  {knownBalance ? moneyLabel(a.balance) : '—'}
-                </div>
-                <span className="mt-2 block text-sm underline underline-offset-4">
-                  Показати операції →
-                </span>
-              </button>
-            ))}
+          {(!data.active || !data.capabilities.post) && (
+            <p className="text-sm text-muted-foreground">
+              {!data.active
+                ? 'Проведення буде доступне після погодження та активації обліку.'
+                : 'Ваша роль має доступ лише до перегляду.'}
+            </p>
+          )}
+          <section className="space-y-3" aria-label="Рахунки">
+            {data.accounts.map((a) => {
+              const canPost =
+                data.active &&
+                data.capabilities.post &&
+                !a.archived &&
+                data.postAccountIds.includes(a.id)
+              return (
+                <article
+                  key={a.id}
+                  aria-label={a.name}
+                  className="grid gap-4 rounded-xl border p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-center"
+                >
+                  <div className="min-w-0">
+                    <h2 className="break-words text-lg font-semibold">
+                      {a.name}
+                      {a.archived ? ' · Архів' : ''}
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      {a.entity} · {a.kind === 'cash' ? 'Готівкова каса' : 'Банківський рахунок'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Залишок на {dayLabel(date)}</p>
+                    <strong className="text-xl">
+                      {knownBalance ? moneyLabel(a.balance) : '—'}
+                    </strong>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                    <Button
+                      className="min-h-11"
+                      variant="outline"
+                      disabled={!canPost}
+                      onClick={() => open('expense', '', a.id)}
+                    >
+                      − Списання
+                    </Button>
+                    <Button
+                      className="min-h-11"
+                      variant="outline"
+                      disabled={!canPost}
+                      onClick={() => open('income', '', a.id)}
+                    >
+                      ＋ Надходження
+                    </Button>
+                    <Button
+                      className="min-h-11"
+                      variant="outline"
+                      disabled={
+                        !canPost || !data.capabilities.transfer || permittedAccounts.length < 2
+                      }
+                      onClick={() => open('transfer', '', a.id)}
+                    >
+                      ↔ Переміщення
+                    </Button>
+                    <Button
+                      className="min-h-11"
+                      variant="outline"
+                      onClick={() => {
+                        setFilter(a.id)
+                        setTab('operations')
+                      }}
+                    >
+                      Історія →
+                    </Button>
+                  </div>
+                  {!a.archived &&
+                    data.active &&
+                    data.capabilities.post &&
+                    !data.postAccountIds.includes(a.id) && (
+                      <p className="text-sm text-muted-foreground lg:col-span-3">
+                        Для цього рахунку доступний лише перегляд.
+                      </p>
+                    )}
+                </article>
+              )
+            })}
             {!accounts.length && (
-              <p>Рахунків поки немає. Додайте власні реквізити та першу касу.</p>
+              <p>
+                Активних рахунків поки немає. Додайте власний ФОП / компанію та першу касу в
+                налаштуваннях.
+              </p>
             )}
           </section>
         </>
@@ -497,6 +564,28 @@ export function FinanceClient({ initial, today }: { initial: Report; today: stri
       )}
       {tab === 'operations' && (
         <>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              className="min-h-11"
+              disabled={!data.active || !data.capabilities.post}
+              onClick={() => open('choose')}
+            >
+              ＋ Додати операцію
+            </Button>
+            {(!data.active || !data.capabilities.post) && (
+              <p className="text-sm text-muted-foreground">
+                {!data.active
+                  ? 'Проведення буде доступне після погодження та активації обліку.'
+                  : 'Ваша роль має доступ лише до перегляду.'}
+              </p>
+            )}
+            {filter && (
+              <Button variant="outline" onClick={() => setFilter('')}>
+                Операції: {data.accounts.find((a) => a.id === filter)?.name} · Скинути ×
+              </Button>
+            )}
+          </div>
+
           {data.drafts.length > 0 && (
             <section className="rounded-xl border p-4">
               <h2 className="text-lg font-semibold">Чернетки — не впливають на залишки</h2>
@@ -565,9 +654,12 @@ export function FinanceClient({ initial, today }: { initial: Report; today: stri
           <section className="rounded-xl border p-4">
             <h2 className="text-lg font-semibold">Журнал руху коштів</h2>
             <p className="text-sm text-muted-foreground">Рухи до {dayLabel(data.asOf)} включно</p>
-            <details className="my-4 rounded-lg border p-3" open={undefined}>
+            <details className="my-4 rounded-lg border p-3" open>
               <summary className="min-h-11 cursor-pointer font-medium">
-                Фільтри та період{filter || category || query || from ? ' · застосовано' : ''}
+                Фільтри та період
+                {filter || category || query || from || partyType || partyId
+                  ? ' · застосовано'
+                  : ''}
               </summary>
               <div className="my-3 flex flex-wrap gap-2">
                 {['Сьогодні', 'Цей тиждень', 'Цей місяць'].map((label, i) => (
@@ -594,20 +686,26 @@ export function FinanceClient({ initial, today }: { initial: Report; today: stri
                     setCategory('')
                     setQuery('')
                     setFrom('')
+                    setPartyType('')
+                    setPartyId('')
+                    setDate(today)
+                    void refresh(today)
                   }}
                 >
                   Скинути фільтри
                 </Button>
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
-                <Field label="Операції до">
+                <Field label="За конкретну дату">
                   <Input
                     type="date"
-                    value={date}
-                    min={from}
+                    value={from === date ? date : ''}
                     onChange={(e) => {
-                      setDate(e.target.value)
-                      if (e.target.value) void refresh(e.target.value)
+                      if (e.target.value) {
+                        setFrom(e.target.value)
+                        setDate(e.target.value)
+                        void refresh(e.target.value)
+                      }
                     }}
                   />
                 </Field>
@@ -617,6 +715,17 @@ export function FinanceClient({ initial, today }: { initial: Report; today: stri
                     value={from}
                     max={date}
                     onChange={(e) => setFrom(e.target.value)}
+                  />
+                </Field>
+                <Field label="Операції до">
+                  <Input
+                    type="date"
+                    value={date}
+                    min={from}
+                    onChange={(e) => {
+                      setDate(e.target.value)
+                      if (e.target.value) void refresh(e.target.value)
+                    }}
                   />
                 </Field>
                 <Field label="Рахунок">
@@ -629,6 +738,35 @@ export function FinanceClient({ initial, today }: { initial: Report; today: stri
                     {data.accounts.map((a) => (
                       <option key={a.id} value={a.id}>
                         {a.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Тип контрагента">
+                  <select
+                    className={selectClass}
+                    value={partyType}
+                    onChange={(e) => {
+                      setPartyType(e.target.value)
+                      setPartyId('')
+                    }}
+                  >
+                    <option value="">Усі контрагенти</option>
+                    <option value="customer">Клієнти</option>
+                    <option value="supplier">Постачальники</option>
+                    <option value="other">Інші / без контрагента</option>
+                  </select>
+                </Field>
+                <Field label="Контрагент">
+                  <select
+                    className={selectClass}
+                    value={partyId}
+                    onChange={(e) => setPartyId(e.target.value)}
+                  >
+                    <option value="">Усі за вибраним типом</option>
+                    {parties.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
                       </option>
                     ))}
                   </select>

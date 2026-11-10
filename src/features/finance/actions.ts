@@ -33,6 +33,22 @@ export async function financeChoices() {
     }
   })
 }
+const counterpartyRelations = {
+  payment: {
+    select: {
+      serviceRecord: {
+        select: {
+          id: true,
+          vehicleId: true,
+          customer: { select: { id: true, name: true } },
+          vehicle: { select: { customer: { select: { id: true, name: true } } } },
+        },
+      },
+    },
+  },
+  supplierEntry: { select: { supplierId: true, supplier: { select: { id: true, name: true } } } },
+} as const
+
 export async function financeReport(asOf: string) {
   return withAuth(
     async (ctx) => {
@@ -69,8 +85,9 @@ export async function financeReport(asOf: string) {
                 category: true,
                 reversal: { select: { id: true } },
                 refunds: { select: { amount: true } },
-                payment: { select: { serviceRecord: { select: { id: true, vehicleId: true } } } },
-                supplierEntry: { select: { supplierId: true } },
+                ...counterpartyRelations,
+                original: { select: counterpartyRelations },
+                reversalOf: { select: counterpartyRelations },
               },
             },
           },
@@ -191,30 +208,45 @@ export async function financeReport(asOf: string) {
               .reduce((s, e) => s + cents(e.amount.toFixed(2)), BigInt('0'))
           ),
         })),
-        entries: entries.map((e) => ({
-          id: e.id,
-          documentId: e.documentId,
-          accountId: e.accountId,
-          date: dateKey(e.date),
-          amount: e.amount.toFixed(2),
-          kind: e.document.kind,
-          note: e.document.note,
-          category: e.document.category?.name ?? '',
-          counterparty: e.document.counterpartyLabel ?? '',
-          author:
-            authors.find((a) => a.id === e.document.createdById)?.name ?? e.document.createdById,
-          reversalOfId: e.document.reversalOfId,
-          reversed: !!e.document.reversal,
-          refunded: e.document.refunds.length > 0,
-          runningBalance: running.get(e.id)!,
-          link: e.document.payment
-            ? e.document.payment.serviceRecord.vehicleId
-              ? `/vehicles/${e.document.payment.serviceRecord.vehicleId}/service/${e.document.payment.serviceRecord.id}`
-              : `/sales/${e.document.payment.serviceRecord.id}`
-            : e.document.supplierEntry
-              ? `/settlements?supplier=${e.document.supplierEntry.supplierId}`
-              : null,
-        })),
+        entries: entries.map((e) => {
+          const related =
+            e.document.payment || e.document.supplierEntry
+              ? e.document
+              : (e.document.original ?? e.document.reversalOf)
+          const record = related?.payment?.serviceRecord
+          const customer = record?.customer ?? record?.vehicle?.customer
+          const supplier = related?.supplierEntry?.supplier
+          return {
+            id: e.id,
+            documentId: e.documentId,
+            accountId: e.accountId,
+            date: dateKey(e.date),
+            amount: e.amount.toFixed(2),
+            kind: e.document.kind,
+            note: e.document.note,
+            category: e.document.category?.name ?? '',
+            counterparty: customer?.name ?? supplier?.name ?? e.document.counterpartyLabel ?? '',
+            counterpartyType: related?.payment
+              ? 'customer'
+              : related?.supplierEntry
+                ? 'supplier'
+                : 'other',
+            counterpartyId: customer?.id ?? supplier?.id ?? '',
+            author:
+              authors.find((a) => a.id === e.document.createdById)?.name ?? e.document.createdById,
+            reversalOfId: e.document.reversalOfId,
+            reversed: !!e.document.reversal,
+            refunded: e.document.refunds.length > 0,
+            runningBalance: running.get(e.id)!,
+            link: e.document.payment
+              ? e.document.payment.serviceRecord.vehicleId
+                ? `/vehicles/${e.document.payment.serviceRecord.vehicleId}/service/${e.document.payment.serviceRecord.id}`
+                : `/sales/${e.document.payment.serviceRecord.id}`
+              : e.document.supplierEntry
+                ? `/settlements?supplier=${e.document.supplierEntry.supplierId}`
+                : null,
+          }
+        }),
         categories: categories.map((c) => ({
           id: c.id,
           name: c.name,

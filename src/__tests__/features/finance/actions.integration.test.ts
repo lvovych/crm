@@ -268,4 +268,63 @@ const url = process.env.FINANCE_TEST_DATABASE_URL
       canPost: false,
     })
   })
+  it('identifies clients and suppliers by identity including refunds, not free-text names', async () => {
+    const user = await state.db.user.create({
+      data: { id: randomUUID(), name: 'Party test', email: `${randomUUID()}@example.test` },
+    })
+    const customer = await state.db.customer.create({
+      data: { userId: user.id, organizationId: state.org, name: 'Same name' },
+    })
+    await state.db.serviceRecord.update({
+      where: { id: record },
+      data: { customerId: customer.id },
+    })
+    const supplier = await state.db.counterparty.create({
+      data: { organizationId: state.org, name: 'Same name', createdById: state.actor },
+    })
+    const payment = await state.db.supplierEntry.create({
+      data: {
+        organizationId: state.org,
+        supplierId: supplier.id,
+        kind: 'payment',
+        amount: '1.00',
+        date: new Date(today),
+        createdById: state.actor,
+      },
+    })
+    await state.db.$transaction((tx) =>
+      postMoney(tx as TxClient, state.org, state.actor, {
+        requestId: randomUUID(),
+        kind: 'supplier_payment',
+        date: today,
+        amount: '1.00',
+        sourceAccountId: cash,
+        supplierEntryId: payment.id,
+        note: 'Supplier identity',
+      })
+    )
+    const report = await financeReport(today)
+    expect(report.success).toBe(true)
+    expect(report.data?.entries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          documentId: paymentDocument,
+          counterpartyType: 'customer',
+          counterpartyId: customer.id,
+          counterparty: 'Same name',
+        }),
+        expect.objectContaining({
+          kind: 'refund',
+          counterpartyType: 'customer',
+          counterpartyId: customer.id,
+        }),
+        expect.objectContaining({
+          kind: 'supplier_payment',
+          counterpartyType: 'supplier',
+          counterpartyId: supplier.id,
+          counterparty: 'Same name',
+        }),
+      ])
+    )
+  })
 })

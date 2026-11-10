@@ -12,9 +12,7 @@ for (const viewport of [
       await page.goto('/finance')
       await settle(page)
       await expect(page.getByRole('heading', { name: 'Підготовка касового обліку' })).toBeVisible()
-      await expect(
-        page.getByRole('button', { name: '＋ Додати операцію', exact: true })
-      ).toBeDisabled()
+      await expect(page.getByRole('heading', { name: 'Журнал руху коштів' })).toHaveCount(0)
       await page.getByRole('button', { name: 'Налаштування', exact: true }).click()
       await page.getByRole('button', { name: 'Додати власний ФОП / компанію', exact: true }).click()
       let dialog = page.getByRole('dialog')
@@ -44,9 +42,9 @@ for (const viewport of [
       await expect(dialog).not.toBeVisible()
       await page.reload()
       await settle(page)
-      await expect(page.getByRole('button', { name: new RegExp(account) })).toBeVisible()
+      await expect(page.getByRole('article', { name: account, exact: true })).toBeVisible()
       await expect(
-        page.getByRole('button', { name: '＋ Додати операцію', exact: true })
+        page.getByRole('button', { name: '− Списання', exact: true }).first()
       ).toBeDisabled()
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)
