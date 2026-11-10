@@ -59,9 +59,11 @@ import {
   LogOut,
   Monitor,
   Package,
+  PackageOpen,
   Palette,
   Plus,
   Receipt,
+  WalletCards,
   Settings,
   ShieldCheck,
   Timer,
@@ -238,7 +240,12 @@ export function AppSidebar({
   ].filter((item) => !item.subject || canAccess(item.subject))
 
   const businessItems: NavItem[] = [
-    { titleKey: 'sidebar.finance' as const, url: '/finance', icon: Receipt, subject: 'finance' },
+    {
+      titleKey: 'sidebar.finance' as const,
+      url: '/finance',
+      icon: WalletCards,
+      subject: 'finance',
+    },
     ...(['customers', 'vehicles', 'labor_presets', 'inventory', 'brands'].some(canAccess) ||
     (supplierDirectoryEnabled && canAccess('suppliers'))
       ? [{ titleKey: 'sidebar.directories', url: '/directories', icon: Layers, subject: '' }]
@@ -250,7 +257,7 @@ export function AppSidebar({
           {
             titleKey: 'sidebar.receipts' as const,
             url: '/receipts',
-            icon: Receipt,
+            icon: PackageOpen,
             subject: 'receipts',
           },
         ]
