@@ -52,7 +52,7 @@ vi.mock('@/lib/db', () => ({
   db: {
     // The gallery is rewritten in one transaction; its steps are the mocks below.
     $transaction: vi.fn(async (steps: unknown) =>
-      Array.isArray(steps) ? Promise.all(steps) : steps
+      typeof steps === 'function' ? steps(db) : Array.isArray(steps) ? Promise.all(steps) : steps
     ),
     user: { findUnique: vi.fn() },
     customer: {
@@ -62,7 +62,9 @@ vi.mock('@/lib/db', () => ({
       updateMany: vi.fn(),
       deleteMany: vi.fn(),
     },
+    stockMovement: { create: vi.fn() },
     inventoryPart: {
+      updateManyAndReturn: vi.fn(async () => []),
       findFirst: vi.fn(),
       updateMany: vi.fn(),
       deleteMany: vi.fn(),
@@ -437,6 +439,7 @@ describe('deleteInventoryPart — cross-org isolation', () => {
 describe('adjustInventoryStock — cross-org isolation', () => {
   it("returns 'Part not found' error when targeting another org's part", async () => {
     setupOrgAOwner()
+    vi.mocked(db.inventoryPart.updateManyAndReturn).mockResolvedValue([])
     // findFirst with organizationId filter returns null for cross-org part
     vi.mocked(db.inventoryPart.findFirst).mockResolvedValue(null)
 
@@ -448,6 +451,7 @@ describe('adjustInventoryStock — cross-org isolation', () => {
 
   it('ownership findFirst always includes organizationId', async () => {
     setupOrgAOwner()
+    vi.mocked(db.inventoryPart.updateManyAndReturn).mockResolvedValue([])
     vi.mocked(db.inventoryPart.findFirst).mockResolvedValue(null)
 
     await adjustInventoryStock({ id: 'part-x', adjustment: 5 })
@@ -461,17 +465,19 @@ describe('adjustInventoryStock — cross-org isolation', () => {
 
   it('inventory update is never called when ownership check fails', async () => {
     setupOrgAOwner()
+    vi.mocked(db.inventoryPart.updateManyAndReturn).mockResolvedValue([])
     vi.mocked(db.inventoryPart.findFirst).mockResolvedValue(null)
 
     await adjustInventoryStock({ id: `${ORG_B}-part-id`, adjustment: 99 })
 
-    expect(vi.mocked(db.inventoryPart.updateMany)).not.toHaveBeenCalled()
+    expect(db.stockMovement.create).not.toHaveBeenCalled()
   })
 
   it("successfully adjusts stock for the caller's own part", async () => {
     setupOrgAOwner()
+    vi.mocked(db.inventoryPart.updateManyAndReturn).mockResolvedValue([])
     vi.mocked(db.inventoryPart.findFirst).mockResolvedValue(ORG_A_PART as any)
-    vi.mocked(db.inventoryPart.updateMany).mockResolvedValue({ count: 1 } as any)
+    vi.mocked(db.inventoryPart.updateManyAndReturn).mockResolvedValue([{ quantity: 15 }] as any)
 
     const result = await adjustInventoryStock({ id: 'part-a', adjustment: 5 })
 
@@ -481,20 +487,41 @@ describe('adjustInventoryStock — cross-org isolation', () => {
 
   it('stock adjustment query includes organizationId for defense-in-depth', async () => {
     setupOrgAOwner()
+    vi.mocked(db.inventoryPart.updateManyAndReturn).mockResolvedValue([])
     vi.mocked(db.inventoryPart.findFirst).mockResolvedValue(ORG_A_PART as any)
-    vi.mocked(db.inventoryPart.updateMany).mockResolvedValue({ count: 1 } as any)
+    vi.mocked(db.inventoryPart.updateManyAndReturn).mockResolvedValue([{ quantity: 15 }] as any)
 
     await adjustInventoryStock({ id: 'part-a', adjustment: 5 })
 
-    expect(vi.mocked(db.inventoryPart.updateMany)).toHaveBeenCalledWith(
+    expect(vi.mocked(db.inventoryPart.updateManyAndReturn)).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ organizationId: ORG_A }),
       })
     )
   })
 
+  it.each([
+    0, 0.25, -0.25,
+  ])('records exactly the returned balance for adjustment %s', async (adjustment) => {
+    setupOrgAOwner()
+    vi.mocked(db.inventoryPart.updateManyAndReturn).mockResolvedValue([{ quantity: 4.25 }] as any)
+    const result = await adjustInventoryStock({ id: 'part-a', adjustment })
+    expect(result.data).toEqual({ quantity: 4.25 })
+    if (adjustment === 0) expect(db.stockMovement.create).not.toHaveBeenCalled()
+    else
+      expect(db.stockMovement.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          inventoryPartId: 'part-a',
+          organizationId: ORG_A,
+          delta: adjustment,
+          quantityAfter: 4.25,
+        }),
+      })
+  })
+
   it("returns 'Insufficient stock' error when adjustment would make quantity negative", async () => {
     setupOrgAOwner()
+    vi.mocked(db.inventoryPart.updateManyAndReturn).mockResolvedValue([])
     // quantity is 10, adjustment is -15 → would go to -5
     vi.mocked(db.inventoryPart.findFirst).mockResolvedValue({ ...ORG_A_PART, quantity: 10 } as any)
 

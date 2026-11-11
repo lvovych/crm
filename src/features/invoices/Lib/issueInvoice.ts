@@ -1,4 +1,4 @@
-import { db } from '@/lib/db'
+import { db, type TxClient } from '@/lib/db'
 import type { Prisma } from '@/generated/prisma/client'
 import {
   ensureAssetSnapshot,
@@ -71,23 +71,27 @@ export function buildIssuedInvoiceData(a: InvoicePrintAssembly): IssuedInvoiceDa
 async function captureIssue(
   recordId: string,
   organizationId: string,
-  issuedAt: Date
+  issuedAt: Date,
+  tx?: TxClient
 ): Promise<boolean> {
   const assembly = await assembleInvoicePrint(recordId, { mode: 'live' })
-  if (!assembly) return false
+  if (!assembly) {
+    if (tx) throw new Error('Не вдалося сформувати рахунок.')
+    return false
+  }
 
   const [issuedDesignSnapshotId, issuedLogoSnapshotId, issuedSignatureSnapshotId] =
     await Promise.all([
-      ensureDesignSnapshot(organizationId, assembly.designSource),
+      ensureDesignSnapshot(organizationId, assembly.designSource, tx),
       assembly.logoDataUri
-        ? ensureAssetSnapshot(organizationId, assembly.logoDataUri)
+        ? ensureAssetSnapshot(organizationId, assembly.logoDataUri, tx)
         : Promise.resolve(null),
       assembly.signer.dataUri
-        ? ensureAssetSnapshot(organizationId, assembly.signer.dataUri)
+        ? ensureAssetSnapshot(organizationId, assembly.signer.dataUri, tx)
         : Promise.resolve(null),
     ])
 
-  await db.serviceRecord.update({
+  await (tx ?? db).serviceRecord.update({
     where: { id: recordId },
     data: {
       issuedAt,
@@ -97,6 +101,11 @@ async function captureIssue(
       issuedData: buildIssuedInvoiceData(assembly) as unknown as Prisma.InputJsonValue,
     },
   })
+  if (!tx) notifyInvoiceIssued(recordId, organizationId)
+  return true
+}
+
+export function notifyInvoiceIssued(recordId: string, organizationId: string) {
   // Issuing is the moment an accounting connector wants the invoice, and
   // sending or sharing logs no service event of its own. Lazy so this
   // module stays free of the integrations platform.
@@ -110,7 +119,6 @@ async function captureIssue(
       })
     )
     .catch((err) => console.error('[integrations] issue notify failed:', err))
-  return true
 }
 
 /**
@@ -127,9 +135,10 @@ async function captureIssue(
 export async function issueInvoice(
   recordId: string,
   organizationId: string,
-  reason: IssueReason
+  reason: IssueReason,
+  tx?: TxClient
 ): Promise<boolean> {
-  const record = await db.serviceRecord.findFirst({
+  const record = await (tx ?? db).serviceRecord.findFirst({
     where: { id: recordId, organizationId },
     select: { id: true, issuedAt: true, editUnlockedAt: true, sentAt: true },
   })
@@ -139,7 +148,7 @@ export async function issueInvoice(
   // A backfilled invoice is dated to when it was sent, which is the
   // nearest thing to when it was issued that the record knows.
   const issuedAt = reason === 'backfill' ? (record.sentAt ?? new Date()) : new Date()
-  return captureIssue(recordId, organizationId, issuedAt)
+  return captureIssue(recordId, organizationId, issuedAt, tx)
 }
 
 /**

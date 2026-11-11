@@ -242,6 +242,8 @@ model ServiceConcern {
 }
 
 model Payment {
+  requestId String?
+  @@unique([serviceRecordId, requestId])
   ledgerActorId String?
   ledgerActorName String?
   amountExact Decimal? @db.Decimal(22,2)

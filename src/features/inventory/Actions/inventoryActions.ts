@@ -366,17 +366,32 @@ export async function adjustInventoryStock(input: unknown) {
   return withAuth(
     async ({ userId, organizationId }) => {
       const { id, adjustment } = adjustStockSchema.parse(input)
-      const part = await db.inventoryPart.findFirst({
-        where: { id, organizationId },
-      })
-      if (!part) throw new Error('Part not found')
-
-      const newQuantity = part.quantity + adjustment
-      if (newQuantity < 0) throw new Error('Insufficient stock')
-
-      await db.inventoryPart.updateMany({
-        where: { id, organizationId },
-        data: { quantity: newQuantity },
+      const newQuantity = await db.$transaction(async (tx) => {
+        const [part] = await tx.inventoryPart.updateManyAndReturn({
+          where: { id, organizationId, quantity: { gte: -adjustment } },
+          data: { quantity: { increment: adjustment } },
+          select: { quantity: true },
+        })
+        if (!part) {
+          const exists = await tx.inventoryPart.findFirst({
+            where: { id, organizationId },
+            select: { id: true },
+          })
+          throw new Error(exists ? 'Insufficient stock' : 'Part not found')
+        }
+        if (adjustment !== 0) {
+          await tx.stockMovement.create({
+            data: {
+              inventoryPartId: id,
+              organizationId,
+              userId,
+              delta: adjustment,
+              quantityAfter: part.quantity,
+              reason: 'manual_adjustment',
+            },
+          })
+        }
+        return part.quantity
       })
       await onInventoryChanged(organizationId)
       return { quantity: newQuantity }

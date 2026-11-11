@@ -17,6 +17,7 @@ vi.mock('@/lib/cached-session', () => ({
   getCachedSession: vi.fn(),
   getCachedMembership: vi.fn(),
 }))
+vi.mock('@/lib/workshop-timezone', () => ({ workshopTimeZone: async () => 'Europe/Kyiv' }))
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 vi.mock('@/lib/resolve-upload-path', () => ({
   resolveUploadPath: vi.fn((url: string) => `/uploads/${url}`),
@@ -46,7 +47,8 @@ vi.mock('@/lib/db', () => ({
     servicePart: { findMany: vi.fn(), create: vi.fn() },
     financeSettings: { findUnique: vi.fn().mockResolvedValue(null) },
     financialDocument: { findFirst: vi.fn().mockResolvedValue(null) },
-    payment: { create: vi.fn(), findFirst: vi.fn(), delete: vi.fn() },
+    payment: { findUnique: vi.fn(), create: vi.fn(), findFirst: vi.fn(), delete: vi.fn() },
+    $executeRaw: vi.fn(),
     $transaction: vi.fn(),
   },
 }))
@@ -62,7 +64,7 @@ import {
 } from '@/features/vehicles/Actions/serviceActions'
 import { updateQuote, deleteQuote, updateQuoteStatus } from '@/features/quotes/Actions/quoteActions'
 import { generateQuotePublicLink } from '@/features/quotes/Actions/quoteShareActions'
-import { deletePayment } from '@/features/payments/Actions/paymentActions'
+import { createPayment, deletePayment } from '@/features/payments/Actions/paymentActions'
 import { addPart } from '@/features/vehicles/Lib/addPart'
 import { SETTING_KEYS } from '@/features/settings/Schema/settingsSchema'
 
@@ -535,5 +537,34 @@ describe('recording when an invoice was sent', () => {
 
     const data = vi.mocked(db.serviceRecord.update).mock.calls[0]?.[0]?.data as any
     expect(data.sentAt.getTime()).toBeGreaterThan(firstSent.getTime())
+  })
+})
+
+describe('reusing a payment request before cash activation', () => {
+  it.each([
+    { amount: 20.02 },
+    { method: 'transfer' },
+    { date: '2026-11-12' },
+    { note: 'Changed purpose' },
+    { moneyAccountId: 'another-account' },
+  ])('rejects changed payment details %o', async (change) => {
+    const input = {
+      serviceRecordId: 'job',
+      amount: 20.01,
+      date: '2026-11-11',
+      method: 'cash',
+      requestId: 'd448c7b2-4174-4d88-93f8-252b999c7ef6',
+    }
+    vi.mocked(db.serviceRecord.findFirst).mockResolvedValue({ id: 'job' } as any)
+    vi.mocked(db.payment.findUnique).mockResolvedValue({
+      amount: 20.01,
+      method: 'cash',
+      date: new Date('2026-11-11T08:00:00Z'),
+      note: null,
+      financialDocument: null,
+    } as any)
+    const result = await createPayment({ ...input, ...change })
+    expect(result.error).toContain('Запит уже виконано з іншими даними')
+    expect(db.payment.create).not.toHaveBeenCalled()
   })
 })
