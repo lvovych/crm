@@ -23,6 +23,7 @@ import {
   Mail,
   MessageSquare,
   Send,
+  Phone,
   User,
   Wrench,
   X,
@@ -236,6 +237,12 @@ function PeekCard({
             <div className="flex items-center gap-2">
               <User className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               <dd className="truncate">{event.customerName}</dd>
+            </div>
+          )}
+          {event.type === 'service' && event.customerPhone && (
+            <div className="flex items-center gap-2">
+              <Phone className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <dd>{event.customerPhone}</dd>
             </div>
           )}
           {(event.invoiceNumber || event.amount != null) && (

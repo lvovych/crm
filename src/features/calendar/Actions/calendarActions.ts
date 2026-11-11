@@ -25,6 +25,7 @@ export type CalendarEvent = {
   serviceVehicleLabel?: string
   vehicleLabel: string
   customerName: string | null
+  customerPhone?: string | null
   invoiceNumber: string | null
   amount: number | null
   /** Only on external events: whether it fills the day, where it came from. */
@@ -89,14 +90,14 @@ export async function getCalendarEvents(params: { start: string; end: string }) 
             totalAmount: true,
             cost: true,
             vehicleId: true,
-            customer: { select: { name: true } },
+            customer: { select: { name: true, phone: true } },
             vehicle: {
               select: {
                 licensePlate: true,
                 make: true,
                 model: true,
                 year: true,
-                customer: { select: { name: true } },
+                customer: { select: { name: true, phone: true } },
               },
             },
           },
@@ -255,6 +256,7 @@ export async function getCalendarEvents(params: { start: string; end: string }) 
             serviceVehiclePlate: s.vehicle?.licensePlate,
             serviceVehicleLabel: [s.vehicle?.make, s.vehicle?.model].filter(Boolean).join(' '),
             customerName: (s.customer ?? s.vehicle?.customer)?.name ?? null,
+            customerPhone: (s.customer ?? s.vehicle?.customer)?.phone?.trim() || null,
             invoiceNumber: s.invoiceNumber,
             amount: s.totalAmount > 0 ? s.totalAmount : s.cost > 0 ? s.cost : null,
           }

@@ -33,9 +33,9 @@ export function serviceRecordToJob(sr: {
     model: string
     year: number
     licensePlate: string | null
-    customer: { name: string } | null
+    customer: { name: string; phone?: string | null } | null
   } | null
-  customer: { name: string } | null
+  customer: { name: string; phone?: string | null } | null
 }): WorkBoardJob {
   return {
     id: sr.id,
@@ -52,6 +52,7 @@ export function serviceRecordToJob(sr: {
     // Counter sales carry the customer directly; everything else reaches it
     // through the vehicle, so that a reassigned vehicle takes its owner along.
     customerName: sr.customer?.name ?? sr.vehicle?.customer?.name ?? null,
+    customerPhone: (sr.customer ?? sr.vehicle?.customer)?.phone?.trim() || null,
   }
 }
 
@@ -98,14 +99,14 @@ export const SERVICE_JOB_SELECT = {
   id: true,
   title: true,
   status: true,
-  customer: { select: { name: true } },
+  customer: { select: { name: true, phone: true } },
   startDateTime: true,
   endDateTime: true,
   promisedAt: true,
   technicianId: true,
   workBayId: true,
   sortOrder: true,
-  vehicle: { select: VEHICLE_SELECT },
+  vehicle: { select: { ...VEHICLE_SELECT, customer: { select: { name: true, phone: true } } } },
 } satisfies ServiceRecordSelect
 
 export const INSPECTION_JOB_SELECT = {
