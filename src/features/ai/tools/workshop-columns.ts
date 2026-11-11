@@ -19,6 +19,7 @@ export const HIDDEN_COLUMNS: readonly string[] = [
   'customerLedgerTracked',
   'ledgerActorId',
   'ledgerActorName',
+  'requestId',
   'publicToken',
   'issuedData',
   'editUnlockedById',
