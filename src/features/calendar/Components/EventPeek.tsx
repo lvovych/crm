@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   createContext,
   useCallback,
@@ -69,13 +70,16 @@ export function useEventPeek() {
 
 export function EventPeekProvider({
   currencyCode,
+  isMobile = false,
   onRefresh,
   children,
 }: {
   currencyCode: string
+  isMobile?: boolean
   onRefresh?: () => void
   children: ReactNode
 }) {
+  const router = useRouter()
   const [peek, setPeek] = useState<PeekState | null>(null)
   const [external, setExternal] = useState<CalendarEvent | null>(null)
   // Radix measures the anchor through a ref, so the clicked element is handed
@@ -84,6 +88,10 @@ export function EventPeekProvider({
   anchorRef.current = peek?.anchor ?? null
 
   const openPeek = useCallback((event: CalendarEvent, anchor: HTMLElement) => {
+    if (isMobile && event.type === 'service') {
+      router.push(getEventLink(event))
+      return
+    }
     if (event.type === 'external') {
       setPeek(null)
       setExternal(event)
@@ -92,7 +100,7 @@ export function EventPeekProvider({
     setPeek((current) =>
       current && current.event === event && current.anchor === anchor ? null : { event, anchor }
     )
-  }, [])
+  }, [isMobile, router])
   const closePeek = useCallback(() => setPeek(null), [])
   const refresh = useCallback(() => {
     setPeek(null)
