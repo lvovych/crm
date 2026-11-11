@@ -35,7 +35,10 @@ for (const viewport of [
       const top = await card.evaluate((el) => parseFloat((el as HTMLElement).style.top))
       expect(top).toBe(690)
       await card.click()
-      await page.getByRole('link', { name: /Open work order/i }).click()
+      if (viewport.name === 'desktop') {
+        await page.getByRole('link', { name: /Open work order/i }).click()
+      }
+      await expect(page).toHaveURL(/\/vehicles\/[^/]+\/service\/[^/]+/)
       await expect(page.getByText(reason, { exact: true })).toBeVisible()
     })
     test('cancel does not create a booking', async ({ page }) => {
