@@ -55,7 +55,7 @@ for (const viewport of [
         await page.waitForURL((u) => !u.pathname.startsWith('/auth'))
         await page.goto('/mutual-settlements')
         await settle(page)
-        const card = page.getByRole('article', { name: 'Андрій Історія', exact: true })
+        const card = page.getByRole('row', { name: 'Андрій Історія', exact: true })
         await expect(card).toContainText('3\u00a0000,00')
         await db.query("update service_records set status='completed' where id=$1", [order])
         await db.query(

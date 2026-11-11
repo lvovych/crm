@@ -5,7 +5,7 @@ import { plantWorkshop } from '../../support/db'
 import { settle } from '../../support/hydration'
 for (const viewport of [
   { name: 'desktop', width: 1440, height: 1000 },
-  { name: 'mobile', width: 390, height: 844 },
+  { name: 'mobile', width: 360, height: 844 },
 ]) {
   test.describe(`settlement overview ${viewport.name}`, () => {
     test.use({ viewport, storageState: { cookies: [], origins: [] } })
@@ -84,7 +84,15 @@ for (const viewport of [
           page.getByRole('heading', { name: 'Взаєморозрахунки', exact: true })
         ).toBeVisible()
         await page.getByRole('button', { name: 'Старі документи · попередні суми' }).click()
-        const customerCard = page.getByRole('article', { name: 'Тестовий клієнт', exact: true })
+        const customerCard = page.getByRole('row', { name: 'Тестовий клієнт', exact: true })
+        if (viewport.name === 'mobile') {
+          await page.getByRole('button', { name: 'Фільтри', exact: true }).click()
+          await expect(page.getByRole('combobox', { name: 'Показати контрагентів' })).toBeVisible()
+          await page.getByRole('button', { name: 'Фільтри', exact: true }).click()
+        } else {
+          await page.getByRole('button', { name: 'Із них прострочено' }).click()
+          await expect(page.getByLabel('Сортування')).toHaveValue('overdue')
+        }
         await expect(customerCard).toContainText('8 000,00'.replace(' ', '\u00a0'))
         await page.getByPlaceholder('Ім’я, назва, телефон або документ').fill('0671234567')
         await expect(customerCard).toBeVisible()
@@ -112,19 +120,22 @@ for (const viewport of [
           path: `/tmp/settlements-excluded-${viewport.name}.png`,
           fullPage: true,
         })
-        await expect(customerCard).toContainText('TEST-REVIEW')
+        await expect(
+          page.getByRole('article', { name: 'Тестовий клієнт', exact: true })
+        ).toContainText('TEST-REVIEW')
         await page.getByRole('button', { name: 'Постачальники', exact: true }).click()
         await expect(
-          page.getByRole('article', { name: 'Тестовий постачальник', exact: true })
+          page.getByRole('row', { name: 'Тестовий постачальник', exact: true })
         ).toContainText('5 000,00'.replace(' ', '\u00a0'))
         await page.getByRole('button', { name: 'Документи: Тестовий постачальник' }).click()
         await expect(page.getByRole('dialog')).toBeVisible()
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
           true
         )
-        const box = await page.getByRole('dialog').boundingBox()
-        expect(box!.x).toBeGreaterThanOrEqual(0)
-        expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width + 1)
+        await expect.poll(async () => {
+          const box = await page.getByRole('dialog').boundingBox()
+          return !!box && box.x >= 0 && box.x + box.width <= viewport.width + 1
+        }).toBe(true)
         await page.screenshot({ path: `/tmp/settlements-${viewport.name}-details.png` })
         await page.keyboard.press('Escape')
         await page.goto('/mutual-settlements?date=2020-01-01&view=customer')
