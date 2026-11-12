@@ -1,4 +1,4 @@
-import { db } from '@/lib/db'
+import { db, type TxClient } from '@/lib/db'
 import type { Prisma } from '@/generated/prisma/client'
 import { bytesHash, contentHash } from './designHash'
 import { materializeDesignSource, type DesignSource } from './designSource'
@@ -17,10 +17,28 @@ function isUniqueViolation(err: unknown): boolean {
 /** The id of the snapshot holding this design, created if it is new. */
 export async function ensureDesignSnapshot(
   organizationId: string,
-  source: DesignSource
+  source: DesignSource,
+  tx?: TxClient
 ): Promise<string> {
   const frozen = materializeDesignSource(source)
   const hash = contentHash(frozen)
+  if (tx) {
+    const key = { organizationId, hash }
+    await tx.documentDesignSnapshot.createMany({
+      data: {
+        ...key,
+        layout: frozen.layout as unknown as Prisma.InputJsonValue,
+        template: frozen.template as unknown as Prisma.InputJsonValue,
+      },
+      skipDuplicates: true,
+    })
+    return (
+      await tx.documentDesignSnapshot.findUniqueOrThrow({
+        where: { organizationId_hash: key },
+        select: { id: true },
+      })
+    ).id
+  }
   const existing = await db.documentDesignSnapshot.findUnique({
     where: { organizationId_hash: { organizationId, hash } },
     select: { id: true },
@@ -57,7 +75,8 @@ const DATA_URI = /^data:([^;,]+);base64,([\s\S]*)$/
  */
 export async function ensureAssetSnapshot(
   organizationId: string,
-  dataUri: string
+  dataUri: string,
+  tx?: TxClient
 ): Promise<string | null> {
   const match = DATA_URI.exec(dataUri)
   if (!match) return null
@@ -65,6 +84,19 @@ export async function ensureAssetSnapshot(
   const bytes = new Uint8Array(Buffer.from(match[2], 'base64'))
   if (bytes.length === 0) return null
   const hash = bytesHash(bytes)
+  if (tx) {
+    const key = { organizationId, hash }
+    await tx.documentAssetSnapshot.createMany({
+      data: { ...key, mimeType, data: bytes },
+      skipDuplicates: true,
+    })
+    return (
+      await tx.documentAssetSnapshot.findUniqueOrThrow({
+        where: { organizationId_hash: key },
+        select: { id: true },
+      })
+    ).id
+  }
   const existing = await db.documentAssetSnapshot.findUnique({
     where: { organizationId_hash: { organizationId, hash } },
     select: { id: true },

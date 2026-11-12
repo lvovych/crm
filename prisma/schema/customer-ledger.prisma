@@ -1,0 +1,40 @@
+// New-document settlement history; independent of cash-account activation.
+model CustomerLedgerDocument {
+  id             String                @id
+  organizationId String
+  customerId     String?
+  customerName   String?
+  vehicleId      String?
+  label          String
+  createdAt      DateTime              @default(now()) @db.Timestamptz(3)
+  events         CustomerLedgerEvent[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, customerId], map: "customer_ledger_documents_party")
+  @@map("customer_ledger_documents")
+}
+
+model CustomerLedgerEvent {
+  id             BigInt                 @id @default(autoincrement())
+  organizationId String
+  documentId     String
+  document       CustomerLedgerDocument @relation(fields: [organizationId, documentId], references: [organizationId, id], onDelete: Restrict)
+  kind           String
+  effectiveDate  DateTime               @db.Date
+  recordedAt     DateTime               @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(3)
+  chargeDelta    Decimal                @default(0) @db.Decimal(22, 2)
+  paidDelta      Decimal                @default(0) @db.Decimal(22, 2)
+  amount         Decimal?               @db.Decimal(22, 2)
+  status         String?
+  manualPaid     Boolean?
+  due            DateTime?              @db.Date
+  paymentId      String?
+  sourceDate     DateTime?              @db.Date
+  actorId        String?
+  actorName      String?
+  note           String?
+
+  @@index([organizationId, effectiveDate, documentId], map: "customer_ledger_events_asof")
+  @@index([documentId, id], map: "customer_ledger_events_doc")
+  @@map("customer_ledger_events")
+}

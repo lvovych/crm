@@ -20,7 +20,7 @@ concurrency:
 jobs:
   e2e:
     name: Playwright (${{ matrix.name }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
 
     strategy:
@@ -109,7 +109,7 @@ jobs:
 
       - name: Install the browser
         if: ${{ steps.gate.outputs.run == 'true' }}
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
 
       # The seed copies bundled vehicle photos when they are in the tree and
       # downloads fifty of them from Unsplash when they are not, one after

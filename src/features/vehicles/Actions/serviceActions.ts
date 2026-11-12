@@ -528,6 +528,7 @@ export async function createServiceRecord(input: unknown) {
         }
         const created = await tx.serviceRecord.create({
           data: {
+            customerLedgerTracked: true,
             ...recordData,
             organizationId,
             createdById: userId,

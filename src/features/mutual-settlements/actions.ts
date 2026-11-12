@@ -1,5 +1,6 @@
 'use server'
 import { z } from 'zod'
+import { projectLedger } from '@/features/customer-ledger/projection'
 import { db } from '@/lib/db'
 import { withAuth } from '@/lib/with-auth'
 import { getCachedMembership } from '@/lib/cached-session'
@@ -33,7 +34,7 @@ export async function mutualSettlementsReport(requestedDate?: string) {
     const parties: PartyRow[] = []
     if (customersAllowed && asOf === today) {
       const records = await db.serviceRecord.findMany({
-        where: { organizationId: ctx.organizationId },
+        where: { organizationId: ctx.organizationId, customerLedgerTracked: false },
         select: {
           id: true,
           title: true,
@@ -74,6 +75,48 @@ export async function mutualSettlementsReport(requestedDate?: string) {
           today,
           zone
         )
+      )
+    }
+    let trackedParties: PartyRow[] = []
+    if (customersAllowed) {
+      const documents = await db.customerLedgerDocument.findMany({
+        where: { organizationId: ctx.organizationId },
+        include: {
+          events: {
+            where: { effectiveDate: { lte: new Date(asOf + 'T00:00:00Z') } },
+            orderBy: { id: 'asc' },
+          },
+        },
+      })
+      const customers = await db.customer.findMany({
+        where: {
+          organizationId: ctx.organizationId,
+          id: { in: documents.flatMap((d) => (d.customerId ? [d.customerId] : [])) },
+        },
+        select: { id: true, name: true, phone: true },
+      })
+      trackedParties = projectLedger(
+        documents.map((d) => ({
+          ...d,
+          events: d.events.map((e) => ({
+            id: e.id.toString(),
+            kind: e.kind,
+            date: e.effectiveDate.toISOString().slice(0, 10),
+            recordedAt: e.recordedAt.toISOString(),
+            chargeDelta: e.chargeDelta.toFixed(2),
+            paidDelta: e.paidDelta.toFixed(2),
+            amount: e.amount?.toFixed(2) ?? null,
+            status: e.status,
+            due: e.due?.toISOString().slice(0, 10) ?? null,
+            manualPaid: e.manualPaid,
+            paymentId: e.paymentId,
+            sourceDate: e.sourceDate?.toISOString().slice(0, 10) ?? null,
+            actor: e.actorName ?? e.actorId,
+            note: e.note,
+          })),
+        })),
+        new Map(customers.map((c) => [c.id, c])),
+        asOf
       )
     }
     let supplierError: string | null = null
@@ -152,6 +195,7 @@ export async function mutualSettlementsReport(requestedDate?: string) {
       customersHistoricalUnavailable: customersAllowed && asOf !== today,
       supplierError,
       parties,
+      trackedParties,
     }
   })
 }

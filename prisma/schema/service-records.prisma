@@ -1,4 +1,7 @@
 model ServiceRecord {
+  customerLedgerTracked Boolean @default(false)
+  ledgerActorId String?
+  ledgerActorName String?
   id              String    @id @default(cuid())
   title           String
   description     String?
@@ -239,6 +242,10 @@ model ServiceConcern {
 }
 
 model Payment {
+  requestId String?
+  @@unique([serviceRecordId, requestId])
+  ledgerActorId String?
+  ledgerActorName String?
   amountExact Decimal? @db.Decimal(22,2)
   financialDocument FinancialDocument?
   id         String   @id @default(cuid())

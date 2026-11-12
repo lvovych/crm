@@ -25,6 +25,7 @@ export type WorkBoardJob = {
   } | null
   /** Whose car it is, resolved through the vehicle or set directly. */
   customerName: string | null
+  customerPhone?: string | null
   templateName?: string
 }
 

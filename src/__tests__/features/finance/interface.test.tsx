@@ -41,7 +41,7 @@ const fixture = () => ({
   ],
   entries: [],
   categories: [{ id: 'rent', name: 'Оренда', direction: 'expense', archived: false }],
-  entities: [{ id: 'entity', name: 'ФОП' }],
+  entities: [{ id: 'entity', name: 'ФОП', taxId: null as string | null }],
   pending: [],
   batches: [],
   unlinked: [],
@@ -523,4 +523,72 @@ describe('independent account configuration permission', () => {
     ).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '＋ Додати операцію' })).not.toBeInTheDocument()
   })
+})
+
+describe('company details', () => {
+  it('edits the existing company and prefills its code without opening cash accounting', async () => {
+    const initial = fixture()
+    initial.entities[0].taxId = '0012345678'
+    api.saveFinanceDirectory.mockResolvedValue({ success: true })
+    render(<FinanceClient initial={initial} today="2026-11-10" settingsOnly />)
+    fireEvent.click(screen.getByRole('button', { name: 'Редагувати реквізити' }))
+    expect(screen.getByLabelText('Назва')).toHaveValue('ФОП')
+    expect(screen.getByLabelText('Код / податковий номер')).toHaveValue('0012345678')
+    fireEvent.change(screen.getByLabelText('Код / податковий номер'), {
+      target: { value: '1631608939' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Зберегти' }))
+    await waitFor(() =>
+      expect(api.saveFinanceDirectory).toHaveBeenCalledWith({
+        type: 'editEntity',
+        id: 'entity',
+        name: 'ФОП',
+        taxId: '1631608939',
+      })
+    )
+    expect(api.prepareCashOpening).not.toHaveBeenCalled()
+    expect(api.activateCashOpening).not.toHaveBeenCalled()
+  })
+  it('cancels editing without writing', () => {
+    render(<FinanceClient initial={fixture()} today="2026-11-10" settingsOnly />)
+    fireEvent.click(screen.getByRole('button', { name: 'Редагувати реквізити' }))
+    fireEvent.change(screen.getByLabelText('Назва'), { target: { value: 'Changed' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Скасувати' }))
+    expect(api.saveFinanceDirectory).not.toHaveBeenCalled()
+  })
+})
+
+it('prefills and saves IBAN for an existing bank account', async () => {
+  const data = {
+    ...fixture(),
+    accounts: [
+      {
+        ...fixture().accounts[0],
+        id: 'bank',
+        name: 'Банк',
+        kind: 'bank',
+        iban: 'UA213223130000026007233566001',
+      },
+    ],
+  }
+  api.saveFinanceDirectory.mockResolvedValue({ success: true })
+  render(<FinanceClient settingsOnly initial={data} today="2026-11-10" />)
+  fireEvent.click(screen.getByRole('button', { name: 'Редагувати реквізити рахунку' }))
+  expect(screen.getByLabelText('IBAN')).toHaveValue('UA213223130000026007233566001')
+  fireEvent.change(screen.getByLabelText('IBAN'), { target: { value: '' } })
+  fireEvent.submit(screen.getByLabelText('IBAN').closest('form')!)
+  await waitFor(() =>
+    expect(api.saveFinanceDirectory).toHaveBeenCalledWith({
+      type: 'rename',
+      kind: 'account',
+      id: 'bank',
+      name: 'Банк',
+      iban: '',
+    })
+  )
+})
+it('does not show IBAN when editing a cash account', () => {
+  render(<FinanceClient settingsOnly initial={fixture()} today="2026-11-10" />)
+  fireEvent.click(screen.getByRole('button', { name: 'Редагувати реквізити рахунку' }))
+  expect(screen.queryByLabelText('IBAN')).not.toBeInTheDocument()
 })

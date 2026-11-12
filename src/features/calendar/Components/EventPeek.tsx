@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   createContext,
   useCallback,
@@ -23,6 +24,7 @@ import {
   Mail,
   MessageSquare,
   Send,
+  Phone,
   User,
   Wrench,
   X,
@@ -68,13 +70,16 @@ export function useEventPeek() {
 
 export function EventPeekProvider({
   currencyCode,
+  isMobile = false,
   onRefresh,
   children,
 }: {
   currencyCode: string
+  isMobile?: boolean
   onRefresh?: () => void
   children: ReactNode
 }) {
+  const router = useRouter()
   const [peek, setPeek] = useState<PeekState | null>(null)
   const [external, setExternal] = useState<CalendarEvent | null>(null)
   // Radix measures the anchor through a ref, so the clicked element is handed
@@ -83,6 +88,10 @@ export function EventPeekProvider({
   anchorRef.current = peek?.anchor ?? null
 
   const openPeek = useCallback((event: CalendarEvent, anchor: HTMLElement) => {
+    if (isMobile && event.type === 'service') {
+      router.push(getEventLink(event))
+      return
+    }
     if (event.type === 'external') {
       setPeek(null)
       setExternal(event)
@@ -91,7 +100,7 @@ export function EventPeekProvider({
     setPeek((current) =>
       current && current.event === event && current.anchor === anchor ? null : { event, anchor }
     )
-  }, [])
+  }, [isMobile, router])
   const closePeek = useCallback(() => setPeek(null), [])
   const refresh = useCallback(() => {
     setPeek(null)
@@ -236,6 +245,12 @@ function PeekCard({
             <div className="flex items-center gap-2">
               <User className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               <dd className="truncate">{event.customerName}</dd>
+            </div>
+          )}
+          {event.type === 'service' && event.customerPhone && (
+            <div className="flex items-center gap-2">
+              <Phone className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <dd>{event.customerPhone}</dd>
             </div>
           )}
           {(event.invoiceNumber || event.amount != null) && (

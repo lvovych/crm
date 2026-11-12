@@ -493,6 +493,7 @@ export async function convertQuoteToServiceRecord(quoteId: string, vehicleId: st
       const record = await db.$transaction(async (tx) => {
         const created = await tx.serviceRecord.create({
           data: {
+            customerLedgerTracked: true,
             organizationId,
             createdById: userId,
             title: quote.title,

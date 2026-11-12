@@ -217,6 +217,7 @@ export async function financeReport(asOf: string, settingsOnly = false) {
           name: a.name,
           kind: a.kind,
           entity: a.legalEntity.name,
+          ...(settingsOnly && capabilities.manageAccounts && a.iban ? { iban: a.iban } : {}),
           archived: a.isArchived,
           balance: decimal(
             entries
@@ -269,7 +270,7 @@ export async function financeReport(asOf: string, settingsOnly = false) {
           direction: c.direction,
           archived: c.isArchived,
         })),
-        entities: entities.map((e) => ({ id: e.id, name: e.name })),
+        entities: entities.map((e) => ({ id: e.id, name: e.name, taxId: e.taxId })),
         pending: pending.map((d) => ({
           id: d.id,
           date: dateKey(d.date),
@@ -302,8 +303,19 @@ export async function saveFinanceDirectory(raw: unknown) {
           z.object({
             type: z.literal('rename'),
             kind: z.enum(['account', 'entity', 'category']),
+            iban: z
+              .string()
+              .transform((v) => v.replace(/\s/g, '').toUpperCase())
+              .pipe(z.string().max(34))
+              .optional(),
             id: z.string(),
             name: z.string().trim().min(1).max(150),
+          }),
+          z.object({
+            type: z.literal('editEntity'),
+            id: z.string().min(1),
+            name: z.string().trim().min(1).max(150),
+            taxId: z.string().trim().max(30),
           }),
           z.object({
             type: z.literal('entity'),
@@ -337,14 +349,35 @@ export async function saveFinanceDirectory(raw: unknown) {
       await db.$transaction(async (tx) => {
         await lockFinance(tx, org)
         if (input.type === 'rename') {
-          const args = { where: { id: input.id, organizationId: org }, data: { name: input.name } }
+          const where = { id: input.id, organizationId: org }
+          if (input.kind === 'account' && input.iban !== undefined) {
+            const account = await tx.moneyAccount.findFirst({ where })
+            if (!account) throw new Error('Запис недоступний.')
+            if (account.kind !== 'bank')
+              throw new Error('IBAN можна вказати лише для банківського рахунку.')
+          }
+          const args = { where, data: { name: input.name } }
+
           const result =
             input.kind === 'account'
-              ? await tx.moneyAccount.updateMany(args)
+              ? await tx.moneyAccount.updateMany({
+                  ...args,
+                  data: {
+                    ...args.data,
+                    ...(input.iban !== undefined ? { iban: input.iban || null } : {}),
+                  },
+                })
               : input.kind === 'entity'
                 ? await tx.ownLegalEntity.updateMany(args)
                 : await tx.cashFlowCategory.updateMany(args)
           if (result.count !== 1) throw new Error('Запис недоступний.')
+        }
+        if (input.type === 'editEntity') {
+          const updated = await tx.ownLegalEntity.updateMany({
+            where: { id: input.id, organizationId: org },
+            data: { name: input.name, taxId: input.taxId || null },
+          })
+          if (updated.count !== 1) throw new Error('Запис недоступний.')
         }
         if (input.type === 'entity')
           await tx.ownLegalEntity.create({
@@ -397,6 +430,7 @@ export async function saveFinanceDirectory(raw: unknown) {
         }
       })
       revalidatePath('/finance')
+      revalidatePath('/settings/finance')
       return true
     },
     {

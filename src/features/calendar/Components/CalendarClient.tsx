@@ -494,7 +494,7 @@ export default function CalendarClient({
   })()
 
   return (
-    <EventPeekProvider currencyCode={currencyCode} onRefresh={refresh}>
+    <EventPeekProvider isMobile={isMobile} currencyCode={currencyCode} onRefresh={refresh}>
       {/*
         A definite height, not flex-1: nothing above this in the layout has
         one (the shell is min-h-svh), so a flexed calendar would grow to the

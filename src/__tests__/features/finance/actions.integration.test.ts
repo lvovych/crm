@@ -65,6 +65,16 @@ vi.mock('@/lib/workshop-currency', () => ({
   workshopCurrencySettings: async () => ({ currencyCode: 'UAH' }),
 }))
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
+import {
+  assembleInvoicePrint,
+  type InvoicePrintAssembly,
+} from '@/features/invoices/Lib/assembleInvoicePrint'
+import { createPayment, deletePayment } from '@/features/payments/Actions/paymentActions'
+import { adjustInventoryStock } from '@/features/inventory/Actions/inventoryActions'
+vi.mock('@/features/inventory/Lib/onInventoryChanged', () => ({ onInventoryChanged: vi.fn() }))
+vi.mock('@/features/invoices/Lib/assembleInvoicePrint', () => ({
+  assembleInvoicePrint: vi.fn(async () => null),
+}))
 import { postMoney } from '@/features/finance/ledger'
 import {
   saveFinanceDirectory,
@@ -105,6 +115,140 @@ const url = process.env.FINANCE_TEST_DATABASE_URL
   })
   afterAll(async () => {
     await state.db?.$disconnect()
+  })
+  it('serializes competing stock withdrawals and rolls back a failed movement', async () => {
+    const user = await state.db.user.create({
+      data: { name: 'Stock tester', email: randomUUID() + '@example.test' },
+    })
+    const actor = state.actor
+    state.actor = user.id
+    try {
+      const part = await state.db.inventoryPart.create({
+        data: {
+          organizationId: state.org,
+          userId: user.id,
+          name: 'Concurrent stock',
+          quantity: 10,
+        },
+      })
+      const change = (adjustment: number) => adjustInventoryStock({ id: part.id, adjustment })
+      const withdrawals = await Promise.all([change(-3), change(-3)])
+      expect(withdrawals.every((result) => result.success)).toBe(true)
+      const last = await Promise.all([change(-4), change(-4)])
+      expect(last.filter((result) => result.success)).toHaveLength(1)
+      expect(last.find((result) => !result.success)?.error).toBe('Insufficient stock')
+      state.actor = 'missing-user'
+      expect((await change(1)).success).toBe(false)
+      expect(
+        (await state.db.inventoryPart.findUniqueOrThrow({ where: { id: part.id } })).quantity
+      ).toBe(0)
+      const movements = await state.db.stockMovement.findMany({
+        where: { inventoryPartId: part.id },
+        orderBy: { quantityAfter: 'desc' },
+      })
+      expect(movements.map((row) => [row.delta, row.quantityAfter])).toEqual([
+        [-3, 7],
+        [-3, 4],
+        [-4, 0],
+      ])
+    } finally {
+      state.actor = actor
+    }
+  })
+
+  it('books concurrent retries once without cash, permits distinct payments and rolls back an invoice failure', async () => {
+    const record = await state.db.serviceRecord.create({
+      data: { organizationId: state.org, title: 'Concurrent payments', totalAmount: 500 },
+    })
+    const input = {
+      serviceRecordId: record.id,
+      amount: 11.25,
+      date: today,
+      method: 'cash',
+      requestId: randomUUID(),
+    }
+    const count = () => state.db.payment.count({ where: { serviceRecordId: record.id } })
+    expect((await createPayment(input)).success).toBe(false)
+    expect(await count()).toBe(0)
+    vi.mocked(assembleInvoicePrint).mockResolvedValueOnce({
+      workshop: { name: 'Workshop' },
+      invoiceSettings: {},
+      serviceType: 'automotive',
+      taxLabel: 'VAT',
+      designSource: { layout: {}, template: {} },
+      signer: {},
+      data: {},
+      logoDataUri: 'data:image/png;base64,AAAA',
+    } as InvoicePrintAssembly)
+    const results = await Promise.all([createPayment(input), createPayment(input)])
+    expect(results.map((result) => result.success)).toEqual([true, true])
+    expect(results[0].data?.id).toBe(results[1].data?.id)
+    const invoice = await state.db.serviceRecord.findUniqueOrThrow({ where: { id: record.id } })
+    expect(invoice.issuedAt).toBeInstanceOf(Date)
+    expect(invoice.issuedDesignSnapshotId).toBeTruthy()
+    expect(invoice.issuedLogoSnapshotId).toBeTruthy()
+    expect((await createPayment({ ...input, amount: 22 })).success).toBe(false)
+    expect((await createPayment({ ...input, requestId: randomUUID() })).success).toBe(true)
+    expect(await count()).toBe(2)
+    const deletions = await Promise.all([
+      deletePayment(results[0].data!.id),
+      deletePayment(results[0].data!.id),
+    ])
+    expect(deletions.filter((result) => result.success)).toHaveLength(1)
+    expect(await count()).toBe(1)
+  })
+
+  it('updates company details by tenant and ID without touching accounts or cash state', async () => {
+    const account = await state.db.moneyAccount.findUniqueOrThrow({ where: { id: cash } })
+    const before = {
+      settings: await state.db.financeSettings.count(),
+      entries: await state.db.moneyEntry.count(),
+      batches: await state.db.financeCutoverBatch.count(),
+    }
+    const payload = {
+      type: 'editEntity',
+      id: account.legalEntityId,
+      name: ' Updated company ',
+      taxId: ' 1631608939 ',
+    }
+    expect((await saveFinanceDirectory(payload)).success).toBe(true)
+    expect(
+      await state.db.ownLegalEntity.findUnique({ where: { id: account.legalEntityId } })
+    ).toMatchObject({ name: 'Updated company', taxId: '1631608939' })
+    expect(await state.db.moneyAccount.findUnique({ where: { id: cash } })).toEqual(account)
+    expect((await saveFinanceDirectory({ ...payload, taxId: '0012345678' })).success).toBe(true)
+    expect(
+      (await state.db.ownLegalEntity.findUniqueOrThrow({ where: { id: account.legalEntityId } }))
+        .taxId
+    ).toBe('0012345678')
+    for (const patch of [{ name: ' ' }, { taxId: 'x'.repeat(31) }, { id: 'missing' }])
+      expect((await saveFinanceDirectory({ ...payload, ...patch })).success).toBe(false)
+    const foreign = await state.db.organization.create({ data: { name: 'Foreign company test' } })
+    const entity = await state.db.ownLegalEntity.create({
+      data: { organizationId: foreign.id, name: 'Foreign' },
+    })
+    expect((await saveFinanceDirectory({ ...payload, id: entity.id })).success).toBe(false)
+    expect(
+      (await state.db.ownLegalEntity.findUniqueOrThrow({ where: { id: entity.id } })).name
+    ).toBe('Foreign')
+    state.admin = false
+    state.permissions = [{ action: 'update', subject: 'finance' }]
+    try {
+      expect((await saveFinanceDirectory(payload)).success).toBe(false)
+    } finally {
+      state.admin = true
+      state.permissions = []
+    }
+    expect((await saveFinanceDirectory({ ...payload, taxId: '' })).success).toBe(true)
+    expect(
+      (await state.db.ownLegalEntity.findUniqueOrThrow({ where: { id: account.legalEntityId } }))
+        .taxId
+    ).toBeNull()
+    expect({
+      settings: await state.db.financeSettings.count(),
+      entries: await state.db.moneyEntry.count(),
+      batches: await state.db.financeCutoverBatch.count(),
+    }).toEqual(before)
   })
   it('preparing balances does not activate or create movements', async () => {
     const result = await prepareCashOpening({
@@ -403,5 +547,32 @@ const url = process.env.FINANCE_TEST_DATABASE_URL
       state.admin = true
       state.permissions = []
     }
+  })
+  it('commits a cash payment and its account movement once and rolls both back on issue failure', async () => {
+    const job = await state.db.serviceRecord.create({
+      data: { organizationId: state.org, title: 'Cash retry', totalAmount: 70 },
+    })
+    const input = {
+      serviceRecordId: job.id,
+      moneyAccountId: cash,
+      amount: 10.01,
+      amountExact: '10.01',
+      date: today,
+      method: 'cash',
+      requestId: randomUUID(),
+    }
+    const docs = { organizationId: state.org, requestId: input.requestId }
+    expect((await createPayment(input)).success).toBe(false)
+    expect(await state.db.financialDocument.count({ where: docs })).toBe(0)
+    expect(await state.db.payment.count({ where: { serviceRecordId: job.id } })).toBe(0)
+    await state.db.serviceRecord.update({ where: { id: job.id }, data: { issuedAt: new Date() } })
+    const payments = await Promise.all([createPayment(input), createPayment(input)])
+    expect(payments.map((result) => result.success)).toEqual([true, true])
+    expect(payments[0].data?.id).toBe(payments[1].data?.id)
+    expect((await createPayment({ ...input, amountExact: '10.02' })).success).toBe(false)
+    const document = await state.db.financialDocument.findFirstOrThrow({ where: docs })
+    expect(document.paymentId).toBe(payments[0].data!.id)
+    expect(await state.db.moneyEntry.count({ where: { documentId: document.id } })).toBe(1)
+    expect((await deletePayment(document.paymentId!)).success).toBe(false)
   })
 })

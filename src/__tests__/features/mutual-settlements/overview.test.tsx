@@ -45,23 +45,23 @@ describe('settlement overview interactions', () => {
   it('separates customers and suppliers with clear preliminary totals', () => {
     render(<OverviewClient data={data()} />)
     expect(screen.getByText('Клієнтські суми попередні.')).toBeVisible()
-    expect(screen.queryByRole('article', { name: 'Постачальник Б' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('row', { name: 'Постачальник Б' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Постачальники' }))
-    expect(screen.getByRole('article', { name: 'Постачальник Б' })).toBeVisible()
-    expect(screen.queryByRole('article', { name: 'Клієнт А' })).not.toBeInTheDocument()
+    expect(screen.getByRole('row', { name: 'Постачальник Б' })).toBeVisible()
+    expect(screen.queryByRole('row', { name: 'Клієнт А' })).not.toBeInTheDocument()
   })
   it('searches formatted phone and document then resets', () => {
     render(<OverviewClient data={data()} />)
     fireEvent.change(screen.getByPlaceholderText('Ім’я, назва, телефон або документ'), {
       target: { value: '0671234567' },
     })
-    expect(screen.getByRole('article', { name: 'Клієнт А' })).toBeVisible()
+    expect(screen.getByRole('row', { name: 'Клієнт А' })).toBeVisible()
     fireEvent.change(screen.getByPlaceholderText('Ім’я, назва, телефон або документ'), {
       target: { value: 'невідомий' },
     })
     expect(screen.getByText('За цими умовами документів не знайдено.')).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: 'Скинути фільтри' }))
-    expect(screen.getByRole('article', { name: 'Клієнт А' })).toBeVisible()
+    expect(screen.getByRole('row', { name: 'Клієнт А' })).toBeVisible()
   })
   it('opens document details and preserves direct link, without payment controls', () => {
     render(<OverviewClient data={data()} />)
@@ -87,8 +87,8 @@ describe('settlement overview interactions', () => {
     fireEvent.change(screen.getByRole('combobox', { name: 'Показати контрагентів' }), {
       target: { value: 'advance' },
     })
-    expect(screen.queryByRole('article', { name: 'Клієнт А' })).not.toBeInTheDocument()
-    expect(screen.getByRole('article', { name: 'Клієнт Б' })).toBeVisible()
+    expect(screen.queryByRole('row', { name: 'Клієнт А' })).not.toBeInTheDocument()
+    expect(screen.getByRole('row', { name: 'Клієнт Б' })).toBeVisible()
   })
   it('shows review reason and excludes ordinary documents in review details', () => {
     const p = party('А')
@@ -148,13 +148,13 @@ describe('settlement overview interactions', () => {
         })}
       />
     )
-    expect(screen.getAllByRole('article')).toHaveLength(25)
+    expect(screen.getAllByRole('row', { name: /Клієнт \d/ })).toHaveLength(25)
     fireEvent.click(screen.getByRole('button', { name: 'Далі' }))
-    expect(screen.getAllByRole('article')).toHaveLength(1)
+    expect(screen.getAllByRole('row', { name: /Клієнт \d/ })).toHaveLength(1)
     fireEvent.change(screen.getByPlaceholderText('Ім’я, назва, телефон або документ'), {
       target: { value: 'Наряд 00' },
     })
-    expect(screen.getByRole('article', { name: 'Клієнт 00' })).toBeVisible()
+    expect(screen.getByRole('row', { name: 'Клієнт 00' })).toBeVisible()
   })
 })
 it('shows both the advance and expected amount for a job in progress', () => {
@@ -175,8 +175,65 @@ it('uses the exclusion label consistently in the tab, filter and party notice', 
   render(<OverviewClient data={data({ parties: [p] })} />)
   expect(screen.getByRole('button', { name: 'Не враховано в підсумках (1)' })).toBeVisible()
   expect(screen.getByRole('option', { name: 'Не враховано в підсумках' })).toBeInTheDocument()
-  expect(screen.getByRole('article', { name: 'Клієнт А' })).toHaveTextContent(
-    'Не враховано в підсумках: 1 документів'
+  expect(screen.getByRole('row', { name: 'Клієнт А' })).toHaveTextContent(
+    'Не враховано в підсумках: 1'
   )
   expect(screen.queryByText(/Потребу[єють]+ звірки/)).not.toBeInTheDocument()
+})
+
+describe('tracked customer history UI', () => {
+  it('separates new obligations from legacy totals and shows the history', () => {
+    const tracked = party('Новий')
+    tracked.documents[0].provisional = false
+    tracked.documents[0].history = [
+      {
+        id: '1',
+        kind: 'completed',
+        date: '2026-11-10',
+        recordedAt: '2026-11-10T10:00:00Z',
+        chargeDelta: '150.00',
+        paidDelta: '0.00',
+        amount: '150.00',
+        status: 'completed',
+        due: null,
+        manualPaid: false,
+        paymentId: null,
+        sourceDate: null,
+        actor: 'Менеджер',
+        note: null,
+      },
+    ]
+    render(<OverviewClient data={data({ trackedParties: [tracked] })} />)
+    expect(screen.getByRole('row', { name: 'Клієнт Новий' })).toBeVisible()
+    expect(screen.queryByRole('row', { name: 'Клієнт А' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Документи: Клієнт Новий' }))
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByText(/Історія зобов’язань і оплат/)).toBeVisible()
+    fireEvent.click(within(dialog).getByText(/Історія зобов’язань і оплат/))
+    expect(within(dialog).getByText(/Менеджер/)).toBeVisible()
+  })
+  it('allows legacy access without mixing balances', () => {
+    render(<OverviewClient data={data({ trackedParties: [] })} />)
+    expect(screen.queryByRole('row', { name: 'Клієнт А' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Старі документи · попередні суми' }))
+    expect(screen.getByRole('row', { name: 'Клієнт А' })).toBeVisible()
+    expect(screen.getByText('Клієнтські суми попередні.')).toBeVisible()
+  })
+  it('supports dated tracked history while clearly warning on legacy history', () => {
+    render(
+      <OverviewClient
+        data={data({
+          asOf: '2026-11-01',
+          customersHistoricalUnavailable: true,
+          trackedParties: [party('Новий')],
+        })}
+      />
+    )
+    expect(screen.getByRole('row', { name: 'Клієнт Новий' })).toBeVisible()
+    expect(
+      screen.queryByText('Історичний клієнтський борг поки недоступний')
+    ).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Старі документи · попередні суми' }))
+    expect(screen.getByText('Історичний клієнтський борг поки недоступний')).toBeVisible()
+  })
 })

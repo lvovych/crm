@@ -16,6 +16,10 @@ import { PermissionSubject } from '@/lib/permissions'
 
 /** Columns deliberately kept from the model, wherever they occur. */
 export const HIDDEN_COLUMNS: readonly string[] = [
+  'customerLedgerTracked',
+  'ledgerActorId',
+  'ledgerActorName',
+  'requestId',
   'publicToken',
   'issuedData',
   'editUnlockedById',

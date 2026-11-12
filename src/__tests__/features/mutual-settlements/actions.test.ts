@@ -3,13 +3,20 @@ import { beforeEach, describe, it, expect, vi } from 'vitest'
 const m = vi.hoisted(() => ({
   member: vi.fn(),
   records: vi.fn(),
+  ledger: vi.fn(),
+  customers: vi.fn(),
   suppliers: vi.fn(),
   contacts: vi.fn(),
   enabled: vi.fn(),
   admin: false,
 }))
 vi.mock('@/lib/db', () => ({
-  db: { serviceRecord: { findMany: m.records }, counterparty: { findMany: m.contacts } },
+  db: {
+    customerLedgerDocument: { findMany: m.ledger },
+    customer: { findMany: m.customers },
+    serviceRecord: { findMany: m.records },
+    counterparty: { findMany: m.contacts },
+  },
 }))
 vi.mock('@/lib/cached-session', () => ({ getCachedMembership: m.member }))
 vi.mock('@/lib/workshop-timezone', () => ({ workshopTimeZone: async () => 'Europe/Kyiv' }))
@@ -32,6 +39,8 @@ beforeEach(() => {
   vi.resetAllMocks()
   m.admin = false
   m.enabled.mockReturnValue(true)
+  m.ledger.mockResolvedValue([])
+  m.customers.mockResolvedValue([])
   m.records.mockResolvedValue([])
   m.contacts.mockResolvedValue([])
   m.suppliers.mockResolvedValue({ success: true, data: [] })
@@ -59,7 +68,7 @@ describe('overview authorization and source isolation', () => {
     expect(r.success).toBe(true)
     expect(r.data).toMatchObject({ customersAllowed: true, suppliersAllowed: false })
     expect(m.records).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { organizationId: 'org' } })
+      expect.objectContaining({ where: { organizationId: 'org', customerLedgerTracked: false } })
     )
     expect(m.records.mock.calls[0][0].select).not.toHaveProperty('issuedData')
     expect(m.suppliers).not.toHaveBeenCalled()
@@ -185,4 +194,29 @@ it('does not leak an unrelated tenant customer through a linked vehicle', async 
   expect(JSON.stringify(result)).not.toContain('Private customer')
   expect(JSON.stringify(result)).not.toContain('secret')
   expect(result.data?.parties[0]).toMatchObject({ id: 'unassigned', debt: '0.00' })
+})
+
+it('scopes ledger documents and customer identity to the authorized organization', async () => {
+  rights('billing')
+  await mutualSettlementsReport('2020-01-01')
+  expect(m.ledger).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: { organizationId: 'org' },
+      include: {
+        events: {
+          where: { effectiveDate: { lte: new Date('2020-01-01T00:00:00Z') } },
+          orderBy: { id: 'asc' },
+        },
+      },
+    })
+  )
+  expect(m.customers).toHaveBeenCalledWith(
+    expect.objectContaining({ where: { organizationId: 'org', id: { in: [] } } })
+  )
+})
+it('does not query the customer journal for a supplier-only role', async () => {
+  rights('supplier_settlements')
+  await mutualSettlementsReport()
+  expect(m.ledger).not.toHaveBeenCalled()
+  expect(m.customers).not.toHaveBeenCalled()
 })

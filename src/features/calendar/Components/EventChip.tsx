@@ -62,7 +62,7 @@ export function EventChip({
         type="button"
         onClick={onClick}
         onContextMenu={onContextMenu}
-        title={summary}
+        title={[summary, event.customerPhone].filter(Boolean).join(' · ')}
         aria-label={summary}
         data-event-id={event.id}
         style={style}

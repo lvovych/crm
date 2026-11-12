@@ -7,20 +7,24 @@ export function BoardJobIdentity({
       licensePlate: string | null
       make: string
       model: string
-      customer?: { name: string } | null
+      customer?: { name: string; phone?: string | null } | null
     } | null
     customerName?: string | null
-    customer?: { name: string } | null
+    customerPhone?: string | null
+    customer?: { name: string; phone?: string | null } | null
   }
 }) {
   const customer = job.customerName || job.customer?.name || job.vehicle?.customer?.name
+  const phone = job.customerPhone === undefined
+    ? (job.customer ?? job.vehicle?.customer)?.phone?.trim()
+    : job.customerPhone
   const lines = [
     job.vehicle?.licensePlate,
     job.vehicle ? `${job.vehicle.make} ${job.vehicle.model}` : null,
     customer,
   ].filter(Boolean)
   return (
-    <div className="min-w-0" title={lines.join(' · ')} data-testid="board-job-identity">
+    <div className="min-w-0" title={[...lines, phone].filter(Boolean).join(' · ')} data-testid="board-job-identity">
       {job.vehicle?.licensePlate && (
         <div className="truncate font-semibold">{job.vehicle.licensePlate}</div>
       )}

@@ -11,12 +11,14 @@ const event: CalendarEvent = {
   id: 'job', title: '2026-1001', invoiceNumber: '2026-1001', type: 'service',
   date: '2026-11-09', time: '09:00', endTime: '10:00', status: 'pending',
   vehicleId: 'car', vehicleLabel: '2020 Toyota Camry', serviceVehiclePlate: 'AC1234AA', serviceVehicleLabel: 'Toyota Camry',
-  customerName: 'Anna Client', amount: 100,
+  customerName: 'Anna Client', customerPhone: '+380671234567', amount: 100,
 }
 describe('calendar work order card', () => {
   it.each(['chip', 'timed', 'block', 'row'] as const)('shows only vehicle identification and customer in %s', (variant) => {
     render(<EventChip event={event} variant={variant} />)
     const card = screen.getByRole('button', { name: 'AC1234AA · Toyota Camry · Anna Client' })
+    expect(card.title).toContain('+380671234567')
+    expect(card).not.toHaveTextContent('+380671234567')
     expect(card).toHaveTextContent('AC1234AA')
     expect(card).toHaveTextContent('Toyota Camry')
     if (variant === 'block' || variant === 'row') {

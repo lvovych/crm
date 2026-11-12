@@ -262,6 +262,7 @@ export async function createDraftRecord(
 
   return writer.serviceRecord.create({
     data: {
+      customerLedgerTracked: true,
       ...(opts.id ? { id: opts.id } : {}),
       organizationId,
       createdById: userId,

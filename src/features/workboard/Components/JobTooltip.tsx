@@ -1,6 +1,6 @@
 'use client'
 
-import { CalendarClock, ClipboardCheck, User, Wrench } from 'lucide-react'
+import { CalendarClock, ClipboardCheck, Phone, User, Wrench } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
@@ -78,6 +78,12 @@ export function JobTooltip({
           </p>
         )}
 
+        {job.customerPhone && (
+          <p className="flex items-center gap-1.5 text-background/70">
+            <Phone className="h-3 w-3 shrink-0" />
+            {job.customerPhone}
+          </p>
+        )}
         <dl className="mt-2 space-y-0.5">
           {start && end ? (
             <>

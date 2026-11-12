@@ -84,6 +84,11 @@ export async function POST(request: NextRequest) {
   data.finance = await db.$transaction(
     async (tx) => ({
       restoreMode: 'postgresql-snapshot',
+      customerDocuments: await tx.customerLedgerDocument.findMany({ where: financeScope }),
+      customerEvents: (await tx.customerLedgerEvent.findMany({ where: financeScope })).map((e) => ({
+        ...e,
+        id: e.id.toString(),
+      })),
       settings: await tx.financeSettings.findUnique({ where: financeScope }),
       entities: await tx.ownLegalEntity.findMany({ where: financeScope }),
       accounts: await tx.moneyAccount.findMany({ where: financeScope }),

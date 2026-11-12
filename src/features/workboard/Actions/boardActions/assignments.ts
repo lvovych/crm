@@ -101,9 +101,9 @@ export async function getUnassignedJobs() {
           select: {
             id: true,
             title: true,
-            customer: { select: { name: true } },
+            customer: SERVICE_JOB_SELECT.customer,
             status: true,
-            vehicle: { select: VEHICLE_SELECT },
+            vehicle: SERVICE_JOB_SELECT.vehicle,
           },
           orderBy: { createdAt: 'desc' },
           take: 100,

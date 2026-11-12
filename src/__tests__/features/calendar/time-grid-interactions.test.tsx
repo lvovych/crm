@@ -140,7 +140,7 @@ const message: CalendarEvent = {
   amount: null,
 }
 
-function setup() {
+function setup(isMobile = false) {
   const onRefresh = vi.fn()
   const actions = {
     onNewWorkOrder: vi.fn(),
@@ -155,7 +155,7 @@ function setup() {
     ['2026-09-04', [message]],
   ])
   const utils = render(
-    <EventPeekProvider currencyCode="NOK" onRefresh={onRefresh}>
+    <EventPeekProvider isMobile={isMobile} currencyCode="NOK" onRefresh={onRefresh}>
       <TimeGridView
         days={days}
         eventsByDate={eventsByDate}
@@ -205,6 +205,14 @@ describe('TimeGridView', () => {
     fireEvent.contextMenu(columns[2], { clientX: 10, clientY: 900 })
     fireEvent.click(await screen.findByText('Schedule message'))
     expect(actions.onScheduleMessage).toHaveBeenCalledWith('2026-09-02', '15:00')
+  })
+
+  it('opens the existing work order directly on mobile', () => {
+    const { actions } = setup(true)
+    fireEvent.click(screen.getByText('AC1234AA Volvo V90'))
+    expect(push).toHaveBeenCalledWith('/vehicles/v1/service/s1')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(actions.onNewWorkOrder).not.toHaveBeenCalled()
   })
 
   it('peeks at a block instead of creating anything', async () => {
