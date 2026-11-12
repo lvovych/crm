@@ -1337,7 +1337,7 @@ export async function jobWithCustomer(organizationId: string): Promise<{
          from service_records s
          join vehicles v on v.id = s."vehicleId"
          join customers c on c.id = v."customerId"
-        where s."organizationId" = $1
+        where s."organizationId" = $1 and nullif(trim(c.phone), '') is not null
         order by s."createdAt" asc
         limit 1`,
       [organizationId]
