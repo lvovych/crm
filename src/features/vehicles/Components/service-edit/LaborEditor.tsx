@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { SubcontractReminder } from '@/features/receipts/SubcontractReminder'
 import Link from 'next/link'
@@ -70,6 +70,18 @@ export function LaborEditor({
   useEffect(() => {
     if (locked) setEditing(null)
   }, [locked])
+  const reminderRef = useRef<HTMLDivElement>(null)
+  const revealReminder = useRef(false)
+  useEffect(() => {
+    if (!editing && revealReminder.current) {
+      revealReminder.current = false
+      showReceiptAction()
+    }
+  }, [editing])
+  function showReceiptAction() {
+    reminderRef.current?.focus({ preventScroll: true })
+    reminderRef.current?.scrollIntoView?.({ block: 'center' })
+  }
   const draft = editing?.draft,
     isFee = draft ? isShopFeeLine(draft) : false
   const executor = (l: ServiceLaborInput) =>
@@ -145,6 +157,7 @@ export function LaborEditor({
         ? [...prev, parsed.data]
         : prev.map((l, i) => (i === editing.index ? parsed.data : l))
     )
+    revealReminder.current = Boolean(parsed.data.supplierId && !parsed.data.receiptId)
     setEditing(null)
   }
   function setNumber(index: number, field: 'hours' | 'rate', value: number) {
@@ -271,7 +284,11 @@ export function LaborEditor({
       className="@container min-w-0"
       contentClassName="p-3"
     >
-      {!locked && recordId && <SubcontractReminder recordId={recordId} unsaved={unsaved} count={laborItems.filter(l=>l.supplierId && !l.receiptId).length}/>}
+      {!locked && recordId && laborItems.some(line => line.supplierId && !line.receiptId) && (
+        <div ref={reminderRef} tabIndex={-1}>
+          <SubcontractReminder recordId={recordId} unsaved={unsaved} count={laborItems.filter(line => line.supplierId && !line.receiptId).length} />
+        </div>
+      )}
       {quickAdd && (
         <LaborQuickAdd
           {...quickAdd}
@@ -469,6 +486,7 @@ export function LaborEditor({
                       ))}
                     </select>
                   </LineField>
+                  {!draft.receiptId && <p className="text-sm">Після застосування роботи збережіть наряд і натисніть «Прихід послуг» у секції робіт.</p>}
                   <LineField label="Ціна закупівлі">
                     <Input
                       aria-label="Ціна закупівлі"

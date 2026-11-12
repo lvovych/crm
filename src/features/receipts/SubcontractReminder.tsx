@@ -30,12 +30,11 @@ export function SubcontractReminder({
   return (
     <>
       {count > 0 && (
-        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border p-3">
-          <span>Без приходу: {count}</span>
-          <Button type="button" variant="outline" disabled={busy || unsaved} onClick={createDrafts}>
-            Створити чернетку
+        <div className="mb-3 flex flex-wrap items-center gap-3 rounded-md border-2 border-primary/40 p-3">
+          <Button type="button" disabled={busy || unsaved} onClick={createDrafts}>
+            Прихід послуг - {count}
           </Button>
-          {unsaved && <small>Доступно після збереження наряду</small>}
+          {unsaved && <small>Збережіть наряд, щоб створити чернетку приходу.</small>}
         </div>
       )}
       {message && <p role="status">{message}</p>}
