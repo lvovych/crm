@@ -291,7 +291,7 @@ test.describe('the photos on a mark, on disk', () => {
 
     await editor.getByRole('button', { name: 'Remove mark' }).click()
     await expect(editor).toBeHidden()
-    expect(await conditionMarksOf(job.vehicleId)).toHaveLength(0)
+    await expect.poll(() => conditionMarksOf(job.vehicleId)).toHaveLength(0)
     for (const url of urls) {
       await expect.poll(() => existsSync(diskPath(url)), `${url} left the disk`).toBe(false)
     }

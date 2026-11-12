@@ -54,6 +54,7 @@ vi.mock('@/lib/db', () => ({
       findFirst: vi.fn(),
       delete: vi.fn(),
     },
+    subcontractWork: { deleteMany: vi.fn() },
     servicePart: { findMany: vi.fn() },
     inventoryPart: { updateMany: vi.fn() },
     $transaction: vi.fn(),
@@ -353,6 +354,7 @@ describe('deleteServiceRecord — cross-org isolation', () => {
     vi.mocked(db.serviceRecord.delete).mockResolvedValue({} as any)
 
     const result = await deleteServiceRecord('sr-a')
+    expect(db.subcontractWork.deleteMany).toHaveBeenCalledWith({where:{labor:{serviceRecordId:'sr-a'},receiptLineId:null}})
 
     expect(result.success).toBe(true)
   })

@@ -323,6 +323,7 @@ model ServicePart {
 }
 
 model ServiceLabor {
+  subcontract SubcontractWork?
   @@index([technicianId], map: "service_labor_technician_idx")
   technicianId String?
   technician Technician? @relation(fields: [technicianId], references: [id], onDelete: Restrict)

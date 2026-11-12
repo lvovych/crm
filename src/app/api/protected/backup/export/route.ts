@@ -172,6 +172,9 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  if (options.inventory && options.vehicles) {
+    queries.push(db.subcontractWork.findMany({where: {labor: {serviceRecord: {organizationId: ctx.organizationId}}}}).then(rows => {data.subcontractWork = rows}))
+  }
   if (options.inventory) {
     queries.push(
       db.supplierEntry

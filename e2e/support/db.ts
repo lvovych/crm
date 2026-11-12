@@ -1337,7 +1337,7 @@ export async function jobWithCustomer(organizationId: string): Promise<{
          from service_records s
          join vehicles v on v.id = s."vehicleId"
          join customers c on c.id = v."customerId"
-        where s."organizationId" = $1
+        where s."organizationId" = $1 and nullif(trim(c.phone), '') is not null
         order by s."createdAt" asc
         limit 1`,
       [organizationId]
@@ -1842,5 +1842,21 @@ export async function legacyConcern(id: string) {
       [id]
     )
     return result.rows[0]
+  })
+}
+
+export async function seedContractor(name: string) {
+  const org = await ownerOrganizationId()
+  return withDb(async (db) => {
+    const id = randomBytes(12).toString('hex')
+    await db.query(
+      'INSERT INTO counterparties (id,"organizationId",name,"createdById","updatedAt") VALUES ($1,$2,$3,$4,now())',
+      [id, org, name, 'e2e']
+    )
+    await db.query(
+      'INSERT INTO supplier_profiles (id,"organizationId","counterpartyId") VALUES ($1,$2,$1)',
+      [id, org]
+    )
+    return id
   })
 }

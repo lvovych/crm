@@ -238,6 +238,11 @@ export async function ServiceRecordPage({
   // The date inputs show the workshop's calendar day, not the server's.
   const timeZone = organizationId ? await workshopTimeZone(organizationId) : 'UTC'
 
+  const subcontractRows = await db.subcontractWork.findMany({
+    where: { labor: { serviceRecordId: serviceId, serviceRecord: { organizationId } } },
+    include: { receiptLine: { include: { receipt: { select: { id: true, status: true } } } } },
+  })
+  const subcontracts = new Map(subcontractRows.map(row => [row.laborId, row]))
   const initialData = {
     id: record.id,
     title: record.title,
@@ -292,6 +297,10 @@ export async function ServiceRecordPage({
     })),
     laborItems: shopFeeLinesLast(record.laborItems).map((l) => ({
       id: l.id,
+      supplierId: subcontracts.get(l.id)?.supplierId ?? null,
+      purchasePrice: subcontracts.get(l.id)?.unitCost.toString(),
+      receiptId: subcontracts.get(l.id)?.receiptLine?.receipt.id,
+      receiptStatus: subcontracts.get(l.id)?.receiptLine?.receipt.status,
       technicianId: l.technicianId,
       executorName: l.executorName,
       executorFrozen: l.executorFrozen,

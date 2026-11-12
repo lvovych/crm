@@ -20,6 +20,7 @@ model Counterparty {
   bankAccounts CounterpartyBankAccount[]
   sourceLinks CounterpartySourceLink[]
   preferredParts InventoryPart[]
+  subcontractWork SubcontractWork[]
   receipts SupplierReceipt[]
   settlements SupplierEntry[]
   supplierArticles SupplierArticle[]

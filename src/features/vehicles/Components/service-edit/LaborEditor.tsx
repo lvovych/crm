@@ -1,6 +1,9 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
+import { SubcontractReminder } from '@/features/receipts/SubcontractReminder'
+import Link from 'next/link'
+import { contractorOptions } from '@/features/receipts/subcontract-actions'
 import { Wrench, Plus, Layers, Pencil, ArrowUp, ArrowDown, AlertTriangle, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,6 +20,8 @@ import { LaborNumberInput } from './LaborNumberInput'
 import { LaborQuickAdd, type LaborQuickAddProps } from './LaborQuickAdd'
 
 interface LaborEditorProps {
+  recordId?: string
+  unsaved?: boolean
   laborItems: ServiceLaborInput[]
   setLaborItems: React.Dispatch<React.SetStateAction<ServiceLaborInput[]>>
   updateLabor: (index: number, field: keyof ServiceLaborInput, value: string | number) => void
@@ -34,6 +39,8 @@ interface LaborEditorProps {
   locked?: boolean
 }
 export function LaborEditor({
+  recordId,
+  unsaved,
   laborItems,
   setLaborItems,
   laborSubtotal,
@@ -53,6 +60,7 @@ export function LaborEditor({
     e = useTranslations('service.lineEditor'),
     format = useFormatCurrency(),
     feeLocked = useShopFeeLocked()
+  const [suppliers, setSuppliers] = useState<{ id: string; name: string }[]>([])
   const [editing, setEditing] = useState<{
       index: number
       original: ServiceLaborInput
@@ -62,28 +70,58 @@ export function LaborEditor({
   useEffect(() => {
     if (locked) setEditing(null)
   }, [locked])
+  const reminderRef = useRef<HTMLDivElement>(null)
+  const revealReminder = useRef(false)
+  useEffect(() => {
+    if (!editing && revealReminder.current) {
+      revealReminder.current = false
+      showReceiptAction()
+    }
+  }, [editing])
+  function showReceiptAction() {
+    reminderRef.current?.focus({ preventScroll: true })
+    reminderRef.current?.scrollIntoView?.({ block: 'center' })
+  }
   const draft = editing?.draft,
     isFee = draft ? isShopFeeLine(draft) : false
   const executor = (l: ServiceLaborInput) =>
-    isShopFeeLine(l)
-      ? '—'
-      : l.executorFrozen
-        ? l.executorName || e('unassigned')
-        : technicians.find((t) => t.id === (l.technicianId || primaryTechnicianId))?.name ||
-          l.executorName ||
-          e('unassigned')
-  const mode = (l: ServiceLaborInput) =>
-    isShopFeeLine(l)
-      ? ''
-      : l.executorLegacy
-        ? e('legacyExecutor')
+    l.supplierId
+      ? suppliers.find((s) => s.id === l.supplierId)?.name || l.executorName || 'Підрядник'
+      : isShopFeeLine(l)
+        ? '—'
         : l.executorFrozen
-          ? e('frozenExecutor')
-          : l.technicianId
-            ? ''
-            : e('inherited')
+          ? l.executorName || e('unassigned')
+          : technicians.find((t) => t.id === (l.technicianId || primaryTechnicianId))?.name ||
+            l.executorName ||
+            e('unassigned')
+  const mode = (l: ServiceLaborInput) =>
+    l.supplierId
+      ? 'Підрядник'
+      : isShopFeeLine(l)
+        ? ''
+        : l.executorLegacy
+          ? e('legacyExecutor')
+          : l.executorFrozen
+            ? e('frozenExecutor')
+            : l.technicianId
+              ? ''
+              : e('inherited')
+  function purchaseInfo(line: ServiceLaborInput) {
+    if (!line.supplierId) return null
+    return (
+      <div className="text-xs text-muted-foreground">
+        Закупівля: {format(Number(line.purchasePrice), currencyCode)}
+        {line.receiptId && (
+          <Link className="ml-2 underline" href={'/receipts/' + line.receiptId}>
+            {line.receiptStatus === 'posted' ? 'Проведена накладна' : 'Відкрити чернетку'}
+          </Link>
+        )}
+      </div>
+    )
+  }
   function open(index: number, line: ServiceLaborInput) {
     setError('')
+    if (recordId) void contractorOptions().then((result) => setSuppliers(result.data ?? []))
     setEditing({ index, original: { ...line }, draft: { ...line } })
   }
   function change(field: keyof ServiceLaborInput, value: string | number | null) {
@@ -102,6 +140,13 @@ export function LaborEditor({
   }
   function save() {
     if (!editing || locked) return
+    if (
+      editing.draft.supplierId === '' ||
+      (editing.draft.supplierId && !editing.draft.purchasePrice)
+    ) {
+      setError('Оберіть підрядника й укажіть закупівельну ціну.')
+      return
+    }
     const parsed = serviceLaborSchema.safeParse(editing.draft)
     if (!parsed.success) {
       setError(e('invalid'))
@@ -112,6 +157,7 @@ export function LaborEditor({
         ? [...prev, parsed.data]
         : prev.map((l, i) => (i === editing.index ? parsed.data : l))
     )
+    revealReminder.current = Boolean(parsed.data.supplierId && !parsed.data.receiptId)
     setEditing(null)
   }
   function setNumber(index: number, field: 'hours' | 'rate', value: number) {
@@ -238,6 +284,11 @@ export function LaborEditor({
       className="@container min-w-0"
       contentClassName="p-3"
     >
+      {!locked && recordId && laborItems.some(line => line.supplierId && !line.receiptId) && (
+        <div ref={reminderRef} tabIndex={-1}>
+          <SubcontractReminder recordId={recordId} unsaved={unsaved} count={laborItems.filter(line => line.supplierId && !line.receiptId).length} />
+        </div>
+      )}
       {quickAdd && (
         <LaborQuickAdd
           {...quickAdd}
@@ -282,6 +333,7 @@ export function LaborEditor({
                 >
                   {l.description || e('unnamed')}
                 </button>
+                {purchaseInfo(l)}
                 {isShopFeeLine(l) && <ShopFeeTag />}
               </td>
               <td className="break-words p-2">
@@ -292,7 +344,7 @@ export function LaborEditor({
                 <LaborNumberInput
                   label={`${t('qtyOrHours')}: ${l.description}`}
                   value={l.hours}
-                  disabled={locked || isShopFeeLine(l)}
+                  disabled={locked || !!l.receiptId || isShopFeeLine(l)}
                   onCommit={(value) => setNumber(i, 'hours', value)}
                 />
                 <span className="text-xs text-muted-foreground">
@@ -324,6 +376,7 @@ export function LaborEditor({
             >
               {l.description || e('unnamed')}
             </button>
+            {purchaseInfo(l)}
             {isShopFeeLine(l) && <ShopFeeTag />}
             <p className="mt-2 break-words text-sm">
               {e('executor')}: {executor(l)}{' '}
@@ -386,29 +439,93 @@ export function LaborEditor({
           </LineField>
           {!isFee && (
             <>
-              <LineField label={e('executor')}>
-                <select
-                  className="min-h-11 rounded-md border bg-background px-2"
-                  value={draft.technicianId ?? ''}
-                  onChange={(v) => change('technicianId', v.target.value || null)}
-                >
-                  <option value="">
-                    {e('inherited')} —{' '}
-                    {technicians.find((t) => t.id === primaryTechnicianId)?.name || e('unassigned')}
-                  </option>
-                  {draft.technicianId && !technicians.some((t) => t.id === draft.technicianId) && (
-                    <option value={draft.technicianId} disabled>
-                      {draft.executorName || e('inactive')}
+              {(suppliers.length > 0 || draft.supplierId != null) && (
+                <LineField label="Тип виконавця">
+                  <select
+                    className="min-h-11 rounded-md border bg-background px-2"
+                    value={draft.supplierId != null ? 'supplier' : 'staff'}
+                    disabled={!!draft.receiptId}
+                    onChange={(ev) => {
+                      const outsourced = ev.target.value === 'supplier'
+                      setEditing(
+                        (current) =>
+                          current && {
+                            ...current,
+                            draft: {
+                              ...current.draft,
+                              technicianId: null,
+                              executorName: null,
+                              executorFrozen: false,
+                              supplierId: outsourced ? '' : null,
+                              purchasePrice: outsourced ? '' : undefined,
+                            },
+                          }
+                      )
+                    }}
+                  >
+                    <option value="staff">Працівник</option>
+                    <option value="supplier">Підрядник</option>
+                  </select>
+                </LineField>
+              )}
+              {draft.supplierId != null ? (
+                <>
+                  <LineField label="Підрядник">
+                    <select
+                      aria-label="Підрядник"
+                      className="min-h-11 rounded-md border bg-background px-2"
+                      disabled={!!draft.receiptId}
+                      value={draft.supplierId}
+                      onChange={(ev) => change('supplierId', ev.target.value)}
+                    >
+                      <option value="">Оберіть постачальника</option>
+                      {suppliers.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                  </LineField>
+                  {!draft.receiptId && <p className="text-sm">Після застосування роботи збережіть наряд і натисніть «Прихід послуг» у секції робіт.</p>}
+                  <LineField label="Ціна закупівлі">
+                    <Input
+                      aria-label="Ціна закупівлі"
+                      type="number"
+                      min="0"
+                      step="0.0001"
+                      disabled={!!draft.receiptId}
+                      value={draft.purchasePrice ?? ''}
+                      onChange={(ev) => change('purchasePrice', ev.target.value)}
+                    />
+                  </LineField>
+                </>
+              ) : (
+                <LineField label={e('executor')}>
+                  <select
+                    className="min-h-11 rounded-md border bg-background px-2"
+                    value={draft.technicianId ?? ''}
+                    onChange={(v) => change('technicianId', v.target.value || null)}
+                  >
+                    <option value="">
+                      {e('inherited')} —{' '}
+                      {technicians.find((t) => t.id === primaryTechnicianId)?.name ||
+                        e('unassigned')}
                     </option>
-                  )}
-                  {technicians.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-              </LineField>
-              {draft.executorFrozen && (
+                    {draft.technicianId &&
+                      !technicians.some((t) => t.id === draft.technicianId) && (
+                        <option value={draft.technicianId} disabled>
+                          {draft.executorName || e('inactive')}
+                        </option>
+                      )}
+                    {technicians.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </LineField>
+              )}
+              {draft.executorFrozen && !draft.supplierId && (
                 <p className="text-sm text-muted-foreground">
                   {mode(draft)}: {executor(draft)}
                 </p>
@@ -432,12 +549,12 @@ export function LaborEditor({
                 inputMode="decimal"
                 min="0"
                 step="any"
-                disabled={isFee}
+                disabled={isFee || !!draft.receiptId}
                 value={draft.hours}
                 onChange={(v) => change('hours', v.target.value)}
               />
             </LineField>
-            <LineField label={e('price')}>
+            <LineField label={draft.supplierId != null ? 'Ціна продажу' : e('price')}>
               <Input
                 type="number"
                 inputMode="decimal"

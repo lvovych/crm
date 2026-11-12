@@ -146,7 +146,7 @@ export async function receiptDetail(id: string) {
         supplier: { select: { name: true } },
         lines: {
           orderBy: { position: 'asc' },
-          include: { part: { select: { brand: { select: { name: true } } } } },
+          include: { subcontract: { select: { laborId: true } }, part: { select: { brand: { select: { name: true } } } } },
         },
       },
     })

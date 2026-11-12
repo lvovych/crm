@@ -499,6 +499,7 @@ export async function POST(request: NextRequest) {
         Customer: () => tx.customer.deleteMany({ where: { organizationId } }),
         LaborPreset: () => tx.laborPreset.deleteMany({ where: { organizationId } }),
         ConditionMarkType: () => tx.conditionMarkType.deleteMany({ where: { organizationId } }),
+        SubcontractWork: () => tx.subcontractWork.deleteMany({ where: {labor: {serviceRecord: {organizationId}}} }),
         Webhook: () => tx.webhook.deleteMany({ where: { organizationId } }),
         ReportSchedule: () => tx.reportSchedule.deleteMany({ where: { organizationId } }),
         WorkOrderStatus: () => tx.workOrderStatus.deleteMany({ where: { organizationId } }),
@@ -1521,6 +1522,14 @@ export async function POST(request: NextRequest) {
       // 10b. The jobs and quotes raised from an inspection point back at it.
       // Both were restored before the inspections existed, so the link is
       // written now, and only where the inspection came back with the backup.
+      if (data.subcontractWork) {
+        for (const row of data.subcontractWork as {laborId:string;supplierId:string;unitCost:string;receiptLineId:string|null}[]) {
+          await tx.serviceLabor.findFirstOrThrow({where:{id:row.laborId,serviceRecord:{organizationId}}})
+          await tx.counterparty.findFirstOrThrow({where:{id:row.supplierId,organizationId}})
+          if (row.receiptLineId) await tx.supplierReceiptLine.findFirstOrThrow({where:{id:row.receiptLineId,kind:'service',receipt:{organizationId,supplierId:row.supplierId}}})
+          await tx.subcontractWork.create({data:{laborId:row.laborId,supplierId:row.supplierId,unitCost:row.unitCost,receiptLineId:row.receiptLineId}})
+        }
+      }
       if (data.inspections?.length) {
         const restoredInspections = new Set(
           (data.inspections as Record<string, unknown>[]).map((insp) => insp.id as string)

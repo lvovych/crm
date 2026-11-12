@@ -201,9 +201,9 @@ const url = process.env.FINANCE_TEST_DATABASE_URL
   it('updates company details by tenant and ID without touching accounts or cash state', async () => {
     const account = await state.db.moneyAccount.findUniqueOrThrow({ where: { id: cash } })
     const before = {
-      settings: await state.db.financeSettings.count(),
-      entries: await state.db.moneyEntry.count(),
-      batches: await state.db.financeCutoverBatch.count(),
+      settings: await state.db.financeSettings.count({where:{organizationId:state.org}}),
+      entries: await state.db.moneyEntry.count({where:{organizationId:state.org}}),
+      batches: await state.db.financeCutoverBatch.count({where:{organizationId:state.org}}),
     }
     const payload = {
       type: 'editEntity',
@@ -245,9 +245,9 @@ const url = process.env.FINANCE_TEST_DATABASE_URL
         .taxId
     ).toBeNull()
     expect({
-      settings: await state.db.financeSettings.count(),
-      entries: await state.db.moneyEntry.count(),
-      batches: await state.db.financeCutoverBatch.count(),
+      settings: await state.db.financeSettings.count({where:{organizationId:state.org}}),
+      entries: await state.db.moneyEntry.count({where:{organizationId:state.org}}),
+      batches: await state.db.financeCutoverBatch.count({where:{organizationId:state.org}}),
     }).toEqual(before)
   })
   it('preparing balances does not activate or create movements', async () => {

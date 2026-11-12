@@ -1,3 +1,4 @@
+import { AssignService } from '@/features/receipts/AssignService'
 import { TransferGoods } from '@/features/receipts/TransferGoods'
 import { receiptTransferOptions } from '@/features/receipts/transfer-actions'
 import { Account } from '@/features/settlements/Account'
@@ -95,7 +96,9 @@ export default async function Page({
                     {l.quantity} {l.unit}
                   </td>
                   <td>{l.unitPrice}</td>
-                  <td>{l.amount}</td>
+                  <td>{l.amount}
+                    {transfers && l.kind === 'service' && (l.subcontract ? <p>Віднесено на наряд</p> : <AssignService lineId={l.id} orders={transfers.serviceOrders} />)}
+                  </td>
                 </tr>
               ))}
             </tbody>
