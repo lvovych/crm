@@ -275,7 +275,7 @@ export async function getTechnicianReport(params: ReportRange) {
           technician: { select: { name: true } },
           totalAmount: true,
           cost: true,
-          laborItems: { select: { hours: true, pricingType: true } },
+          laborItems: { where: { subcontract: null }, select: { hours: true, pricingType: true } },
         },
       })
 
@@ -343,7 +343,7 @@ export async function getTechnicianTimeReport(params: ReportRange) {
           },
           select: {
             technicianId: true,
-            laborItems: { select: { hours: true, pricingType: true } },
+            laborItems: { where: { subcontract: null }, select: { hours: true, pricingType: true } },
           },
         }),
         db.technician.findMany({

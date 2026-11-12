@@ -49,6 +49,7 @@ export async function receiptTransferOptions(receiptId: string) {
         select: {
           id: true,
           title: true,
+          laborItems: { where: { subcontract: { supplierId: receipt.supplierId, receiptLineId: null } }, select: { id: true, description: true } },
           invoiceNumber: true,
           vehicle: { select: { make: true, model: true, licensePlate: true } },
         },
@@ -88,6 +89,7 @@ export async function receiptTransferOptions(receiptId: string) {
           })),
         orders: orders.map((o) => ({
           id: o.id,
+          works: o.laborItems,
           label: [
             o.invoiceNumber || o.title,
             o.vehicle?.licensePlate,

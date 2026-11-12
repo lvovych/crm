@@ -27,6 +27,7 @@ model SupplierReceipt {
   @@map("supplier_receipts")
 }
 model SupplierReceiptLine {
+  subcontract SubcontractWork?
   id String @id @default(cuid())
   receiptId String
   receipt SupplierReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
@@ -79,4 +80,15 @@ model ReceiptTransfer {
   @@unique([requestId, lineId])
   @@index([lineId])
   @@map("receipt_transfers")
+}
+
+model SubcontractWork {
+  laborId String @id
+  labor ServiceLabor @relation(fields: [laborId], references: [id], onDelete: NoAction)
+  supplierId String
+  supplier Counterparty @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  unitCost Decimal @db.Decimal(14,4)
+  receiptLineId String? @unique
+  receiptLine SupplierReceiptLine? @relation(fields: [receiptLineId], references: [id], onDelete: NoAction)
+  @@map("subcontract_work")
 }

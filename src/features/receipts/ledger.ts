@@ -23,6 +23,7 @@ export const draftSchema = z.object({
   lines: z
     .array(
       z.object({
+        id: z.string().optional(),
         brandId: z.string().min(1).optional(),
         article: z.string().trim().max(120).optional(),
         kind: z.enum(['part', 'service']),
@@ -79,6 +80,7 @@ export async function transitionReceipt(
     throw new Error(
       'Накладна має передавання в наряди. Скасування потребує окремої звірки руху товарів.'
     )
+  if (!posting) await tx.subcontractWork.updateMany({ where: { receiptLine: { receiptId: id } }, data: { receiptLineId: null } })
   for (const line of receipt.lines) {
     if (line.kind === 'service') continue
     if (posting && !line.article?.trim()) throw new Error('Додайте артикул товару в чернетці.')

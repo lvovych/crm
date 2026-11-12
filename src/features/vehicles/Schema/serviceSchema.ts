@@ -25,6 +25,10 @@ export const servicePartSchema = z.object({
 })
 
 export const serviceLaborSchema = z.object({
+  supplierId: z.string().min(1).nullable().optional(),
+  purchasePrice: z.string().regex(/^\d{1,9}(\.\d{1,4})?$/).optional(),
+  receiptId: z.string().nullable().optional(),
+  receiptStatus: z.string().nullable().optional(),
   id: z.string().optional(),
   technicianId: z.string().nullable().optional(),
   executorName: z.string().nullable().optional(),

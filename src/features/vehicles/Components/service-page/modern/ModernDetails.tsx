@@ -165,6 +165,7 @@ export function ModernDetails(props: ModernDetailsProps) {
     try {
       const result = await updateServiceStatus(record.id, next, custom?.id ?? null)
       if (!result.success) throw new Error(result.error || t('page.failedUpdate'))
+      if (next === 'completed' && formState.laborItems.some(l => l.supplierId && !l.receiptId)) toast.info('У наряді залишилися роботи підрядників без приходу.')
       formState.setStatus(next)
       setCustomStatus(custom)
       setStatusMessage(t('assignment.statusSaved'))
@@ -343,6 +344,7 @@ export function ModernDetails(props: ModernDetailsProps) {
                   )}
 
                   <LaborEditor
+                    recordId={record.id} unsaved={formState.hasUnsavedChanges}
                     quickAdd={props.quickLabor}
                     technicians={props.boardTechnicians}
                     primaryTechnicianId={record.technicianId}

@@ -152,6 +152,7 @@ export function DetailsLeftColumn({
         markupAppliesToInventory={markupAppliesToInventory}
       />
       <LaborEditor
+                    recordId={record.id} unsaved={formState.hasUnsavedChanges}
         quickAdd={quickLabor}
         technicians={boardTechnicians}
         primaryTechnicianId={record.technicianId}

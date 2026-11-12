@@ -120,7 +120,12 @@ export async function transferReceiptGoods(
       },
     })
   }
-  await refreshShopFeeLines(tx, record.id, organizationId)
+  await refreshOrderTotals(tx, record)
+  return { serviceRecordId: record.id, vehicleId: record.vehicleId, count: sorted.length }
+}
+
+export async function refreshOrderTotals(tx: TxClient, record: import('@/generated/prisma/client').ServiceRecord) {
+  await refreshShopFeeLines(tx, record.id, record.organizationId!)
   const [parts, labor] = await Promise.all([
     tx.servicePart.aggregate({ where: { serviceRecordId: record.id }, _sum: { total: true } }),
     tx.serviceLabor.aggregate({ where: { serviceRecordId: record.id }, _sum: { total: true } }),
@@ -134,5 +139,4 @@ export async function transferReceiptGoods(
     taxComponents: record.taxComponents,
   })
   await tx.serviceRecord.update({ where: { id: record.id }, data: { subtotal, ...totals } })
-  return { serviceRecordId: record.id, vehicleId: record.vehicleId, count: sorted.length }
 }

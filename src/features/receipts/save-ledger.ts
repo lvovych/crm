@@ -51,6 +51,16 @@ export async function saveReceiptDraft(
       data: { ...fields, version: { increment: 1 } },
     })
     if (!changed.count) throw new Error('Документ змінився. Оновіть сторінку.')
+    const oldLines = await tx.supplierReceiptLine.findMany({ where: { receiptId: d.id }, include: { subcontract: true } })
+    for (const requested of d.lines) {
+      if (requested.id && !oldLines.some(l => l.id === requested.id)) throw new Error('Рядок не належить накладній.')
+    }
+    for (const old of oldLines) {
+      if (!old.subcontract) continue
+      const next = d.lines.find(l => l.id === old.id)
+      if (!next || next.kind !== 'service' || old.subcontract.supplierId !== d.supplierId || !old.quantity.equals(next.quantity)) throw new Error('Зміна суперечить пов’язаній роботі наряду.')
+      await tx.subcontractWork.update({ where: { laborId: old.subcontract.laborId }, data: { unitCost: next.unitPrice } })
+    }
     await tx.supplierReceiptLine.deleteMany({ where: { receiptId: d.id } })
   }
   const parts = await tx.inventoryPart.findMany({
@@ -117,6 +127,7 @@ export async function saveReceiptDraft(
     const { brandId: _brandId, ...storedLine } = line
     lines.push({
       ...storedLine,
+      id: d.version === 0 ? undefined : line.id,
       article,
       partId,
       receiptId: d.id,

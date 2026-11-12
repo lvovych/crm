@@ -1,6 +1,6 @@
 'use server'
 
-import { prepareParts, prepareLabor } from '../Lib/saveServiceLines'
+import { prepareParts, prepareLabor, saveSubcontracts } from '../Lib/saveServiceLines'
 import { calculateTotals, discountAmountFor } from '@/lib/tax'
 import { roundMoney } from '@/lib/money'
 import { resolveBrandSnapshot } from '@/features/inventory/Lib/brandSnapshot'
@@ -623,6 +623,8 @@ export async function createServiceRecord(input: unknown) {
           })
         }
 
+        if (laborItems?.some(l => l.supplierId)) await saveSubcontracts(tx, laborItems, normalizedLabor)
+
         if (attachments && attachments.length > 0) {
           await tx.serviceAttachment.createMany({
             data: attachments.map((a) => ({
@@ -800,6 +802,7 @@ export async function updateServiceRecord(input: unknown) {
       }
 
       const record = await db.$transaction(async (tx) => {
+        if (laborItems !== undefined) await tx.$queryRaw`SELECT id FROM "public"."service_records" WHERE id=${id} AND "organizationId"=${organizationId} FOR UPDATE`
         const previousPartsForTotals = await tx.servicePart.findMany({
           where: { serviceRecordId: id },
         })
@@ -1022,6 +1025,7 @@ export async function updateServiceRecord(input: unknown) {
               })),
             })
           }
+          if (laborItems.some(l => l.supplierId)) await saveSubcontracts(tx, laborItems, normalizedLabor)
         }
 
         // Replace attachments if provided (only for the categories included in the payload)
@@ -1493,6 +1497,7 @@ export async function deleteServiceRecord(recordId: string) {
           // preserves "this stock came back from job X".
           serviceRecordLabel: record.invoiceNumber || record.title,
         })
+        await tx.subcontractWork.deleteMany({where: {labor: {serviceRecordId:recordId}, receiptLineId:null}})
         await tx.serviceRecord.delete({ where: { id: recordId } })
       })
       await releaseFiles(files, { organizationId, reason: 'work order deleted' })

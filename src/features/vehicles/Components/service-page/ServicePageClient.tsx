@@ -428,7 +428,7 @@ export function ServicePageClient({
 
     const ok = await confirmComplete({
       title: t('invoice.markCompletedTitle'),
-      description: t('invoice.markCompletedDescription'),
+      description: [t('invoice.markCompletedDescription'), formState.laborItems.some(l => l.supplierId && !l.receiptId) ? 'У наряді є роботи підрядника без приходу.' : ''].filter(Boolean).join(' '),
       confirmLabel: t('invoice.markCompletedConfirm'),
     })
     if (!ok) return

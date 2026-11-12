@@ -87,3 +87,18 @@ describe('saving work order lines', () => {
     expect(saved.executorFrozen).toBe(false)
   })
 })
+
+describe('subcontractor selection', () => {
+  const line = {description:'Machining', hours:1, rate:1200, total:1200, pricingType:'service' as const, supplierId:'supplier', purchasePrice:'800'}
+  const database = (active: boolean) => ({...tx([], [], []), counterparty:{findMany:vi.fn().mockResolvedValue([{id:'supplier', name:'Workshop B',isArchived:!active}])}})
+  it('keeps the selling price and never inherits the mechanic for an outsourced service', async()=>{
+    const [row] = await prepareLabor(database(true),'org',null,[line])
+    expect(row).toMatchObject({rate:1200,total:1200,technicianId:null,executorFrozen:true,executorName:'Workshop B'})
+  })
+  it('rejects an archived supplier, missing cost, and mixed technician/supplier assignment', async()=>{
+    await expect(prepareLabor(database(false),'org',null,[line])).rejects.toThrow()
+    for(const invalid of [{...line,purchasePrice:undefined},{...line,technicianId:'mechanic'}]) {
+      await expect(prepareLabor(database(true),'org',null,[invalid])).rejects.toThrow()
+    }
+  })
+})
