@@ -8,7 +8,7 @@ for (const width of [390, 1440]) {
     test('creates a linked draft with purchase price from the work order', async ({ page }) => {
       const supplier = await seedContractor('Machining ' + width)
       await newWorkOrder(page, await seededVehicleUrl(page), 'Subcontract ' + width)
-      await page.getByRole('button', { name: 'Add Service', exact: true }).click()
+      await page.getByLabel('Add Service', { exact: true }).click()
       const dialog = page.getByRole('dialog')
       await dialog.locator('textarea').fill('Brake disc machining')
       await dialog.getByLabel('Тип виконавця').selectOption('supplier')
@@ -20,7 +20,8 @@ for (const width of [390, 1440]) {
       await saveWorkOrder(page)
       await page.getByRole('button', { name: 'Створити чернетку' }).click()
       await page.getByRole('link', { name: 'Відкрити чернетку' }).click()
-      await expect(page.getByText('Brake disc machining')).toBeVisible()
+      await expect(page).toHaveURL(/\/receipts\/[^/]+$/)
+      await expect(page.getByRole('cell', { name: 'Brake disc machining', exact: true })).toBeVisible()
       await expect(page.getByText(/Разом 800.00 грн/)).toBeVisible()
       await expect(page.getByText(/Чернетка/).first()).toBeVisible()
     })
