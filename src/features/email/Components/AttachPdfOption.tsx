@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
@@ -14,18 +14,26 @@ import { getAttachPdfDefault } from '@/features/email/Actions/emailPreferenceAct
 export function useAttachPdf(open: boolean) {
   const [attachPdf, setAttachPdf] = useState(true)
 
+  const userSelected = useRef(false)
+
   useEffect(() => {
     if (!open) return
+    userSelected.current = false
     let cancelled = false
     getAttachPdfDefault().then((result) => {
-      if (!cancelled && result.success && result.data) setAttachPdf(result.data.attachPdf)
+      if (!cancelled && !userSelected.current && result.success && result.data) setAttachPdf(result.data.attachPdf)
     })
     return () => {
       cancelled = true
     }
   }, [open])
 
-  return [attachPdf, setAttachPdf] as const
+  function selectAttachPdf(value: boolean) {
+    userSelected.current = true
+    setAttachPdf(value)
+  }
+
+  return [attachPdf, selectAttachPdf] as const
 }
 
 /**
