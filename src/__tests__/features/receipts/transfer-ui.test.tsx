@@ -5,7 +5,7 @@ const { send, refresh } = vi.hoisted(() => ({ send: vi.fn(), refresh: vi.fn() })
 vi.mock('@/features/receipts/transfer-actions', () => ({ transferFromReceipt: send }))
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh }) }))
 const data = {
-  orders: [{ id: 'order', label: 'Наряд 1' }],
+  orders: [{ id: 'order', works: [], label: 'Наряд 1' }],
   lines: ['a', 'b'].map((id) => ({
     id,
     name: id,

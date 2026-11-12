@@ -1847,10 +1847,16 @@ export async function legacyConcern(id: string) {
 
 export async function seedContractor(name: string) {
   const org = await ownerOrganizationId()
-  return withDb(async db => {
+  return withDb(async (db) => {
     const id = randomBytes(12).toString('hex')
-    await db.query('INSERT INTO counterparties (id,"organizationId",name,"createdById","updatedAt") VALUES ($1,$2,$3,$4,now())',[id,org,name,'e2e'])
-    await db.query('INSERT INTO supplier_profiles (id,"organizationId","counterpartyId") VALUES ($1,$2,$1)',[id,org])
+    await db.query(
+      'INSERT INTO counterparties (id,"organizationId",name,"createdById","updatedAt") VALUES ($1,$2,$3,$4,now())',
+      [id, org, name, 'e2e']
+    )
+    await db.query(
+      'INSERT INTO supplier_profiles (id,"organizationId","counterpartyId") VALUES ($1,$2,$1)',
+      [id, org]
+    )
     return id
   })
 }

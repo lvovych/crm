@@ -39,7 +39,8 @@ interface LaborEditorProps {
   locked?: boolean
 }
 export function LaborEditor({
-  recordId, unsaved,
+  recordId,
+  unsaved,
   laborItems,
   setLaborItems,
   laborSubtotal,
@@ -63,8 +64,7 @@ export function LaborEditor({
   const [suppliers, setSuppliers] = useState<{ id: string; name: string }[]>([])
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
-  const pending = laborItems.filter(line => line.supplierId && !line.receiptId)
-  const receipts = new Map(laborItems.flatMap(line => line.receiptId ? [[line.receiptId, line.receiptStatus] as const] : []))
+  const pending = laborItems.filter((line) => line.supplierId && !line.receiptId)
   async function createDrafts() {
     if (!recordId || busy || unsaved) return
     setBusy(true)
@@ -72,7 +72,9 @@ export function LaborEditor({
       const result = await createServiceReceipts(recordId)
       setMessage(result.success ? 'Чернетки підготовлено.' : result.error || 'Помилка створення.')
       if (result.success) router.refresh()
-    } finally { setBusy(false) }
+    } finally {
+      setBusy(false)
+    }
   }
   const [editing, setEditing] = useState<{
       index: number
@@ -86,26 +88,43 @@ export function LaborEditor({
   const draft = editing?.draft,
     isFee = draft ? isShopFeeLine(draft) : false
   const executor = (l: ServiceLaborInput) =>
-    l.supplierId ? (suppliers.find(s => s.id === l.supplierId)?.name || l.executorName || 'Підрядник') : isShopFeeLine(l)
-      ? '—'
-      : l.executorFrozen
-        ? l.executorName || e('unassigned')
-        : technicians.find((t) => t.id === (l.technicianId || primaryTechnicianId))?.name ||
-          l.executorName ||
-          e('unassigned')
-  const mode = (l: ServiceLaborInput) =>
-    l.supplierId ? 'Підрядник' : isShopFeeLine(l)
-      ? ''
-      : l.executorLegacy
-        ? e('legacyExecutor')
+    l.supplierId
+      ? suppliers.find((s) => s.id === l.supplierId)?.name || l.executorName || 'Підрядник'
+      : isShopFeeLine(l)
+        ? '—'
         : l.executorFrozen
-          ? e('frozenExecutor')
-          : l.technicianId
-            ? ''
-            : e('inherited')
+          ? l.executorName || e('unassigned')
+          : technicians.find((t) => t.id === (l.technicianId || primaryTechnicianId))?.name ||
+            l.executorName ||
+            e('unassigned')
+  const mode = (l: ServiceLaborInput) =>
+    l.supplierId
+      ? 'Підрядник'
+      : isShopFeeLine(l)
+        ? ''
+        : l.executorLegacy
+          ? e('legacyExecutor')
+          : l.executorFrozen
+            ? e('frozenExecutor')
+            : l.technicianId
+              ? ''
+              : e('inherited')
+  function purchaseInfo(line: ServiceLaborInput) {
+    if (!line.supplierId) return null
+    return (
+      <div className="text-xs text-muted-foreground">
+        Закупівля: {format(Number(line.purchasePrice), currencyCode)}
+        {line.receiptId && (
+          <Link className="ml-2 underline" href={'/receipts/' + line.receiptId}>
+            {line.receiptStatus === 'posted' ? 'Проведена накладна' : 'Відкрити чернетку'}
+          </Link>
+        )}
+      </div>
+    )
+  }
   function open(index: number, line: ServiceLaborInput) {
     setError('')
-    if (recordId) void contractorOptions().then(result => setSuppliers(result.data ?? []))
+    if (recordId) void contractorOptions().then((result) => setSuppliers(result.data ?? []))
     setEditing({ index, original: { ...line }, draft: { ...line } })
   }
   function change(field: keyof ServiceLaborInput, value: string | number | null) {
@@ -124,7 +143,10 @@ export function LaborEditor({
   }
   function save() {
     if (!editing || locked) return
-    if (editing.draft.supplierId === '' || (editing.draft.supplierId && !editing.draft.purchasePrice)) {
+    if (
+      editing.draft.supplierId === '' ||
+      (editing.draft.supplierId && !editing.draft.purchasePrice)
+    ) {
       setError('Оберіть підрядника й укажіть закупівельну ціну.')
       return
     }
@@ -264,12 +286,15 @@ export function LaborEditor({
       className="@container min-w-0"
       contentClassName="p-3"
     >
-      {pending.length > 0 && <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border p-3">
-        <span>Без приходу: {pending.length}</span>
-        <Button type="button" variant="outline" disabled={busy || unsaved} onClick={createDrafts}>Створити чернетку</Button>
-        {unsaved && <small>Доступно після збереження наряду</small>}
-      </div>}
-      {[...receipts].map(([id, status]) => <Link className="mr-3 underline" key={id} href={'/receipts/' + id}>{status === 'posted' ? 'Проведена накладна' : 'Відкрити чернетку'}</Link>)}
+      {pending.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border p-3">
+          <span>Без приходу: {pending.length}</span>
+          <Button type="button" variant="outline" disabled={busy || unsaved} onClick={createDrafts}>
+            Створити чернетку
+          </Button>
+          {unsaved && <small>Доступно після збереження наряду</small>}
+        </div>
+      )}
       {message && <p role="status">{message}</p>}
       {quickAdd && (
         <LaborQuickAdd
@@ -315,6 +340,7 @@ export function LaborEditor({
                 >
                   {l.description || e('unnamed')}
                 </button>
+                {purchaseInfo(l)}
                 {isShopFeeLine(l) && <ShopFeeTag />}
               </td>
               <td className="break-words p-2">
@@ -325,7 +351,7 @@ export function LaborEditor({
                 <LaborNumberInput
                   label={`${t('qtyOrHours')}: ${l.description}`}
                   value={l.hours}
-                  disabled={locked || isShopFeeLine(l)}
+                  disabled={locked || !!l.receiptId || isShopFeeLine(l)}
                   onCommit={(value) => setNumber(i, 'hours', value)}
                 />
                 <span className="text-xs text-muted-foreground">
@@ -357,6 +383,7 @@ export function LaborEditor({
             >
               {l.description || e('unnamed')}
             </button>
+            {purchaseInfo(l)}
             {isShopFeeLine(l) && <ShopFeeTag />}
             <p className="mt-2 break-words text-sm">
               {e('executor')}: {executor(l)}{' '}
@@ -419,43 +446,91 @@ export function LaborEditor({
           </LineField>
           {!isFee && (
             <>
-              {(suppliers.length > 0 || draft.supplierId != null) && <LineField label="Тип виконавця">
-                <select className="min-h-11 rounded-md border bg-background px-2" value={draft.supplierId != null ? 'supplier' : 'staff'}
-                  disabled={!!draft.receiptId} onChange={ev => {
-                    const outsourced = ev.target.value === 'supplier'
-                    setEditing(current => current && ({...current, draft: {...current.draft, technicianId: null, executorName: null,
-                      executorFrozen: false, supplierId: outsourced ? '' : null, purchasePrice: outsourced ? '' : undefined } }))
-                  }}>
-                  <option value="staff">Працівник</option><option value="supplier">Підрядник</option>
-                </select>
-              </LineField>}
-              {draft.supplierId != null ? <>
-                <LineField label="Підрядник"><select aria-label="Підрядник" className="min-h-11 rounded-md border bg-background px-2" disabled={!!draft.receiptId} value={draft.supplierId} onChange={ev => change('supplierId', ev.target.value)}>
-                  <option value="">Оберіть постачальника</option>{suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select></LineField>
-                <LineField label="Ціна закупівлі"><Input aria-label="Ціна закупівлі" type="number" min="0" step="0.0001" disabled={!!draft.receiptId} value={draft.purchasePrice ?? ''} onChange={ev => change('purchasePrice', ev.target.value)}/></LineField>
-              </> : <LineField label={e('executor')}>
-                <select
-                  className="min-h-11 rounded-md border bg-background px-2"
-                  value={draft.technicianId ?? ''}
-                  onChange={(v) => change('technicianId', v.target.value || null)}
-                >
-                  <option value="">
-                    {e('inherited')} —{' '}
-                    {technicians.find((t) => t.id === primaryTechnicianId)?.name || e('unassigned')}
-                  </option>
-                  {draft.technicianId && !technicians.some((t) => t.id === draft.technicianId) && (
-                    <option value={draft.technicianId} disabled>
-                      {draft.executorName || e('inactive')}
+              {(suppliers.length > 0 || draft.supplierId != null) && (
+                <LineField label="Тип виконавця">
+                  <select
+                    className="min-h-11 rounded-md border bg-background px-2"
+                    value={draft.supplierId != null ? 'supplier' : 'staff'}
+                    disabled={!!draft.receiptId}
+                    onChange={(ev) => {
+                      const outsourced = ev.target.value === 'supplier'
+                      setEditing(
+                        (current) =>
+                          current && {
+                            ...current,
+                            draft: {
+                              ...current.draft,
+                              technicianId: null,
+                              executorName: null,
+                              executorFrozen: false,
+                              supplierId: outsourced ? '' : null,
+                              purchasePrice: outsourced ? '' : undefined,
+                            },
+                          }
+                      )
+                    }}
+                  >
+                    <option value="staff">Працівник</option>
+                    <option value="supplier">Підрядник</option>
+                  </select>
+                </LineField>
+              )}
+              {draft.supplierId != null ? (
+                <>
+                  <LineField label="Підрядник">
+                    <select
+                      aria-label="Підрядник"
+                      className="min-h-11 rounded-md border bg-background px-2"
+                      disabled={!!draft.receiptId}
+                      value={draft.supplierId}
+                      onChange={(ev) => change('supplierId', ev.target.value)}
+                    >
+                      <option value="">Оберіть постачальника</option>
+                      {suppliers.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                  </LineField>
+                  <LineField label="Ціна закупівлі">
+                    <Input
+                      aria-label="Ціна закупівлі"
+                      type="number"
+                      min="0"
+                      step="0.0001"
+                      disabled={!!draft.receiptId}
+                      value={draft.purchasePrice ?? ''}
+                      onChange={(ev) => change('purchasePrice', ev.target.value)}
+                    />
+                  </LineField>
+                </>
+              ) : (
+                <LineField label={e('executor')}>
+                  <select
+                    className="min-h-11 rounded-md border bg-background px-2"
+                    value={draft.technicianId ?? ''}
+                    onChange={(v) => change('technicianId', v.target.value || null)}
+                  >
+                    <option value="">
+                      {e('inherited')} —{' '}
+                      {technicians.find((t) => t.id === primaryTechnicianId)?.name ||
+                        e('unassigned')}
                     </option>
-                  )}
-                  {technicians.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-              </LineField>}
+                    {draft.technicianId &&
+                      !technicians.some((t) => t.id === draft.technicianId) && (
+                        <option value={draft.technicianId} disabled>
+                          {draft.executorName || e('inactive')}
+                        </option>
+                      )}
+                    {technicians.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </LineField>
+              )}
               {draft.executorFrozen && !draft.supplierId && (
                 <p className="text-sm text-muted-foreground">
                   {mode(draft)}: {executor(draft)}
@@ -480,7 +555,7 @@ export function LaborEditor({
                 inputMode="decimal"
                 min="0"
                 step="any"
-                disabled={isFee}
+                disabled={isFee || !!draft.receiptId}
                 value={draft.hours}
                 onChange={(v) => change('hours', v.target.value)}
               />
