@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { JobFactsCard } from '@/features/vehicles/Components/service-page/modern/JobFactsCard'
 import type { ComponentProps } from 'react'
 vi.mock('@/features/quotes/Components/VehicleCombobox', () => ({
-  VehicleCombobox: () => <button type="button">Vehicle picker</button>,
+  VehicleCombobox: ({ customerId }: { customerId: string }) => <button type="button" data-customer={customerId}>Vehicle picker</button>,
 }))
 vi.mock('@/components/date-settings-context', () => ({
   useDateSettings: () => ({ timezone: 'Europe/Kyiv', dateFormat: 'dd/MM/yyyy', timeFormat: '24h' }),
@@ -40,7 +40,7 @@ describe('work order customer and vehicle summary', () => {
     expect(screen.queryByTestId('vehicle-detail-purchaseDate')).not.toBeInTheDocument()
     expect(screen.queryByTestId('vehicle-detail-purchasePrice')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Change vehicle' }))
-    expect(screen.getByRole('button', { name: 'Vehicle picker' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Vehicle picker' })).toHaveAttribute('data-customer', customer.id)
     fireEvent.click(screen.getByRole('button', { name: 'less' }))
     expect(screen.queryByText(customer.email)).not.toBeInTheDocument()
   })
@@ -53,7 +53,7 @@ describe('work order customer and vehicle summary', () => {
   })
   it('allows choosing a vehicle when the order has none', () => {
     show(false, false)
-    expect(screen.getByRole('button', { name: 'Vehicle picker' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Vehicle picker' })).toHaveAttribute('data-customer', customer.id)
     expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument()
   })
 })

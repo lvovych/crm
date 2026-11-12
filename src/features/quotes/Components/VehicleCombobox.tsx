@@ -32,9 +32,11 @@ interface VehicleComboboxProps {
   onChange: (id: string, vehicle: VehicleOption | null) => void
   initialVehicle?: VehicleOption | null
   placeholder?: string
-  noneLabel?: string
+  noneLabel?: string | null
+  emptyLabel?: string
+  autoSelectSingle?: boolean
   /** When set, only this customer's vehicles are offered */
-  customerId?: string
+  customerId?: string | null
 }
 
 function formatVehicle(v: VehicleOption) {
@@ -47,6 +49,8 @@ export function VehicleCombobox({
   initialVehicle,
   placeholder = 'Select vehicle...',
   noneLabel = 'None',
+  emptyLabel = 'No vehicles found.',
+  autoSelectSingle = true,
   customerId,
 }: VehicleComboboxProps) {
   const [open, setOpen] = useState(false)
@@ -76,6 +80,7 @@ export function VehicleCombobox({
 
   const loadOptions = useCallback(
     async (query?: string, offset = 0, append = false) => {
+      if (customerId === null) return []
       if (offset === 0) setSearching(true)
       else {
         setLoadingMore(true)
@@ -114,7 +119,7 @@ export function VehicleCombobox({
   useEffect(() => {
     let cancelled = false
     loadOptions().then((opts) => {
-      if (cancelled || !customerId) return
+      if (cancelled || !customerId || !autoSelectSingle) return
       if (opts.length === 1 && !valueRef.current) {
         setSelected(opts[0])
         onChangeRef.current(opts[0].id, opts[0])
@@ -123,7 +128,7 @@ export function VehicleCombobox({
     return () => {
       cancelled = true
     }
-  }, [loadOptions, customerId])
+  }, [loadOptions, customerId, autoSelectSingle])
 
   // Debounced search — resets to page 0
   useEffect(() => {
@@ -177,9 +182,9 @@ export function VehicleCombobox({
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
               </div>
             )}
-            <CommandEmpty>No vehicles found.</CommandEmpty>
+            <CommandEmpty>{emptyLabel}</CommandEmpty>
             <CommandGroup>
-              <CommandItem
+              {noneLabel !== null && <CommandItem
                 onSelect={() => {
                   onChange('', null)
                   setSelected(null)
@@ -188,7 +193,7 @@ export function VehicleCombobox({
               >
                 <Check className={cn('mr-2 h-4 w-4', !value ? 'opacity-100' : 'opacity-0')} />
                 {noneLabel}
-              </CommandItem>
+              </CommandItem>}
               {options.map((v) => (
                 <CommandItem
                   key={v.id}

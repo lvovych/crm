@@ -294,12 +294,16 @@ export function JobFactsCard({
             {(!vehicle || changingVehicle) && (
               <div className="space-y-1">
                 <VehicleCombobox
+                  key={customer?.id ?? "unassigned"}
+                  customerId={customer?.id ?? null}
+                  autoSelectSingle={false}
                   value={selectedVehicleId ?? ''}
                   initialVehicle={
                     initialVehicle ? { ...initialVehicle, customerId: null, customer: null } : null
                   }
                   placeholder={vehicleName || t('basicInfo.searchVehicles')}
-                  noneLabel={t('basicInfo.noVehicleFound')}
+                  noneLabel={null}
+                  emptyLabel={t('basicInfo.noVehicleFound')}
                   onChange={(id) => {
                     if (id) setSelectedVehicleId(id)
                   }}
