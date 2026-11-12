@@ -1,9 +1,9 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { useRouter } from 'next/navigation'
+import { SubcontractReminder } from '@/features/receipts/SubcontractReminder'
 import Link from 'next/link'
-import { contractorOptions, createServiceReceipts } from '@/features/receipts/subcontract-actions'
+import { contractorOptions } from '@/features/receipts/subcontract-actions'
 import { Wrench, Plus, Layers, Pencil, ArrowUp, ArrowDown, AlertTriangle, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -60,22 +60,7 @@ export function LaborEditor({
     e = useTranslations('service.lineEditor'),
     format = useFormatCurrency(),
     feeLocked = useShopFeeLocked()
-  const router = useRouter()
   const [suppliers, setSuppliers] = useState<{ id: string; name: string }[]>([])
-  const [busy, setBusy] = useState(false)
-  const [message, setMessage] = useState('')
-  const pending = laborItems.filter((line) => line.supplierId && !line.receiptId)
-  async function createDrafts() {
-    if (!recordId || busy || unsaved) return
-    setBusy(true)
-    try {
-      const result = await createServiceReceipts(recordId)
-      setMessage(result.success ? 'Чернетки підготовлено.' : result.error || 'Помилка створення.')
-      if (result.success) router.refresh()
-    } finally {
-      setBusy(false)
-    }
-  }
   const [editing, setEditing] = useState<{
       index: number
       original: ServiceLaborInput
@@ -286,16 +271,7 @@ export function LaborEditor({
       className="@container min-w-0"
       contentClassName="p-3"
     >
-      {pending.length > 0 && (
-        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border p-3">
-          <span>Без приходу: {pending.length}</span>
-          <Button type="button" variant="outline" disabled={busy || unsaved} onClick={createDrafts}>
-            Створити чернетку
-          </Button>
-          {unsaved && <small>Доступно після збереження наряду</small>}
-        </div>
-      )}
-      {message && <p role="status">{message}</p>}
+      {!locked && recordId && <SubcontractReminder recordId={recordId} unsaved={unsaved} count={laborItems.filter(l=>l.supplierId && !l.receiptId).length}/>}
       {quickAdd && (
         <LaborQuickAdd
           {...quickAdd}

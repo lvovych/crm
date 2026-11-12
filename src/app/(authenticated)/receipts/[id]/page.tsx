@@ -97,7 +97,7 @@ export default async function Page({
                   </td>
                   <td>{l.unitPrice}</td>
                   <td>{l.amount}
-                    {transfers && l.kind === 'service' && (l.subcontract ? <p>Віднесено на наряд</p> : <AssignService lineId={l.id} orders={transfers.orders} />)}
+                    {transfers && l.kind === 'service' && (l.subcontract ? <p>Віднесено на наряд</p> : <AssignService lineId={l.id} orders={transfers.serviceOrders} />)}
                   </td>
                 </tr>
               ))}

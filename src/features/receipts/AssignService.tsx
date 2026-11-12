@@ -9,7 +9,12 @@ export function AssignService({
   orders,
 }: {
   lineId: string
-  orders: { id: string; label: string; works: { id: string; description: string }[] }[]
+  orders: {
+    id: string
+    label: string
+    open: boolean
+    works: { id: string; description: string }[]
+  }[]
 }) {
   const [open, setOpen] = useState(false)
   const [order, setOrder] = useState('')
@@ -31,7 +36,8 @@ export function AssignService({
         value={order}
         onChange={(e) => {
           setOrder(e.target.value)
-          setLabor('')
+          const target = orders.find((o) => o.id === e.target.value)
+          setLabor(target?.open ? '' : (target?.works[0]?.id ?? ''))
         }}
       >
         <option value="">Оберіть наряд</option>
@@ -42,7 +48,7 @@ export function AssignService({
         ))}
       </select>
       <select aria-label="Робота" value={labor} onChange={(e) => setLabor(e.target.value)}>
-        <option value="">Додати нову роботу</option>
+        {orders.find((o) => o.id === order)?.open && <option value="">Додати нову роботу</option>}
         {orders
           .find((o) => o.id === order)
           ?.works.map((l) => (

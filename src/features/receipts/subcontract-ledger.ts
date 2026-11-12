@@ -99,9 +99,6 @@ export async function assignReceiptService(
       return
     throw new Error('Послугу вже віднесено до іншої роботи.')
   }
-  assertEditable(invoiceLockState(order, settings))
-  if (['completed', 'cancelled', 'canceled'].includes(order.status))
-    throw new Error('Оберіть відкритий наряд.')
   const supplierId = line.receipt.supplierId
   if (laborId) {
     const work = await tx.subcontractWork.findFirstOrThrow({
@@ -115,6 +112,9 @@ export async function assignReceiptService(
       data: { receiptLineId: line.id, unitCost: line.unitPrice },
     })
   } else {
+    assertEditable(invoiceLockState(order, settings))
+    if (['completed', 'cancelled', 'canceled'].includes(order.status))
+      throw new Error('Оберіть відкритий наряд.')
     const total = storedLineAmount({ quantity: line.quantity.toString(), unitPrice: sale })
     const last = await tx.serviceLabor.aggregate({
       where: { serviceRecordId: orderId },

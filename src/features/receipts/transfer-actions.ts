@@ -44,17 +44,41 @@ export async function receiptTransferOptions(receiptId: string) {
         where: {
           organizationId,
           vehicleId: { not: null },
-          status: { in: ['pending', 'in-progress', 'waiting-parts'] },
+          OR: [
+            { status: { in: ['pending', 'in-progress', 'waiting-parts'] } },
+            {
+              laborItems: {
+                some: { subcontract: { supplierId: receipt.supplierId, receiptLineId: null } },
+              },
+            },
+          ],
         },
         select: {
           id: true,
           title: true,
-          laborItems: { where: { subcontract: { supplierId: receipt.supplierId, receiptLineId: null } }, select: { id: true, description: true } },
+          status: true,
+          laborItems: {
+            where: { subcontract: { supplierId: receipt.supplierId, receiptLineId: null } },
+            select: { id: true, description: true },
+          },
           invoiceNumber: true,
           vehicle: { select: { make: true, model: true, licensePlate: true } },
         },
         orderBy: { createdAt: 'desc' },
       })
+      const choices = orders.map((o) => ({
+        id: o.id,
+        works: o.laborItems,
+        open: ['pending', 'in-progress', 'waiting-parts'].includes(o.status),
+        label: [
+          o.invoiceNumber || o.title,
+          o.vehicle?.licensePlate,
+          o.vehicle?.make,
+          o.vehicle?.model,
+        ]
+          .filter(Boolean)
+          .join(' · '),
+      }))
       return {
         lines: receipt.lines
           .filter((l) => l.kind === 'part' && l.part)
@@ -87,18 +111,8 @@ export async function receiptTransferOptions(receiptId: string) {
                 : `/sales/${t.serviceRecordId}`,
             })),
           })),
-        orders: orders.map((o) => ({
-          id: o.id,
-          works: o.laborItems,
-          label: [
-            o.invoiceNumber || o.title,
-            o.vehicle?.licensePlate,
-            o.vehicle?.make,
-            o.vehicle?.model,
-          ]
-            .filter(Boolean)
-            .join(' · '),
-        })),
+        orders: choices.filter((order) => order.open),
+        serviceOrders: choices,
       }
     },
     { requiredPermissions: permissions }

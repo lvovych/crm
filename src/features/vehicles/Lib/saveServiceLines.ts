@@ -97,7 +97,7 @@ export async function prepareLabor(
       throw new Error('Закупівля вже пов’язана з накладною. Перевірте документ.')
     }
     const technicianId =
-      line.technicianId === undefined ? (old?.technicianId ?? null) : line.technicianId
+      supplier ? null : line.technicianId === undefined ? (old?.technicianId ?? null) : line.technicianId
     const changed = technicianId !== (old?.technicianId ?? null)
     if (technicianId) {
       const technician = technicians.find((t) => t.id === technicianId)
