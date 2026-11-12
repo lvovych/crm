@@ -62,12 +62,16 @@ export function BasicInfoSection({
           )}
         </div>
         <VehicleCombobox
+          key={customer?.id ?? "unassigned"}
+          customerId={customer?.id ?? null}
+          autoSelectSingle={false}
           value={selectedVehicleId ?? ''}
           initialVehicle={
             initialVehicle ? { ...initialVehicle, customerId: null, customer: null } : null
           }
           placeholder={vehicleName || t('searchVehicles')}
-          noneLabel={t('noVehicleFound')}
+          noneLabel={null}
+          emptyLabel={t('noVehicleFound')}
           onChange={(id) => {
             if (id) setSelectedVehicleId(id)
           }}

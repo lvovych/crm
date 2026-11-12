@@ -90,6 +90,24 @@ async function expectStatus(page: Page, name: RegExp): Promise<void> {
 }
 
 test.describe('the overhauled work order page', () => {
+  test('restricts the replacement vehicle list and search to the current customer', async ({ page }) => {
+    await openModern(page, factsJob)
+    const facts = page.getByTestId('job-facts')
+    await facts.getByRole('button', { name: 'More info' }).click()
+    await facts.getByRole('button', { name: 'Change vehicle' }).click()
+    await facts.getByRole('combobox').click()
+    const ownCar = page.getByRole('option', { name: /TX-8821/ })
+    await expect(ownCar).toBeVisible()
+    await expect(page.getByRole('option').filter({ hasNotText: 'James Mitchell' })).toHaveCount(0)
+    const search = page.locator('input[cmdk-input]')
+    await search.fill('TN-2233')
+    await expect(ownCar).toHaveCount(0)
+    await expect(page.getByRole('option')).toHaveCount(0)
+    await search.fill('TX-8821')
+    await ownCar.click()
+    await expect(facts.getByRole('combobox')).toContainText('TX-8821')
+  })
+
   test('keeps the type, set in the header, and the mileage, set on the facts card', async ({
     page,
   }) => {
