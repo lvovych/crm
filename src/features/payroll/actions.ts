@@ -85,9 +85,9 @@ export async function addEmployeeRule(form: FormData) {
       if (plan?.[basis].gt(0)) throw new Error('Для цієї бази вже є правило.')
       const previous = plan?.discountsByBasis
       const discountsByBasis = previous && typeof previous === 'object' && !Array.isArray(previous) ? previous : {}
-      const values = { [basis]: rate, ...(basis === 'monthly' ? {} : {
+      const values = { [basis]: rate,
         discountsByBasis: { ...discountsByBasis, [basis]: form.has('afterDiscount') },
-      }) }
+      }
       if (plan) await tx.payPlan.update({ where: { id: plan.id }, data: values })
       else await tx.payPlan.create({ data: {
         technicianId, effective: new Date(), frequency: 'weekly',

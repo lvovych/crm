@@ -13,7 +13,12 @@ export function includesDiscounts(basis: Basis, plan: DiscountPlan) {
   return basis === 'labor' || basis === 'partsSales' ? plan.afterDiscount : plan.marginAfterDiscount
 }
 export function ruleConditions(basis: Basis, plan: DiscountPlan & { includeNegativeOrderMargin: boolean }) {
-  if (basis === 'monthly') return 'Пропорційно календарним дням'
+  if (basis === 'monthly') {
+    const settings = plan.discountsByBasis
+    const method = 'Пропорційно календарним дням'
+    if (!settings || typeof settings !== 'object' || !('monthly' in settings)) return method
+    return method + (settings.monthly ? ' · Враховувати знижки: так' : ' · Враховувати знижки: ні')
+  }
   const discounts = includesDiscounts(basis, plan)
     ? 'Після знижок' : 'До знижок'
   if (basis !== 'orderMargin') return discounts
