@@ -1,31 +1,19 @@
-import { directory, saveEmployee, dismissEmployee } from '@/features/employees/actions'
+import { directory, saveEmployee } from '@/features/employees/actions'
 import { settlementData } from '@/features/payroll/settlements'
 import { cents, decimal } from '@/features/finance/money'
 import { UserRound } from 'lucide-react'
+import { roles, RoleFields } from '@/features/employees/RoleFields'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
 
-const roles = { mechanic: 'Механік', parts: 'Запчастист', advisor: 'Приймальник', owner: 'Власник' }
-function RoleFields({ selected }: { selected: string[] }) {
-  return (
-    <fieldset className="flex flex-wrap gap-4">
-      <legend className="sr-only">Робочі ролі</legend>
-      {Object.entries(roles).map(([key, label]) => (
-        <label key={key}>
-          <input type="checkbox" name="roles" value={key} defaultChecked={selected.includes(key)} />{' '}
-          {label}
-        </label>
-      ))}
-    </fieldset>
-  )
-}
 export default async function Employees({ searchParams }: { searchParams: Promise<{ tab?: string; employee?: string }> }) {
   const result = await directory()
   if (!result.data) return <p>{result.error}</p>
   const query = await searchParams
+  if (query.employee) redirect('/employees/' + encodeURIComponent(query.employee))
   const payroll = result.data.canSeePayroll ? await settlementData() : null
   if (payroll && !payroll.data) return <p role="alert">{payroll.error}</p>
   const docs = query.tab === 'documents' && !!payroll
-  const selected = result.data.people.find(p => p.id === query.employee)
   const slips = (payroll?.data?.people ?? []).flatMap(p => p.paySlips.map(s => ({ ...s, employee: p })))
     .sort((a,b) => b.createdAt.getTime() - a.createdAt.getTime())
   const button = 'inline-flex rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground'
@@ -70,30 +58,10 @@ export default async function Employees({ searchParams }: { searchParams: Promis
           const account = payroll?.data?.people.find(person => person.id === p.id)
           const earned = account?.paySlips.filter(s => s.status === 'completed').reduce((sum,s) => sum + cents(s.total.toFixed(2)), BigInt(0)) ?? BigInt(0)
           const balance = account?.staffPayments.reduce((sum,payment) => payment.document.reversal ? sum : sum - cents(payment.document.amount.toFixed(2)), earned) ?? earned
-          return <tr className="border-t hover:bg-muted/40" key={p.id}><td className="p-3"><Link className="font-medium underline" href={'/employees?employee='+p.id+'#card'}>{p.name}</Link>{p.dismissedOn && ' · Звільнено'}</td>
+          return <tr className="border-t hover:bg-muted/40" key={p.id}><td className="p-3"><Link className="font-medium underline" href={'/employees/'+encodeURIComponent(p.id)}>{p.name}</Link>{p.dismissedOn && ' · Звільнено'}</td>
             <td className="p-3 text-right font-semibold tabular-nums">{account ? decimal(balance).replace('.',',')+' грн' : p.workRoles.map(r => roles[r as keyof typeof roles]).join(', ')}</td></tr>
         })}</tbody></table></div>
-      {selected && <article key={selected.id} id="card" className="space-y-4 rounded-lg border p-5">
-        <h2 className="text-xl font-semibold">{selected.name}</h2>
-        <p>{selected.workRoles.map(r => roles[r as keyof typeof roles]).join(', ')} · {selected.userId ? 'Прив’язано користувача CRM' : 'Без облікового запису'}</p>
-        {payroll && <div className="flex flex-wrap gap-3"><Link className={button} href={'/payroll?mode=rules&employee='+selected.id}>Правила нарахування</Link>
-        <Link className="rounded-md border px-4 py-2 text-sm font-medium" href={'/employee-settlements?employee='+selected.id}>Листки та виплати</Link></div>}
-          {result.data?.canManage && !selected.dismissedOn && (
-            <details className="mt-2">
-              <summary>Редагувати</summary>
-              <form action={saveEmployee} className="my-3 space-y-2">
-                <input type="hidden" name="id" value={selected.id} />
-                <input className="rounded border p-2" name="name" defaultValue={selected.name} required />
-                <RoleFields selected={selected.workRoles} />
-                <button>Зберегти</button>
-              </form>
-              <form action={dismissEmployee}>
-                <input type="hidden" name="id" value={selected.id} />
-                <button>Звільнити сьогодні</button>
-              </form>
-            </details>
-          )}
-        </article>}
+
       </>}
     </main>
   )

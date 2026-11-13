@@ -43,7 +43,7 @@ export default async function Payroll({
   const preview = q.start && q.end ? await previewSlip(employee.id, q.start, q.end) : null
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-6 [&_button]:rounded [&_button]:border [&_button]:px-3 [&_button]:py-1 [&_input]:rounded [&_input]:border [&_input]:p-1 [&_summary]:cursor-pointer">
-      <Link className="text-sm underline" href={rules ? '/employees?employee='+employee.id+'#card' : '/employees?tab=documents'}>{rules ? 'Картка працівника' : 'Документи нарахування'}</Link>
+      <Link className="text-sm underline" href={rules ? '/employees/'+encodeURIComponent(employee.id) : '/employees?tab=documents'}>{rules ? 'Картка працівника' : 'Документи нарахування'}</Link>
       <h1 className="text-3xl font-semibold">{rules ? 'Правила нарахування' : 'Новий документ нарахування'}</h1>
       <p className="text-xl font-medium">{employee.name}</p>
       {rules && <>
