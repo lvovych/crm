@@ -1,6 +1,8 @@
 'use server'
 
 import { staffCan } from './access'
+import { workshopTimeZone } from '@/lib/workshop-timezone'
+import { zonedDayKey } from '@/lib/timezone'
 import { db } from '@/lib/db'
 import { withAuth } from '@/lib/with-auth'
 import { PermissionAction as A, PermissionSubject as S } from '@/lib/permissions'
@@ -13,7 +15,7 @@ export async function directory() {
       people: await db.technician.findMany({
         where: { organizationId: ctx.organizationId },
         orderBy: { name: 'asc' },
-        select: { id: true, name: true, workRoles: true, dismissedOn: true, userId: true },
+        select: { id: true, name: true, workRoles: true, givenName: true, familyName: true, hiredOn: true, dismissedOn: true, userId: true },
       }),
       canManage: await staffCan(ctx, { subject: S.EMPLOYEES, action: A.MANAGE }),
       canSeePayroll: await staffCan(ctx, { subject: S.PAYROLL, action: A.READ }),
@@ -26,13 +28,28 @@ export async function saveEmployee(form: FormData) {
   const result = await withAuth(
     async ({ organizationId }) => {
       const id = String(form.get('id') || '')
-      const name = z.string().trim().min(1).max(160).parse(form.get('name'))
+      const profile = form.has('givenName')
+      const givenName = profile ? z.string().trim().min(1).max(160).parse(form.get('givenName')) : undefined
+      const familyName = profile ? z.string().trim().max(160).parse(form.get('familyName')) : undefined
+      const name = z.string().trim().min(1).max(160).parse(profile ? [givenName, familyName].filter(Boolean).join(' ') : form.get('name'))
+      const date = (key: string) => form.get(key) ? new Date(z.string().date().parse(form.get(key))) : null
+      const hiredOn = date('hiredOn')
+      const dismissedOn = date('dismissedOn')
+      if (dismissedOn && hiredOn && dismissedOn < hiredOn) throw new Error('Дата звільнення передує даті прийому.')
+      if (dismissedOn && dismissedOn.toISOString().slice(0, 10) > zonedDayKey(new Date(), await workshopTimeZone(organizationId)))
+        throw new Error('Дата фактичного звільнення не може бути в майбутньому.')
+      const dates = profile ? { hiredOn, dismissedOn } : {}
       const workRoles = z
         .array(z.enum(['mechanic', 'parts', 'advisor', 'owner']))
         .min(1)
         .parse(form.getAll('roles'))
       if (id) {
-        await db.technician.update({ where: { id, organizationId }, data: { name, workRoles } })
+        const previous = await db.technician.findFirstOrThrow({ where: { id, organizationId }, select: { dismissedOn: true } })
+        const activity = profile && (dismissedOn || previous.dismissedOn) ? { isActive: !dismissedOn } : {}
+        await db.technician.update({
+          where: { id, organizationId },
+          data: { name, workRoles, givenName, familyName, ...dates, ...activity },
+        })
       } else {
         await db.technician.create({ data: { organizationId, name, workRoles } })
       }
@@ -41,6 +58,7 @@ export async function saveEmployee(form: FormData) {
   )
   if (!result.success) throw new Error(result.error)
   revalidatePath('/employees')
+  revalidatePath('/employees/[id]', 'page')
 }
 
 export async function dismissEmployee(form: FormData) {

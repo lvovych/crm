@@ -22,6 +22,9 @@ model Technician {
   paySlips PaySlip[]
   staffPayments StaffPayment[]
   workRoles String[] @default(["mechanic"])
+  givenName String?
+  familyName String?
+  hiredOn DateTime? @db.Date
   dismissedOn DateTime? @db.Date
   loginCodes     TechnicianLoginCode[]
   laborItems ServiceLabor[]

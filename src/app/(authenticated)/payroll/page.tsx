@@ -1,23 +1,16 @@
+import { EmployeeRules } from '@/features/payroll/EmployeeRules'
 import { Lines } from '@/features/payroll/Lines'
 import { fingerprint } from '@/features/finance/ledger'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import {
   payrollData,
-  savePlan, createRule, finishSAL,
+  finishSAL,
   assignOrder,
   previewSlip,
   postSlip,
 } from '@/features/payroll/actions'
 
-const fields = {
-  monthly: 'Ставка на місяць, грн',
-  labor: 'Роботи, %',
-  partsSales: 'Продаж запчастин, %',
-  partsMargin: 'Маржа запчастин, %',
-  orderMargin: 'Маржа наряду, %',
-}
-const frequencies = { weekly: 'Щотижня', twice: 'Двічі на місяць', monthly: 'Щомісяця' }
 export default async function Payroll({
   searchParams,
 }: {
@@ -26,7 +19,7 @@ export default async function Payroll({
   const q = await searchParams,
     r = await payrollData(q.employee || '')
   if (!r.data) return <p>{r.error}</p>
-  const { people, employee, plans, canManage } = r.data
+  const { people, employee, canManage } = r.data
   if (!employee) return <Link href="/employees">Додайте працівника</Link>
   const id = <input type="hidden" name="employee" value={employee.id} />
   const rules = q.mode === 'rules'
@@ -47,64 +40,7 @@ export default async function Payroll({
       <h1 className="text-3xl font-semibold">{rules ? 'Правила нарахування' : 'Новий документ нарахування'}</h1>
       <p className="text-xl font-medium">{employee.name}</p>
       {rules && <>
-      <section className="rounded border p-4">
-        <h2 className="text-xl font-semibold">Умови оплати</h2>
-        {plans.map((p) => (
-          <p key={p.id}>
-            Від {p.effective.toISOString().slice(0, 10)} ·{' '}
-            {frequencies[p.frequency as keyof typeof frequencies]} ·{' '}
-            {Object.entries(fields)
-              .filter(([k]) => Number(p[k as keyof typeof fields]) > 0)
-              .map(([k, label]) => label + ' ' + p[k as keyof typeof fields])
-              .join(' · ')}
-            {p.orderMargin.gt(0) &&
-              (p.includeNegativeOrderMargin
-                ? ' · Збиток зменшує зарплату'
-                : ' · За збитковий наряд частка маржі — 0 грн')}
-          </p>
-        ))}
-        <details className="my-4 rounded border p-3"><summary>Створити правило</summary>
-          <form action={createRule} className="mt-3 flex flex-wrap items-end gap-3">
-            <label>Назва <input name="name" required /></label>
-            <label>База <select name="basis">{Object.entries(fields).map(([k,v]) => <option key={k} value={k}>{v}</option>)}</select></label>
-            <label>Значення <input name="rate" required type="number" min=".01" step=".01"/></label>
-            <button>Створити правило</button>
-          </form></details>
-        {canManage && (
-          <details>
-            <summary>Додати умову</summary>
-            <form action={savePlan} className="grid gap-2 py-3 sm:grid-cols-2">
-              {id}
-              <label>
-                Діють з <input type="date" required name="effective" />
-              </label>
-              <select name="frequency">
-                {Object.entries(frequencies).map(([k, v]) => (
-                  <option key={k} value={k}>
-                    {v}
-                  </option>
-                ))}
-              </select>
-              <fieldset className="space-y-2"><legend>Правила нарахування</legend>
-                {r.data.rules.map(rule => <label key={rule.id} className="block"><input type="checkbox" name="rule" value={rule.id}/> {rule.name} · {fields[rule.basis as keyof typeof fields]} {rule.rate.toString()}</label>)}
-              </fieldset>
-              <label>
-                <input type="checkbox" name="afterDiscount" defaultChecked /> Враховувати знижки у
-                продажах і роботах
-              </label>
-              <label>
-                <input type="checkbox" name="marginAfterDiscount" defaultChecked /> Враховувати
-                знижки у маржі
-              </label>
-              <label>
-                <input type="checkbox" name="includeNegativeOrderMargin" /> Враховувати від’ємну
-                маржу всього наряду
-              </label>
-              <button>Зберегти умови</button>
-            </form>
-          </details>
-        )}
-      </section>
+      <EmployeeRules data={r.data} />
       {canManage && (
         <details className="rounded border p-4">
           <summary>Призначити відповідального за наряд</summary>

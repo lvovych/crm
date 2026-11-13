@@ -59,7 +59,7 @@ export async function calculate(
   for (let t = start.getTime(); t <= end.getTime(); t += day) {
     const date = new Date(t),
       plan = planAt(date)!
-    if (!plan || (person.dismissedOn && date > person.dismissedOn)) continue
+    if (!plan || (person.hiredOn && date < person.hiredOn) || (person.dismissedOn && date > person.dismissedOn)) continue
     if (!selectedEnd && plan.frequency !== first.frequency) throw new Error('Графік змінився всередині періоду.')
     if (plan.monthly.gt(0)) {
       const days = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate()
@@ -100,7 +100,7 @@ export async function calculate(
   })
   for (const o of orders) {
     const date = new Date(zonedDayKey(o.payrollEarnedAt!, zone))
-    if (date < start || date > end || (person.dismissedOn && date > person.dismissedOn)) continue
+    if (date < start || date > end || (person.hiredOn && date < person.hiredOn) || (person.dismissedOn && date > person.dismissedOn)) continue
     const plan = planAt(date)
     if (!plan) continue
     const car = [o.vehicle?.make, o.vehicle?.model, o.vehicle?.licensePlate]
