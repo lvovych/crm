@@ -12,7 +12,12 @@ export async function getTechnicians() {
   return withAuth(
     async ({ organizationId }) => {
       const technicians = await db.technician.findMany({
-        where: { organizationId, isActive: true },
+        where: {
+          organizationId,
+          isActive: true,
+          dismissedOn: null,
+          workRoles: { has: 'mechanic' },
+        },
         orderBy: { sortOrder: 'asc' },
         select: {
           id: true,

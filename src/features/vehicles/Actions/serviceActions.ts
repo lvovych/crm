@@ -929,6 +929,7 @@ export async function updateServiceRecord(input: unknown) {
             await tx.servicePart.createMany({
               data: normalizedParts.map((p) => ({
                 id: p.id,
+                payrollSellerId: p.payrollSellerId,
                 discountType: p.discountType,
                 discountValue: p.discountValue,
                 sortOrder: p.sortOrder,

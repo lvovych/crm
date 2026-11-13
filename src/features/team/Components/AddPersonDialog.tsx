@@ -98,6 +98,7 @@ interface RoleOption {
 
 export function AddPersonDialog({
   open,
+  accountOnly = false,
   onOpenChange,
   workshopUrl: workshopUrlProp,
   dialCode: dialCodeProp,
@@ -105,6 +106,7 @@ export function AddPersonDialog({
   onChanged,
 }: {
   open: boolean
+  accountOnly?: boolean
   onOpenChange: (open: boolean) => void
   /**
    * Everything below is optional so this can be opened from anywhere.
@@ -172,8 +174,8 @@ export function AddPersonDialog({
   const countries = useMemo(() => countriesFor(locale), [locale])
   const country = dialCode || countries.find((c) => c.region === region)?.dial || ''
 
-  const [kind, setKind] = useState<Kind | null>(null)
-  const [step, setStep] = useState<Step>('who')
+  const [kind, setKind] = useState<Kind | null>(accountOnly ? 'member' : null)
+  const [step, setStep] = useState<Step>(accountOnly ? 'details' : 'who')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -192,8 +194,8 @@ export function AddPersonDialog({
   const [roleValue, setRoleValue] = useState('member')
 
   const reset = useCallback(() => {
-    setKind(null)
-    setStep('who')
+    setKind(accountOnly ? 'member' : null)
+    setStep(accountOnly ? 'details' : 'who')
     setError(null)
     setName('')
     setPhone('')
@@ -204,7 +206,7 @@ export function AddPersonDialog({
     setEmail('')
     setColor(BOARD_COLOURS[0])
     setRoleValue('member')
-  }, [])
+  }, [accountOnly])
 
   const close = useCallback(() => {
     // A code left on an unattended screen stops working when the desk walks
@@ -482,7 +484,10 @@ export function AddPersonDialog({
               backLabel={t('team.stepBack')}
               onBack={() => {
                 setKind(null)
-                setStep('who')
+                if (accountOnly) {
+                  reset()
+                  onOpenChange(false)
+                } else setStep('who')
               }}
               submitLabel={t('team.addTechnicianSubmit')}
               busy={busy}
@@ -537,7 +542,10 @@ export function AddPersonDialog({
               backLabel={t('team.stepBack')}
               onBack={() => {
                 setKind(null)
-                setStep('who')
+                if (accountOnly) {
+                  reset()
+                  onOpenChange(false)
+                } else setStep('who')
               }}
               submitLabel={t('team.addTechnicianSubmit')}
               busy={busy}
@@ -618,7 +626,10 @@ export function AddPersonDialog({
               backLabel={t('team.stepBack')}
               onBack={() => {
                 setKind(null)
-                setStep('who')
+                if (accountOnly) {
+                  reset()
+                  onOpenChange(false)
+                } else setStep('who')
               }}
               submitLabel={t('team.invite')}
               busy={busy}

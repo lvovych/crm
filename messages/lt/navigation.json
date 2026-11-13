@@ -160,6 +160,10 @@
     "suppliers": "Suppliers",
     "directories": "Directories",
     "finance": "Cash accounts",
+    "myPay": "My pay",
+    "payroll": "Payroll",
+    "staffSettlements": "Employee settlements",
+    "employees": "Employees",
     "mutualSettlements": "Settlements"
   }
 }

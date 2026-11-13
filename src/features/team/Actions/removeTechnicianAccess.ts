@@ -48,13 +48,11 @@ export async function removeTechnicianAccess(input: unknown) {
       })
       if (!technician) throw new Error('That technician is not part of this workshop.')
 
-      const updated = await db.technician.update({
-        where: { id: technician.id },
-        data: { isActive: false },
-      })
-
       await revokeTechnicianCredentials(organizationId, technician.userId)
-
+      const updated = await db.technician.update({
+        where: { id: technician.id, organizationId, userId },
+        data: { userId: null },
+      })
       notificationBus.emit('workboard', {
         type: 'technician_updated',
         organizationId,

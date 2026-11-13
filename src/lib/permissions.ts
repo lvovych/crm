@@ -7,6 +7,8 @@ export enum PermissionAction {
 }
 
 export enum PermissionSubject {
+  EMPLOYEES = 'employees',
+  PAYROLL = 'payroll',
   DASHBOARD = 'dashboard',
   VEHICLES = 'vehicles',
   CUSTOMERS = 'customers',
@@ -48,6 +50,14 @@ export type PermissionGroup = {
 }
 
 export const permissionGroups: PermissionGroup[] = [
+  {
+    name: 'Працівники',
+    subject: PermissionSubject.EMPLOYEES,
+    permissions: [
+      { action: PermissionAction.READ, label: 'Перегляд' },
+      { action: PermissionAction.MANAGE, label: 'Управління' },
+    ],
+  },
   {
     name: 'Money operations',
     subject: PermissionSubject.FINANCE,

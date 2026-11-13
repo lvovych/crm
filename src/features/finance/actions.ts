@@ -1,4 +1,5 @@
 'use server'
+import { allocatePayments } from '@/features/payroll/allocation'
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { db } from '@/lib/db'
@@ -96,12 +97,13 @@ export async function financeReport(asOf: string, settingsOnly = false) {
               include: {
                 document: {
                   include: {
+                    staffPayment: { select: { documentId: true } },
                     category: true,
                     reversal: { select: { id: true } },
                     refunds: { select: { amount: true } },
                     ...counterpartyRelations,
                     original: { select: counterpartyRelations },
-                    reversalOf: { select: counterpartyRelations },
+                    reversalOf: { select: { ...counterpartyRelations, staffPayment: { select: { documentId: true } } } },
                   },
                 },
               },
@@ -225,7 +227,7 @@ export async function financeReport(asOf: string, settingsOnly = false) {
               .reduce((s, e) => s + cents(e.amount.toFixed(2)), BigInt('0'))
           ),
         })),
-        entries: entries.map((e) => {
+        entries: entries.filter(e => ctx.isOrganizationOwner || (!e.document.staffPayment && !e.document.reversalOf?.staffPayment)).map((e) => {
           const related =
             e.document.payment || e.document.supplierEntry
               ? e.document
@@ -682,8 +684,15 @@ export async function reverseMoneyDocument(raw: unknown) {
         await lockFinance(tx, ctx.organizationId)
         const old = await tx.financialDocument.findFirstOrThrow({
           where: { id: input.id, organizationId: ctx.organizationId, status: 'posted' },
-          include: { reversal: true, payment: true, supplierEntry: true, refunds: true },
+          include: {
+            reversal: true,
+            payment: true,
+            supplierEntry: true,
+            refunds: true,
+            staffPayment: true,
+          },
         })
+        if (old.staffPayment && !ctx.isOrganizationOwner) throw new Error('Недостатньо прав.')
         if (old.reversal) {
           if (
             old.reversal.requestId === input.requestId &&
@@ -758,6 +767,7 @@ export async function reverseMoneyDocument(raw: unknown) {
           paymentId: reversalPaymentId,
           note: input.reason,
         })
+        if (old.staffPayment) await allocatePayments(tx, old.staffPayment.technicianId)
       })
       revalidatePath('/finance')
       revalidatePath('/settlements')

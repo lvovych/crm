@@ -28,6 +28,7 @@ export async function prepareParts(
     const next = {
       ...line,
       id: old?.id,
+      payrollSellerId: old?.payrollSellerId ?? null,
       sortOrder,
       discountType: line.discountType ?? old?.discountType ?? 'none',
       discountValue: line.discountValue ?? old?.discountValue ?? 0,

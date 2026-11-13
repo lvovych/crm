@@ -15,6 +15,14 @@ model Technician {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
+  soldParts ServicePart[]
+  partsOrders PayAssignment[] @relation("partsOrders")
+  marginOrders PayAssignment[] @relation("marginOrders")
+  payPlans PayPlan[]
+  paySlips PaySlip[]
+  staffPayments StaffPayment[]
+  workRoles String[] @default(["mechanic"])
+  dismissedOn DateTime? @db.Date
   loginCodes     TechnicianLoginCode[]
   laborItems ServiceLabor[]
   serviceRecords ServiceRecord[]
@@ -230,4 +238,76 @@ model WorkBay {
 
   @@index([organizationId])
   @@map("work_bays")
+}
+
+model SalaryRule {
+  id String @id @default(cuid())
+  organizationId String
+  name String
+  basis String
+  rate Decimal @db.Decimal(14,2)
+  @@unique([organizationId,name])
+}
+
+model PayPlan {
+  ruleIds String[] @default([])
+  id String @id @default(cuid())
+  technicianId String
+  technician Technician @relation(fields:[technicianId],references:[id],onDelete:Restrict)
+  effective DateTime @db.Date
+  frequency String
+  monthly Decimal @db.Decimal(14,2)
+  labor Decimal @db.Decimal(6,2)
+  partsSales Decimal @db.Decimal(6,2)
+  partsMargin Decimal @db.Decimal(6,2)
+  orderMargin Decimal @db.Decimal(6,2)
+  afterDiscount Boolean @default(true)
+  includeNegativeOrderMargin Boolean @default(false)
+  marginAfterDiscount Boolean @default(true)
+  @@unique([technicianId,effective])
+}
+
+model PaySlip {
+  status String @default("completed")
+  allocations StaffAllocation[]
+  id String @id @default(cuid())
+  technicianId String
+  technician Technician @relation(fields:[technicianId],references:[id],onDelete:Restrict)
+  start DateTime @db.Date
+  end DateTime @db.Date
+  lines Json
+  total Decimal @db.Decimal(16,2)
+  createdAt DateTime @default(now())
+  actorId String
+  @@unique([technicianId,start])
+}
+
+model StaffPayment {
+  allocations StaffAllocation[]
+  id String @id @default(cuid())
+  technicianId String
+  technician Technician @relation(fields:[technicianId],references:[id],onDelete:Restrict)
+  documentId String @unique
+  document FinancialDocument @relation(fields:[documentId],references:[id],onDelete:Restrict)
+  advance Boolean
+}
+
+model PayAssignment {
+  orderId String @id
+  order ServiceRecord @relation(fields:[orderId],references:[id],onDelete:Cascade)
+  partsId String?
+  seller Technician? @relation("partsOrders",fields:[partsId],references:[id],onDelete:Restrict)
+  ownerId String?
+  owner Technician? @relation("marginOrders",fields:[ownerId],references:[id],onDelete:Restrict)
+}
+
+model StaffAllocation {
+  id String @id @default(cuid())
+  slipId String
+  slip PaySlip @relation(fields:[slipId],references:[id],onDelete:Restrict)
+  paymentId String
+  payment StaffPayment @relation(fields:[paymentId],references:[id],onDelete:Restrict)
+  amount Decimal @db.Decimal(16,2)
+  createdAt DateTime @default(now())
+  @@unique([slipId,paymentId])
 }
