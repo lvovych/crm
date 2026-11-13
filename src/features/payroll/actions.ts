@@ -20,6 +20,7 @@ async function change(fn: (ctx: AuthContext) => Promise<void>) {
   const r = await withAuth(fn, manage)
   if (!r.success) throw new Error(r.error)
   revalidatePath('/payroll')
+  revalidatePath('/employees/[id]', 'page')
 }
 export async function payrollData(id: string) {
   return withAuth(async (ctx) => {
@@ -59,6 +60,42 @@ export async function createRule(form: FormData) {
     const rate = z.coerce.number().positive().max(basis === 'monthly' ? 999999999 : 100).multipleOf(.01).parse(form.get('rate'))
     const name = z.string().trim().min(1).max(160).parse(form.get('name'))
     await db.salaryRule.create({ data: { organizationId, basis, rate, name } })
+  })
+}
+export async function removeAssignedRule(form: FormData) {
+  await change(async ({ organizationId }) => {
+    const basis = bases.parse(form.get('basis'))
+    await db.$transaction(async tx => {
+      await lockFinance(tx, organizationId)
+      const plan = await tx.payPlan.findFirstOrThrow({
+        where: { id: String(form.get('plan')), technician: { organizationId } },
+      })
+      const matching = await tx.salaryRule.findMany({
+        where: { organizationId, basis, id: { in: plan.ruleIds } }, select: { id: true },
+      })
+      const removed = new Set(matching.map(rule => rule.id))
+      await tx.payPlan.update({
+        where: { id: plan.id },
+        data: { [basis]: 0, ruleIds: plan.ruleIds.filter(id => !removed.has(id)) },
+      })
+    })
+  })
+}
+
+export async function deleteCatalogRule(form: FormData) {
+  await change(async ({ organizationId }) => {
+    const id = String(form.get('rule'))
+    await db.$transaction(async tx => {
+      await lockFinance(tx, organizationId)
+      const plans = await tx.payPlan.findMany({
+        where: { technician: { organizationId }, ruleIds: { has: id } },
+        select: { id: true, ruleIds: true },
+      })
+      for (const plan of plans) {
+        await tx.payPlan.update({ where: { id: plan.id }, data: { ruleIds: plan.ruleIds.filter(item => item !== id) } })
+      }
+      await tx.salaryRule.deleteMany({ where: { id, organizationId } })
+    })
   })
 }
 export async function savePlan(form: FormData) {

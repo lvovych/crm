@@ -1,4 +1,4 @@
-import { createRule, savePlan, type payrollData } from './actions'
+import { createRule, deleteCatalogRule, removeAssignedRule, savePlan, type payrollData } from './actions'
 const fields = {
   monthly: 'Ставка на місяць, грн',
   labor: 'Роботи, %',
@@ -14,20 +14,30 @@ export function EmployeeRules({ data }: { data: NonNullable<Awaited<ReturnType<t
   return (
       <section className="rounded border p-4">
         <h2 className="text-xl font-semibold">Правила нарахування зарплати</h2>
-        {plans.map((p) => (
-          <p key={p.id}>
-            Від {p.effective.toISOString().slice(0, 10)} ·{' '}
-            {frequencies[p.frequency as keyof typeof frequencies]} ·{' '}
-            {Object.entries(fields)
-              .filter(([k]) => Number(p[k as keyof typeof fields]) > 0)
-              .map(([k, label]) => label + ' ' + p[k as keyof typeof fields])
-              .join(' · ')}
-            {p.orderMargin.gt(0) &&
-              (p.includeNegativeOrderMargin
-                ? ' · Збиток зменшує зарплату'
-                : ' · За збитковий наряд частка маржі — 0 грн')}
-          </p>
-        ))}
+        <div className="my-3 overflow-x-auto"><table className="w-full text-left text-sm tabular-nums">
+          <thead className="bg-muted"><tr>{['Діє з', 'Правило', 'База', 'Ставка', ''].map(h => <th key={h} className="p-2">{h}</th>)}</tr></thead>
+          <tbody>{plans.flatMap(plan => (Object.keys(fields) as (keyof typeof fields)[]).filter(basis => plan[basis].gt(0)).map(basis => {
+            const rule = rules.find(item => item.basis === basis && plan.ruleIds.includes(item.id))
+            return <tr key={plan.id + basis} className="border-b">
+              <td className="p-2">{plan.effective.toLocaleDateString('uk-UA', { timeZone: 'UTC' })}</td>
+              <td className="p-2 font-medium">{rule?.name ?? fields[basis].split(',')[0]}</td>
+              <td className="p-2">{fields[basis].split(',')[0]}{basis === 'orderMargin' && <small className="block">{plan.includeNegativeOrderMargin ? 'Збиток враховується' : 'Збиток виключено'}</small>}</td>
+              <td className="p-2">{plan[basis].toString()}{basis === 'monthly' ? ' грн' : '%'}</td>
+              <td className="p-2">{canManage && <form action={removeAssignedRule}>
+                <input type="hidden" name="plan" value={plan.id}/><input type="hidden" name="basis" value={basis}/>
+                <button aria-label={'Зняти правило ' + (rule?.name ?? fields[basis])}>Зняти</button>
+              </form>}</td>
+            </tr>
+          }))}</tbody>
+        </table></div>
+        <details className="my-4 rounded border p-3"><summary>Довідник правил</summary>
+          <table className="mt-3 w-full text-left text-sm"><thead className="bg-muted"><tr>{['Назва','База','Ставка',''].map(h => <th key={h} className="p-2">{h}</th>)}</tr></thead>
+            <tbody>{rules.map(rule => <tr key={rule.id} className="border-b">
+              <td className="p-2">{rule.name}</td><td className="p-2">{fields[rule.basis as keyof typeof fields].split(',')[0]}</td>
+              <td className="p-2">{rule.rate.toString()}{rule.basis === 'monthly' ? ' грн' : '%'}</td>
+              <td>{canManage && <form action={deleteCatalogRule}><input type="hidden" name="rule" value={rule.id}/><button>Видалити з довідника</button></form>}</td>
+            </tr>)}</tbody></table>
+        </details>
         <details className="my-4 rounded border p-3"><summary>Створити правило</summary>
           <form action={createRule} className="mt-3 flex flex-wrap items-end gap-3">
             <label>Назва <input name="name" required /></label>
