@@ -29,7 +29,7 @@ export default async function Payroll({
     <Link href="/employees?tab=documents" className="underline">Документи нарахування</Link>
     <h1 className="text-2xl font-semibold">SAL · {employee.name}</h1>
     <p>{saved.start.toISOString().slice(0,10)} — {saved.end.toISOString().slice(0,10)} · {saved.status === 'new' ? 'Новий' : 'Завершено'}</p>
-    <Lines lines={saved.lines as unknown as import('@/features/payroll/calculation').SlipLine[]} />
+    <Lines details={saved.lines as unknown as import('@/features/payroll/Lines').SlipDetails} />
     <strong>Нараховано · {saved.total.toFixed(2)} грн</strong>
     {saved.status === 'new' && <form action={finishSAL}><input type="hidden" name="slip" value={saved.id}/><button className="rounded bg-primary px-4 py-2 text-primary-foreground">Завершити SAL</button></form>}
   </main>
@@ -70,7 +70,7 @@ export default async function Payroll({
         {preview?.data && (
           <>
             <p className="my-4 text-lg font-semibold">До нарахування · {preview.data.total} грн</p>
-            <Lines lines={preview.data.lines} />
+            <Lines details={preview.data} />
             {canManage && (
               <form action={async (form) => {
                 'use server'
@@ -81,7 +81,7 @@ export default async function Payroll({
                 {id}
                 <input type="hidden" name="start" value={q.start} />
                 <input type="hidden" name="end" value={q.end} />
-                <input type="hidden" name="preview" value={fingerprint(preview.data.lines)} />
+                <input type="hidden" name="preview" value={fingerprint({ lines: preview.data.lines, conditions: preview.data.conditions })} />
                 <details className="my-2">
                   <summary>Додати утримання або коригування</summary>
                   <select name="adjustType">

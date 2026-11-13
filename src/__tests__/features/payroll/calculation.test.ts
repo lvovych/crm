@@ -172,21 +172,21 @@ describe('Commission basis and effective dates', () => {
     expect((await run(start, 'UTC')).total).toBe('0.00')
     expect((await run(start, 'Europe/Kyiv')).total).toBe('949.14')
   })
-  it('uses the plan on completion day and excludes work after dismissal', async () => {
+  it('uses the current plan for earlier work and excludes work after dismissal', async () => {
     const { order, person, plan, run } = example()
     const change = new Date('2026-11-11')
     person.payPlans.unshift({ ...plan, id: 'new', labor: amount(40), effective: change })
-    expect((await run()).lines[0].plan).toBe('weekly')
+    expect((await run()).lines[0].plan).toBe('new')
     order.payrollEarnedAt = change
     expect((await run()).lines[0].amount).toBe('420.00')
     person.dismissedOn = start
     expect((await run()).total).toBe('0.00')
   })
-  it('rejects a period preceding the first plan and overlapping frequencies', async () => {
-    const { plan, person, run } = example()
-    await expect(run(new Date('2026-11-02'))).rejects.toThrow('умов')
-    person.payPlans.unshift({ ...plan, frequency: 'monthly', effective: new Date('2026-11-12') })
-    await expect(run()).rejects.toThrow('Графік')
+  it('records current conditions even for an earlier period with no earnings', async () => {
+    const { run } = example()
+    const slip = await run(new Date('2026-11-02'))
+    expect(slip.total).toBe('0.00')
+    expect(slip.conditions.join(' ')).toContain('Виконані роботи · 50%')
   })
   it('distributes a monthly salary across unequal halves without losing a cent', async () => {
     const { plan, run } = example()
@@ -273,7 +273,7 @@ describe('Order margin edge cases', () => {
   it('excludes activity outside the period, before employment terms, and for unrelated roles', async () => {
     const { plan, order, run } = example()
     plan.effective = new Date('2026-11-11')
-    expect((await run()).lines).toEqual([])
+    expect((await run()).lines).toHaveLength(2)
     order.payrollEarnedAt = new Date('2026-11-16')
     expect((await run()).lines).toEqual([])
     order.payrollEarnedAt = new Date('2026-11-12')

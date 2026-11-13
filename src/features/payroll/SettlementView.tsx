@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { Lines } from './Lines'
-import type { SlipLine } from './calculation'
+import type { SlipDetails } from './Lines'
 import Link from 'next/link'
 import { settlementData, payEmployee } from '@/features/payroll/settlements'
 import { cents, decimal } from '@/features/finance/money'
@@ -51,7 +51,7 @@ export default async function SettlementView({
                 {' · Зараховано виплат '}{format(credited)} грн
                 {' · Залишок '}{format(cents(s.total.toFixed(2)) - credited)} грн
               </summary>
-              <Lines lines={s.lines as unknown as SlipLine[]} />
+              <Lines details={s.lines as unknown as SlipDetails} />
               {s.allocations.map(a => {
                 const payment = person.staffPayments.find(p => p.id === a.paymentId)!
                 return <p key={a.id}>{payment.document.date.toLocaleDateString('uk-UA', {timeZone:'UTC'})}

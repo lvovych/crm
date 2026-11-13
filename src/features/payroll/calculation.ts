@@ -1,3 +1,4 @@
+import { ruleLabels, ruleConditions, type Basis } from './rules'
 import { Prisma } from '@/generated/prisma/client'
 import type { TxClient } from '@/lib/db'
 import { zonedDayKey } from '@/lib/timezone'
@@ -36,14 +37,14 @@ export async function calculate(
 ) {
   const person = await tx.technician.findFirstOrThrow({
     where: { id: employee, organizationId: org },
-    include: { payPlans: { orderBy: { effective: 'desc' } } },
+    include: { payPlans: { orderBy: { effective: 'desc' }, take: 1 } },
   })
-  const planAt = (date: Date) => person.payPlans.find((p) => p.effective <= date)
-  const first = planAt(start) ?? person.payPlans.at(-1)
-  if (!first) throw new Error('На початок періоду немає умов оплати.')
-  const end = selectedEnd ?? periodEnd(start, first.frequency)
+  const plan = person.payPlans[0]
+  if (!plan) throw new Error('У працівника немає правил нарахування.')
+  const end = selectedEnd ?? periodEnd(start, plan.frequency)
   if (end < start) throw new Error('Кінець періоду має бути не раніше початку.')
-  if (first.effective > end) throw new Error('За цей період немає чинних умов оплати.')
+  const conditions = (Object.keys(ruleLabels) as Basis[]).filter(b => plan[b].gt(0)).map(b =>
+    ruleLabels[b] + ' · ' + plan[b].toString() + (b === 'monthly' ? ' грн' : '%') + ' · ' + ruleConditions(b, plan))
   const lines: SlipLine[] = []
   function push(
     order: string,
@@ -57,10 +58,8 @@ export async function calculate(
     lines.push({ order, car, name, rate, base: base.toFixed(2), amount: amount.toFixed(2), plan })
   }
   for (let t = start.getTime(); t <= end.getTime(); t += day) {
-    const date = new Date(t),
-      plan = planAt(date)!
-    if (!plan || (person.hiredOn && date < person.hiredOn) || (person.dismissedOn && date > person.dismissedOn)) continue
-    if (!selectedEnd && plan.frequency !== first.frequency) throw new Error('Графік змінився всередині періоду.')
+    const date = new Date(t)
+    if ((person.hiredOn && date < person.hiredOn) || (person.dismissedOn && date > person.dismissedOn)) continue
     if (plan.monthly.gt(0)) {
       const days = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate()
       const part = (n: number) => plan.monthly.mul(n).div(days).toDecimalPlaces(2)
@@ -101,8 +100,6 @@ export async function calculate(
   for (const o of orders) {
     const date = new Date(zonedDayKey(o.payrollEarnedAt!, zone))
     if (date < start || date > end || (person.hiredOn && date < person.hiredOn) || (person.dismissedOn && date > person.dismissedOn)) continue
-    const plan = planAt(date)
-    if (!plan) continue
     const car = [o.vehicle?.make, o.vehicle?.model, o.vehicle?.licensePlate]
       .filter(Boolean)
       .join(' ')
@@ -153,5 +150,5 @@ export async function calculate(
       commission(label, plan.orderMargin, base)
     }
   }
-  return { end, lines, total: lines.reduce((sum, l) => sum.plus(l.amount), new D(0)).toFixed(2) }
+  return { end, lines, conditions, total: lines.reduce((sum, l) => sum.plus(l.amount), new D(0)).toFixed(2) }
 }

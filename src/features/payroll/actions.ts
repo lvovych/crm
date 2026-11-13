@@ -34,7 +34,7 @@ export async function payrollData(id: string) {
     const plans = employee
       ? await db.payPlan.findMany({
           where: { technicianId: employee.id },
-          orderBy: { effective: 'desc' },
+          orderBy: { effective: 'desc' }, take: 1,
         })
       : []
     const slips = employee
@@ -43,9 +43,8 @@ export async function payrollData(id: string) {
           orderBy: { start: 'desc' },
         })
       : []
-    const rules = await db.salaryRule.findMany({ where: { organizationId }, orderBy: { name: 'asc' } })
     return {
-      rules, people,
+      people,
       employee,
       plans,
       slips,
@@ -54,14 +53,6 @@ export async function payrollData(id: string) {
   }, read)
 }
 const bases = z.enum(['monthly', 'labor', 'partsSales', 'partsMargin', 'orderMargin'])
-export async function createRule(form: FormData) {
-  await change(async ({ organizationId }) => {
-    const basis = bases.parse(form.get('basis'))
-    const rate = z.coerce.number().positive().max(basis === 'monthly' ? 999999999 : 100).multipleOf(.01).parse(form.get('rate'))
-    const name = z.string().trim().min(1).max(160).parse(form.get('name'))
-    await db.salaryRule.create({ data: { organizationId, basis, rate, name } })
-  })
-}
 export async function removeAssignedRule(form: FormData) {
   await change(async ({ organizationId }) => {
     const basis = bases.parse(form.get('basis'))
@@ -82,54 +73,23 @@ export async function removeAssignedRule(form: FormData) {
   })
 }
 
-export async function deleteCatalogRule(form: FormData) {
-  await change(async ({ organizationId }) => {
-    const id = String(form.get('rule'))
-    await db.$transaction(async tx => {
-      await lockFinance(tx, organizationId)
-      const plans = await tx.payPlan.findMany({
-        where: { technician: { organizationId }, ruleIds: { has: id } },
-        select: { id: true, ruleIds: true },
-      })
-      for (const plan of plans) {
-        await tx.payPlan.update({ where: { id: plan.id }, data: { ruleIds: plan.ruleIds.filter(item => item !== id) } })
-      }
-      await tx.salaryRule.deleteMany({ where: { id, organizationId } })
-    })
-  })
-}
-export async function savePlan(form: FormData) {
+export async function addEmployeeRule(form: FormData) {
   await change(async ({ organizationId }) => {
     const technicianId = String(form.get('employee'))
-    const effective = iso(form.get('effective'))
-    const frequency = z.enum(['weekly', 'twice', 'monthly']).parse(form.get('frequency'))
-    await db.$transaction(async (tx) => {
+    const basis = bases.parse(form.get('basis'))
+    const rate = z.coerce.number().positive().max(basis === 'monthly' ? 999999999 : 100).multipleOf(.01).parse(form.get('rate'))
+    await db.$transaction(async tx => {
       await lockFinance(tx, organizationId)
-      await tx.technician.findFirstOrThrow({
-        where: { id: technicianId, organizationId, dismissedOn: null },
-      })
-      if (await tx.paySlip.findFirst({ where: { technicianId, status: 'completed', end: { gte: effective } } }))
-        throw new Error('Уже проведено листок за цей період.')
-      const ids = z.array(z.string()).min(1).parse(form.getAll('rule'))
-      const rules = await tx.salaryRule.findMany({ where: { organizationId, id: { in: ids } } })
-      if (rules.length !== ids.length) throw new Error('Невідоме правило.')
-      const amounts = { monthly: 0, labor: 0, partsSales: 0, partsMargin: 0, orderMargin: 0 }
-      for (const rule of rules) {
-        const basis = bases.parse(rule.basis)
-        if (amounts[basis]) throw new Error('Оберіть одне правило для кожної бази.')
-        amounts[basis] = rule.rate.toNumber()
-      }
-      await tx.payPlan.create({
-        data: {
-          technicianId,
-          effective,
-          frequency,
-          ...amounts, ruleIds: ids,
-          afterDiscount: form.has('afterDiscount'),
-          includeNegativeOrderMargin: form.has('includeNegativeOrderMargin'),
-          marginAfterDiscount: form.has('marginAfterDiscount'),
-        },
-      })
+      await tx.technician.findFirstOrThrow({ where: { id: technicianId, organizationId } })
+      const plan = await tx.payPlan.findFirst({ where: { technicianId }, orderBy: { effective: 'desc' } })
+      if (plan?.[basis].gt(0)) throw new Error('Для цієї бази вже є правило.')
+      const settings = basis === 'orderMargin' ? { includeNegativeOrderMargin: form.has('includeNegativeOrderMargin') } : {}
+      const values = { [basis]: rate, ...settings }
+      if (plan) await tx.payPlan.update({ where: { id: plan.id }, data: values })
+      else await tx.payPlan.create({ data: {
+        technicianId, effective: new Date(), frequency: 'weekly',
+        monthly: 0, labor: 0, partsSales: 0, partsMargin: 0, orderMargin: 0, ...values,
+      } })
     })
   })
 }
@@ -165,14 +125,14 @@ export async function postSlip(form: FormData) {
     const zone = await workshopTimeZone(organizationId)
     await db.$transaction(async (tx) => {
       await lockFinance(tx, organizationId)
-      const { end, total, lines } = await calculate(tx, organizationId, technicianId, start, zone, form.has('end') ? iso(form.get('end')) : undefined)
+      const { end, total, lines, conditions } = await calculate(tx, organizationId, technicianId, start, zone, form.has('end') ? iso(form.get('end')) : undefined)
       if (
         await tx.paySlip.findFirst({
           where: { technicianId, start: { lte: end }, end: { gte: start } },
         })
       )
         throw new Error('Період перетинається з проведеним листком.')
-      if (fingerprint(lines) !== form.get('preview'))
+      if (fingerprint({ lines, conditions }) !== form.get('preview'))
         throw new Error('Дані змінилися. Оновіть попередній розрахунок.')
       let payable = cents(total)
       if (form.get('adjustAmount') && Number(form.get('adjustAmount')) !== 0) {
@@ -192,7 +152,7 @@ export async function postSlip(form: FormData) {
         payable += cents(amount)
       }
       await tx.paySlip.create({
-        data: { status: form.get('draft') === 'yes' ? 'new' : 'completed', technicianId, start, end, total: decimal(payable), lines, actorId: userId },
+        data: { status: form.get('draft') === 'yes' ? 'new' : 'completed', technicianId, start, end, total: decimal(payable), lines: { lines, conditions }, actorId: userId },
       })
       if (form.get('draft') !== 'yes') await allocatePayments(tx, technicianId)
     })

@@ -63,7 +63,7 @@ vi.mock('@/lib/cached-session', () => ({
 }))
 vi.mock('@/lib/workshop-timezone', () => ({ workshopTimeZone: async () => 'Europe/Kyiv' }))
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
-import { postSlip, previewSlip, finishSAL, removeAssignedRule, deleteCatalogRule } from '@/features/payroll/actions'
+import { postSlip, previewSlip, finishSAL, removeAssignedRule, addEmployeeRule } from '@/features/payroll/actions'
 import { payEmployee } from '@/features/payroll/settlements'
 import { fingerprint, postMoney } from '@/features/finance/ledger'
 import { reverseMoneyDocument } from '@/features/finance/actions'
@@ -161,7 +161,7 @@ describe.skipIf(!url)('Payroll posting on PostgreSQL', () => {
   async function slip(date: string) {
     const preview = await previewSlip(employee, date)
     expect(preview.success).toBe(true)
-    return form({ employee, start: date, preview: fingerprint(preview.data!.lines) })
+    return form({ employee, start: date, preview: fingerprint({ lines: preview.data!.lines, conditions: preview.data!.conditions }) })
   }
   function payment(amount: string, requestId = randomUUID()) {
     return form({ employee, type: 'payment', requestId, date: start, amount, account, category })
@@ -254,19 +254,16 @@ describe.skipIf(!url)('Payroll posting on PostgreSQL', () => {
     }
     expect(await state.db.staffPayment.count({ where: { technicianId: foreign.id } })).toBe(0)
   })
-  it('removes a catalog option independently from an employee assignment and preserves saved SAL', async () => {
+  it('removes and adds an employee rule and preserves saved SAL', async () => {
     const plan = await state.db.payPlan.findFirstOrThrow({ where: { technicianId: employee } })
-    const rule = await state.db.salaryRule.create({ data: { organizationId: state.org, name: 'Labor test', basis: 'labor', rate: plan.labor } })
-    await state.db.payPlan.update({ where: { id: plan.id }, data: { ruleIds: [rule.id] } })
     const slips = () => state.db.paySlip.findMany({ where: { technicianId: employee }, orderBy: { start: 'asc' }, select: { total: true, lines: true } })
     const saved = await slips()
-    await deleteCatalogRule(form({ rule: rule.id }))
-    expect(await state.db.salaryRule.findUnique({ where: { id: rule.id } })).toBeNull()
-    expect((await state.db.payPlan.findUniqueOrThrow({ where: { id: plan.id } })).labor).toEqual(plan.labor)
     await removeAssignedRule(form({ plan: plan.id, basis: 'labor' }))
     const updated = await state.db.payPlan.findUniqueOrThrow({ where: { id: plan.id } })
     expect(updated.labor.toNumber()).toBe(0)
     expect(updated.orderMargin).toEqual(plan.orderMargin)
+    await addEmployeeRule(form({ employee, basis: 'labor', rate: '33' }))
+    expect((await state.db.payPlan.findUniqueOrThrow({ where: { id: plan.id } })).labor.toNumber()).toBe(33)
     expect(await slips()).toEqual(saved)
   })
 
