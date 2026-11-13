@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { signOut, useSession } from '@/lib/auth-client'
+import { signOut } from '@/lib/auth-client'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
@@ -124,6 +124,7 @@ type NavItem = {
 const NAMED_ROLES = new Set(['owner', 'admin', 'member'])
 
 export function AppSidebar({
+  sidebarUser,
   companyLogo,
   organizations = [],
   activeOrgId,
@@ -144,6 +145,7 @@ export function AppSidebar({
   mutualSettlementsEnabled?: boolean
   receiptsEnabled?: boolean
   supplierDirectoryEnabled?: boolean
+  sidebarUser: { name: string; email: string }
   companyLogo?: string
   organizations?: OrgInfo[]
   activeOrgId?: string
@@ -162,7 +164,6 @@ export function AppSidebar({
 }) {
   const pathname = usePathname()
   const router = useRouter()
-  const { data: session } = useSession()
   const { theme, setTheme } = useTheme()
   const { setOpenMobile, isMobile } = useSidebar()
   const currentLocale = useLocale()
@@ -243,6 +244,7 @@ export function AppSidebar({
   ].filter((item) => !item.subject || canAccess(item.subject))
 
   const businessItems: NavItem[] = [
+
     ...(mutualSettlementsEnabled
       ? [
           {
@@ -259,7 +261,7 @@ export function AppSidebar({
       icon: WalletCards,
       subject: 'finance',
     },
-    ...(['customers', 'vehicles', 'labor_presets', 'inventory', 'brands'].some(canAccess) ||
+    ...(['employees', 'customers', 'vehicles', 'labor_presets', 'inventory', 'brands'].some(canAccess) ||
     (supplierDirectoryEnabled && canAccess('suppliers'))
       ? [{ titleKey: 'sidebar.directories', url: '/directories', icon: Layers, subject: '' }]
       : []),
@@ -370,7 +372,7 @@ export function AppSidebar({
     items.map((item) => {
       const isActive =
         (item.url === '/directories' &&
-          (['/customers', '/vehicles', '/labor-presets'].some((p) => pathname === p) ||
+          (['/employees', '/payroll', '/employee-settlements', '/customers', '/vehicles', '/labor-presets'].some((p) => pathname === p) ||
             pathname === '/suppliers' ||
             pathname.startsWith('/suppliers/'))) ||
         pathname === item.url ||
@@ -457,8 +459,8 @@ export function AppSidebar({
     }
   }
 
-  const initials = session?.user?.name
-    ? session.user.name
+  const initials = sidebarUser.name
+    ? sidebarUser.name
         .split(' ')
         .map((n) => n[0])
         .join('')
@@ -662,9 +664,9 @@ export function AppSidebar({
                     </AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-medium">{session?.user?.name}</span>
+                    <span className="truncate font-medium">{sidebarUser.name}</span>
                     <span className="truncate text-xs text-sidebar-foreground/60">
-                      {session?.user?.email}
+                      {sidebarUser.email}
                     </span>
                   </div>
                   <ChevronsUpDown className="ml-auto size-4" />

@@ -37,6 +37,22 @@ beforeEach(() => {
 })
 
 describe('withAuth', () => {
+  it.each(['owner', 'member', 'admin', 'custom-admin', 'super-admin'])('enforces payroll ownership for %s', async (role) => {
+    mockGetCachedSession.mockResolvedValue(SESSION as any)
+    mockFindUnique.mockResolvedValue({ isSuperAdmin: role === 'super-admin' } as any)
+    for (const action of [PermissionAction.READ, PermissionAction.MANAGE]) {
+      const permission = { action, subject: PermissionSubject.PAYROLL }
+      mockGetCachedMembership.mockResolvedValue({
+        ...MEMBERSHIP, role: role.endsWith('-admin') ? 'member' : role,
+        customRole: { isAdmin: role === 'custom-admin', permissions: [permission] }
+      } as any)
+      const handler = vi.fn(async () => 'ok')
+      const result = await withAuth(handler, { requiredPermissions: [permission] })
+      expect(result.success).toBe(role === 'owner')
+      expect(handler).toHaveBeenCalledTimes(role === 'owner' ? 1 : 0)
+    }
+  })
+
   it('returns Unauthorized when there is no session', async () => {
     mockGetCachedSession.mockResolvedValue(null)
     const result = await withAuth(async () => 'ok')

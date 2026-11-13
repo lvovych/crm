@@ -106,7 +106,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // Determine which subjects the user can access (for sidebar visibility)
   const isOwnerOrAdmin =
     data.role === 'owner' || data.role === 'admin' || data.role === 'super_admin'
-  const allSubjects = Object.values(PermissionSubject)
+  const isOrganizationOwner = data.organizations.some(o => o.id === data.organizationId && o.role === 'owner')
+  const allSubjects = Object.values(PermissionSubject).filter(subject => subject !== PermissionSubject.PAYROLL || isOrganizationOwner)
   let visibleSubjects: string[] = allSubjects
 
   /**
@@ -334,6 +335,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
                           <TimeClockProvider technicianIds={technicianIds}>
                             <SaveShortcutListener />
                             <AppSidebar
+                              sidebarUser={data.sidebarUser}
                               companyLogo={data.companyLogo}
                               organizations={data.organizations}
                               activeOrgId={data.organizationId}
