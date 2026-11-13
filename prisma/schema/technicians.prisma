@@ -253,6 +253,7 @@ model SalaryRule {
 }
 
 model PayPlan {
+  discountsByBasis Json @default("{}")
   ruleIds String[] @default([])
   id String @id @default(cuid())
   technicianId String

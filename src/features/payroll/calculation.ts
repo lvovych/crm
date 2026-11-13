@@ -1,4 +1,4 @@
-import { ruleLabels, ruleConditions, type Basis } from './rules'
+import { includesDiscounts, ruleLabels, ruleConditions, type Basis } from './rules'
 import { Prisma } from '@/generated/prisma/client'
 import type { TxClient } from '@/lib/db'
 import { zonedDayKey } from '@/lib/timezone'
@@ -118,8 +118,8 @@ export async function calculate(
     for (const labor of o.laborItems) {
       const amount = new D(labor.total).div(taxDivisor)
       if (labor.technicianId === employee && !labor.subcontract)
-        commission(labor.description, plan.labor, plan.afterDiscount ? amount.mul(factor) : amount)
-      margin = margin.plus(plan.marginAfterDiscount ? amount.mul(factor) : amount)
+        commission(labor.description, plan.labor, includesDiscounts('labor', plan) ? amount.mul(factor) : amount)
+      margin = margin.plus(includesDiscounts('orderMargin', plan) ? amount.mul(factor) : amount)
       if (labor.subcontract) margin = margin.minus(labor.subcontract.unitCost.mul(labor.hours))
     }
     for (const p of o.partItems) {
@@ -127,8 +127,8 @@ export async function calculate(
       const sale = new D(p.total).div(taxDivisor).mul(factor),
         gross = new D(p.unitPrice).mul(p.quantity).div(taxDivisor),
         cost = new D(p.unitCost).mul(p.quantity)
-      const selected = plan.afterDiscount ? sale : gross
-      const profit = (plan.marginAfterDiscount ? sale : gross).minus(cost)
+      const selected = includesDiscounts('partsSales', plan) ? sale : gross
+      const profit = (basis: 'partsMargin' | 'orderMargin') => (includesDiscounts(basis, plan) ? sale : gross).minus(cost)
       if (
         p.unitCost === 0 &&
         ((seller === employee && plan.partsMargin.gt(0)) ||
@@ -137,9 +137,9 @@ export async function calculate(
         throw new Error('Перевірте собівартість: ' + order + ' · ' + p.name)
       if (seller === employee) {
         commission(p.name + ' · продаж', plan.partsSales, selected)
-        commission(p.name + ' · маржа', plan.partsMargin, profit)
+        commission(p.name + ' · маржа', plan.partsMargin, profit('partsMargin'))
       }
-      margin = margin.plus(profit)
+      margin = margin.plus(profit('orderMargin'))
     }
     if (o.payAssignment?.ownerId === employee) {
       const base = plan.includeNegativeOrderMargin ? margin : D.max(0, margin)

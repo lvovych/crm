@@ -83,8 +83,11 @@ export async function addEmployeeRule(form: FormData) {
       await tx.technician.findFirstOrThrow({ where: { id: technicianId, organizationId } })
       const plan = await tx.payPlan.findFirst({ where: { technicianId }, orderBy: { effective: 'desc' } })
       if (plan?.[basis].gt(0)) throw new Error('Для цієї бази вже є правило.')
-      const settings = basis === 'orderMargin' ? { includeNegativeOrderMargin: form.has('includeNegativeOrderMargin') } : {}
-      const values = { [basis]: rate, ...settings }
+      const previous = plan?.discountsByBasis
+      const discountsByBasis = previous && typeof previous === 'object' && !Array.isArray(previous) ? previous : {}
+      const values = { [basis]: rate, ...(basis === 'monthly' ? {} : {
+        discountsByBasis: { ...discountsByBasis, [basis]: form.has('afterDiscount') },
+      }) }
       if (plan) await tx.payPlan.update({ where: { id: plan.id }, data: values })
       else await tx.payPlan.create({ data: {
         technicianId, effective: new Date(), frequency: 'weekly',
