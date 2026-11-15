@@ -38,6 +38,13 @@ export const operation = z.discriminatedUnion('op', [
     date: operationDate,
   }),
   z.object({
+    op: z.literal('adjustment'),
+    kind: z.enum(['adjustment_credit', 'adjustment_debt']),
+    amount: positive,
+    note: z.string().trim().min(1).max(500),
+    date: operationDate,
+  }),
+  z.object({
     op: z.literal('reconcile'),
     receipt: z.string().min(1),
     amount: money,
@@ -62,7 +69,7 @@ export async function applyOperation(
 ) {
   await lockSupplier(tx, organizationId, supplierId)
   const scope = { organizationId, supplierId }
-  if (d.op === 'payment' || d.op === 'opening') {
+  if (d.op === 'payment' || d.op === 'opening' || d.op === 'adjustment') {
     const old = await tx.supplierEntry.findFirst({
       where: { ...scope, id: requestId },
       include: { credits: { select: { debitId: true, id: true } } },

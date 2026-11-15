@@ -29,6 +29,7 @@ import {
   ShieldCheck,
   Ship,
   Users,
+  WalletCards,
 } from 'lucide-react'
 import { useServiceType } from '@/components/service-type-context'
 import {
@@ -85,7 +86,9 @@ const mutualItem = {
   icon: Scale,
   labelKey: 'mutualSettlements',
 } as const
+const financeItem = { href: '/finance', icon: WalletCards, labelKey: 'finance' } as const
 const allDrawerItems = [
+  financeItem,
   mutualItem,
   vehiclesItem,
   ...workshopItems,
@@ -99,8 +102,10 @@ export function MobileBottomNav({
   isSuperAdmin,
   tireHotelEnabled,
   mutualSettlementsEnabled = false,
+  financeEnabled = false,
 }: {
   isSuperAdmin?: boolean
+  financeEnabled?: boolean
   mutualSettlementsEnabled?: boolean
   tireHotelEnabled?: boolean
 }) {
@@ -110,6 +115,11 @@ export function MobileBottomNav({
   const visibleWorkshopItems = tireHotelEnabled
     ? [isMarine ? vesselsItem : vehiclesItem, ...workshopItems, tireHotelItem]
     : [isMarine ? vesselsItem : vehiclesItem, ...workshopItems]
+  const visibleBusinessItems = [
+    ...(mutualSettlementsEnabled ? [mutualItem] : []),
+    ...(financeEnabled ? [financeItem] : []),
+    ...businessItems,
+  ]
   const router = useRouter()
   const t = useTranslations('navigation.sidebar')
   const tScan = useTranslations('inventory.barcodeScan')
@@ -237,7 +247,7 @@ export function MobileBottomNav({
                 {t('business')}
               </p>
               <nav className="grid grid-cols-4 gap-2">
-                {(mutualSettlementsEnabled ? [mutualItem, ...businessItems] : businessItems).map(
+                {visibleBusinessItems.map(
                   ({ href, icon: Icon, labelKey }) => {
                     const isActive = pathname === href || pathname.startsWith(`${href}/`)
                     return (

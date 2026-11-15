@@ -60,8 +60,8 @@ async function check() {
             name: part.name,
             unit: 'шт',
             quantity: 5,
-            unitPrice: 200,
-            amount: 1000,
+            unitPrice: 230,
+            amount: 1150,
           },
           {
             position: 1,
@@ -85,6 +85,15 @@ async function check() {
   }
   let preserve = false
   try {
+    await assert.rejects(
+      db.$transaction((tx) =>
+        transitionReceipt(tx, organizationId, userId, receipt.id, 1, 'posted', '')
+      ),
+      /Оформіть товари та послуги окремими накладними/
+    )
+    await db.supplierReceiptLine.delete({
+      where: { receiptId_position: { receiptId: receipt.id, position: 1 } },
+    })
     const credit = randomUUID()
     await Promise.all([pay('300', undefined, credit), pay('300', undefined, credit)])
     assert.equal(await db.supplierEntry.count({ where: scope }), 1)

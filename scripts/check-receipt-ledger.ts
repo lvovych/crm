@@ -51,15 +51,6 @@ async function check() {
             unitPrice: 200,
             amount: 100,
           })),
-          {
-            position: 2,
-            kind: 'service',
-            name: 'delivery',
-            unit: 'service',
-            quantity: 1,
-            unitPrice: 150,
-            amount: 150,
-          },
         ],
       },
     },
@@ -107,7 +98,7 @@ async function check() {
     assert.deepEqual(await stock(), [3, 3])
     assert.equal(await movements(), 4)
     console.log(
-      'PASS: tenant isolation, fractional receipt, service line, retry, concurrent posting, rollback, work-order consumption and reversal.'
+      'PASS: tenant isolation, fractional receipt, retry, concurrent posting, rollback, work-order consumption and reversal.'
     )
   } finally {
     await db.$transaction(async (tx) => {

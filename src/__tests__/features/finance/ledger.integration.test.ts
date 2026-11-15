@@ -364,11 +364,14 @@ suite('cash ledger on real PostgreSQL', () => {
     const record = await db.serviceRecord.create({
       data: { organizationId: org, title: 'Linked payment' },
     })
+    const sales = await db.cashFlowCategory.create({
+      data: { organizationId: org, name: 'Продаж послуг / запчастин', direction: 'income' },
+    })
     const p = await db.$transaction(async (tx) => {
       const payment = await tx.payment.create({
         data: { serviceRecordId: record.id, amount: 10.01, amountExact: '10.01', method: 'cash' },
       })
-      await postMoney(tx as unknown as TxClient, org, 'actor', {
+      const document = await postMoney(tx as unknown as TxClient, org, 'actor', {
         requestId: randomUUID(),
         kind: 'customer_payment',
         date: '2026-01-12',
@@ -377,6 +380,7 @@ suite('cash ledger on real PostgreSQL', () => {
         paymentId: payment.id,
         note: 'Linked payment',
       })
+      expect(document.categoryId).toBe(sales.id)
       return payment
     })
     expect(p.amountExact?.toFixed(2)).toBe('10.01')

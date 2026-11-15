@@ -92,14 +92,14 @@ type Draft = {
   receivedDate: string
   lines: Line[]
 }
-const blank = (): Line => ({
-  kind: 'part',
+const blank = (kind: Line['kind'] = 'part'): Line => ({
+  kind,
   article: '',
   name: '',
   partId: null,
   quantity: '1',
   unitPrice: '0',
-  unit: 'шт',
+  unit: kind === 'service' ? 'посл.' : 'шт',
 })
 const selectClass = 'h-9 w-full rounded-md border border-foreground/25 bg-background px-2 text-sm'
 const money = (cents: bigint) =>
@@ -304,6 +304,7 @@ export default function ReceiptForm({
                     <select
                       className={selectClass}
                       value={l.kind}
+                      disabled={doc.lines.length > 1 && doc.lines.every(line => line.kind === l.kind)}
                       onChange={(e) =>
                         patch(i, {
                           kind: e.target.value as Line['kind'],
@@ -439,7 +440,7 @@ export default function ReceiptForm({
             className="border-foreground/30 bg-muted/50"
             onClick={() => {
               focusNewLine.current = true
-              setDoc((d) => ({ ...d, lines: [...d.lines, blank()] }))
+              setDoc((d) => ({ ...d, lines: [...d.lines, blank(d.lines[0]?.kind)] }))
             }}
           >
             <Plus className="size-4" />
