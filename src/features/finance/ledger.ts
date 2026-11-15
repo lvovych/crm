@@ -145,9 +145,32 @@ export async function postMoney(
       )
     }
   }
+  let categoryId = data.categoryId
+  if (data.kind === 'customer_payment' && data.paymentId) {
+    // The finance lock serializes the initial binding across payment entry points.
+    const systemCode = 'work_order_sales'
+    const bound = await tx.cashFlowCategory.findUnique({
+      where: { organizationId_systemCode: { organizationId: org, systemCode } },
+    })
+    if (bound && (bound.isArchived || bound.direction !== 'income'))
+      throw new Error('Перевірте статтю надходжень для оплат нарядів.')
+    if (bound) categoryId = bound.id
+    else {
+      const name = 'Продаж послуг / запчастин'
+      const matches = await tx.cashFlowCategory.findMany({
+        where: { organizationId: org, name, direction: 'income', isArchived: false, systemCode: null },
+      })
+      if (matches.length > 1) throw new Error('У довіднику кілька статей продажу з однаковою назвою.')
+      const category = matches.length
+        ? await tx.cashFlowCategory.update({ where: { id: matches[0].id }, data: { systemCode } })
+        : await tx.cashFlowCategory.create({ data: { organizationId: org, name, direction: 'income', systemCode } })
+      categoryId = category.id
+    }
+  }
   const document = await tx.financialDocument.create({
     data: {
       ...data,
+      categoryId,
       ...(existing ? { id: existing.id, createdAt: existing.createdAt } : {}),
       organizationId: org,
       fingerprint: hash,
