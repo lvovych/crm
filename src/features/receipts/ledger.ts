@@ -13,6 +13,11 @@ const date = z
   .string()
   .date()
   .transform((v) => new Date(v + 'T00:00:00Z'))
+const mixedReceiptMessage = 'Оформіть товари та послуги окремими накладними.'
+function sameKind(lines: { kind: string }[]) {
+  return lines.every(line => line.kind === lines[0]?.kind)
+}
+
 export const draftSchema = z.object({
   id: z.string().min(1).max(100),
   version: z.number().int().nonnegative(),
@@ -38,7 +43,7 @@ export const draftSchema = z.object({
       })
     )
     .min(1)
-    .max(200),
+    .max(200).refine(sameKind, mixedReceiptMessage),
 })
 
 export async function transitionReceipt(
@@ -56,6 +61,7 @@ export async function transitionReceipt(
   })
   if (receipt.status === target) return
   const posting = target === 'posted'
+  if (posting && !sameKind(receipt.lines)) throw new Error(mixedReceiptMessage)
   if (!posting && !reason.trim()) throw new Error('Вкажіть причину скасування.')
   if (
     posting &&
@@ -76,6 +82,7 @@ export async function transitionReceipt(
     },
   })
   if (!changed.count) throw new Error('Документ змінився. Оновіть сторінку.')
+  if (posting && !sameKind(receipt.lines)) throw new Error(mixedReceiptMessage)
   if (!posting && (await tx.receiptTransfer.count({ where: { line: { receiptId: id } } })))
     throw new Error(
       'Накладна має передавання в наряди. Скасування потребує окремої звірки руху товарів.'

@@ -146,24 +146,39 @@ export async function postMoney(
     }
   }
   let categoryId = data.categoryId
+  let automaticCategory: { systemCode: string; name: string; direction: string } | undefined
   if (data.kind === 'customer_payment' && data.paymentId) {
-    // The finance lock serializes the initial binding across payment entry points.
-    const systemCode = 'work_order_sales'
+    automaticCategory = { systemCode: 'work_order_sales', name: 'Продаж послуг / запчастин', direction: 'income' }
+  }
+  if (data.kind === 'supplier_payment' && data.supplierEntryId) {
+    const kinds = await tx.supplierReceiptLine.findMany({
+      where: { receipt: { organizationId: org, settlement: {
+        debits: { some: { creditId: data.supplierEntryId, reversedAt: null } },
+      } } },
+      select: { kind: true }, distinct: ['kind'],
+    })
+    if (kinds.length > 1) throw new Error('Проведіть оплату товарів і послуг окремо.')
+    if (kinds[0]?.kind === 'part')
+      automaticCategory = { systemCode: 'purchase_parts', name: 'Закупівля запчастин', direction: 'expense' }
+    if (kinds[0]?.kind === 'service')
+      automaticCategory = { systemCode: 'purchase_services', name: 'Закупівля послуг', direction: 'expense' }
+  }
+  if (automaticCategory) {
+    const { systemCode, name, direction } = automaticCategory
     const bound = await tx.cashFlowCategory.findUnique({
       where: { organizationId_systemCode: { organizationId: org, systemCode } },
     })
-    if (bound && (bound.isArchived || bound.direction !== 'income'))
-      throw new Error('Перевірте статтю надходжень для оплат нарядів.')
+    if (bound && (bound.isArchived || bound.direction !== direction))
+      throw new Error('Перевірте статтю руху коштів: ' + name + '.')
     if (bound) categoryId = bound.id
     else {
-      const name = 'Продаж послуг / запчастин'
       const matches = await tx.cashFlowCategory.findMany({
-        where: { organizationId: org, name, direction: 'income', isArchived: false, systemCode: null },
+        where: { organizationId: org, name, direction, isArchived: false, systemCode: null },
       })
-      if (matches.length > 1) throw new Error('У довіднику кілька статей продажу з однаковою назвою.')
+      if (matches.length > 1) throw new Error('У довіднику кілька статей з однаковою назвою.')
       const category = matches.length
         ? await tx.cashFlowCategory.update({ where: { id: matches[0].id }, data: { systemCode } })
-        : await tx.cashFlowCategory.create({ data: { organizationId: org, name, direction: 'income', systemCode } })
+        : await tx.cashFlowCategory.create({ data: { organizationId: org, name, direction, systemCode } })
       categoryId = category.id
     }
   }

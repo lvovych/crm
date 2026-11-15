@@ -222,6 +222,17 @@ describe('receipt failures and service entry', () => {
     expect(push).not.toHaveBeenCalled()
     expect(screen.getByLabelText('Артикул')).toHaveValue('VD1105')
   })
+  it('keeps additional service lines on the service receipt', () => {
+    render(<ReceiptForm options={options} initial={initial} canPost />)
+    fireEvent.change(screen.getByLabelText('Тип'), { target: { value: 'service' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Додати позицію' }))
+    const types = screen.getAllByLabelText('Тип')
+    expect(types).toHaveLength(2)
+    for (const type of types) {
+      expect(type).toHaveValue('service')
+      expect(type).toBeDisabled()
+    }
+  })
   it('switches a linked part to a service without retaining inventory identity', async () => {
     render(<ReceiptForm options={options} initial={initial} canPost />)
     fireEvent.change(screen.getByLabelText('Артикул'), { target: { value: 'VD1105' } })
