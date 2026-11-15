@@ -1187,7 +1187,7 @@ export function FinanceClient({
                       type="date"
                       required
                       defaultValue={draft?.date ?? today}
-                      max={today}
+                      max={modal === 'opening' ? undefined : today}
                     />
                   </Field>
                 )}
