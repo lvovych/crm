@@ -75,6 +75,7 @@ vi.mock('@/features/inventory/Lib/onInventoryChanged', () => ({ onInventoryChang
 vi.mock('@/features/invoices/Lib/assembleInvoicePrint', () => ({
   assembleInvoicePrint: vi.fn(async () => null),
 }))
+import { recordSettlement } from '@/features/settlements/actions'
 import { postMoney } from '@/features/finance/ledger'
 import {
   saveFinanceDirectory,
@@ -494,6 +495,39 @@ const url = process.env.FINANCE_TEST_DATABASE_URL
         }),
       ])
     )
+  })
+  it.each([
+    ['part', 'purchase_parts', 'Закупівля запчастин'],
+    ['service', 'purchase_services', 'Закупівля послуг'],
+  ])('classifies a payment against a %s receipt', async (kind, systemCode, name) => {
+    vi.stubEnv('SUPPLIER_SETTLEMENT_ORGANIZATIONS', state.org)
+    try {
+      const supplier = await state.db.counterparty.create({
+        data: { organizationId: state.org, name: randomUUID(), createdById: state.actor,
+          supplierProfile: { create: {} } },
+      })
+      const receipt = await state.db.supplierReceipt.create({
+        data: { organizationId: state.org, supplierId: supplier.id, createdById: state.actor,
+          number: randomUUID(), documentDate: new Date(today), receivedDate: new Date(today),
+          status: 'posted', lines: { create: { position: 0, kind, name: 'Test', unit: 'unit',
+            quantity: 1, unitPrice: 1, amount: 1 } },
+          settlement: { create: { organizationId: state.org, supplierId: supplier.id,
+            kind: 'receipt', amount: 1, date: new Date(today), createdById: state.actor } },
+        }, include: { settlement: true },
+      })
+      const requestId = randomUUID()
+      const result = await recordSettlement(supplier.id, requestId, {
+        op: 'payment', method: 'cash', amount: '1.00', date: today, target: receipt.settlement!.id,
+        moneyAccountId: cash, reference: '', note: '',
+      })
+      expect(result.success, result.error).toBe(true)
+      const document = await state.db.financialDocument.findUniqueOrThrow({
+        where: { supplierEntryId: requestId }, include: { category: true },
+      })
+      expect(document.category).toMatchObject({ systemCode, name, direction: 'expense' })
+    } finally {
+      vi.unstubAllEnvs()
+    }
   })
   it('allows account configuration without disclosing ledger or granting money operations', async () => {
     state.admin = false

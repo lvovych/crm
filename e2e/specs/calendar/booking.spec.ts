@@ -1,4 +1,5 @@
 import { expect, type Page, test } from '@playwright/test'
+import { zonedDate } from '../../../src/lib/timezone'
 import { settle } from '../../support/hydration'
 import { setWorkshopClock } from '../../support/settings'
 import { openSchedule, saveWorkOrder, setTitle } from '../../support/work-order'
@@ -174,19 +175,21 @@ test.describe('booking a job from the calendar', () => {
 
     await page.goto(jobUrl)
     await settle(page)
-    const shown = await page.locator('body').innerText()
-    expect(
-      shown.includes(offered),
-      `the start reads differently in another timezone (was ${offered})`
-    ).toBe(false)
+    await openSchedule(page)
+    const [year, month, day] = EMPTY_DAY.split('-').map(Number)
+    const [hour, minute] = offered.replace('.', ':').split(':').map(Number)
+    const booked = zonedDate(year, month, day, hour, minute, FAR_AWAY)
+    const localTime = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'America/Los_Angeles', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+    }).format(booked)
+    const start = page.getByText('Start Time', { exact: true }).locator('..').getByRole('button')
+    await expect(start).toContainText(localTime)
 
     await setWorkshopClock(page, { timezone: FAR_AWAY })
     await page.goto(jobUrl)
     await settle(page)
     // And back again: the stored instant never moved.
     await openSchedule(page)
-    await expect(
-      page.getByText('Start Time', { exact: true }).locator('..').getByRole('button')
-    ).toBeVisible()
+    await expect(start).toContainText(offered.replace('.', ':'))
   })
 })
