@@ -1,3 +1,4 @@
+import { OrderTeam } from '@/features/payroll/OrderTeam'
 import { ServiceRecordPage } from '@/features/vehicles/Components/service-page/ServiceRecordPage'
 
 export default async function ServiceDetailPage({
@@ -11,5 +12,10 @@ export default async function ServiceDetailPage({
   const sp = await searchParams
   const initialTab = typeof sp.tab === 'string' ? sp.tab : undefined
 
-  return <ServiceRecordPage serviceId={serviceId} initialTab={initialTab} />
+  return (
+    <>
+      <ServiceRecordPage serviceId={serviceId} initialTab={initialTab} />
+      <OrderTeam id={serviceId} />
+    </>
+  )
 }

@@ -60,9 +60,8 @@ async function invite(page: Page, email: string, role?: 'Admin') {
   await settle(page)
   await expect(async () => {
     await page.getByRole('button', { name: 'Add', exact: true }).first().click()
-    await expect(page.getByText('Someone in the office')).toBeVisible({ timeout: 2_000 })
+    await expect(page.locator('#member-email')).toBeVisible({ timeout: 2_000 })
   }).toPass({ timeout: 30_000 })
-  await page.getByText('Someone in the office').click()
   await page.locator('#member-email').fill(email)
   if (role) {
     const dialog = page.getByRole('dialog').filter({ has: page.locator('#member-email') })

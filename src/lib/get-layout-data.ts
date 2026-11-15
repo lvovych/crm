@@ -8,6 +8,7 @@ type AuthResult =
   | { status: 'no-organization' }
   | {
       status: 'ok'
+      sidebarUser: { name: string; email: string }
       userId: string
       organizationId: string
       /** When the active workshop signed up, for age-gated announcements. */
@@ -40,6 +41,8 @@ export async function getLayoutData(): Promise<AuthResult> {
     db.user.findUnique({
       where: { id: session.user.id },
       select: {
+        name: true,
+        email: true,
         isSuperAdmin: true,
         emailVerified: true,
         lastSeenVersion: true,
@@ -91,6 +94,7 @@ export async function getLayoutData(): Promise<AuthResult> {
 
   return {
     status: 'ok',
+    sidebarUser: { name: user.name ?? '', email: user.email },
     userId: session.user.id,
     organizationId: membership?.organizationId ?? '',
     organizationCreatedAt:

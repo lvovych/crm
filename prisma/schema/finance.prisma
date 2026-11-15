@@ -67,6 +67,7 @@ model CashFlowCategory {
   @@map("cash_flow_categories")
 }
 model FinancialDocument {
+  staffPayment StaffPayment?
   id String @id @default(cuid())
   organizationId String
   organization Organization @relation(fields:[organizationId],references:[id],onDelete:Restrict)

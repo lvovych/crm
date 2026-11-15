@@ -160,6 +160,10 @@
     "suppliers": "Постачальники",
     "directories": "Довідники",
     "finance": "Каси та рахунки",
+    "myPay": "Моя зарплата",
+    "payroll": "Зарплата",
+    "staffSettlements": "Розрахунки з працівниками",
+    "employees": "Працівники",
     "mutualSettlements": "Взаєморозрахунки"
   }
 }

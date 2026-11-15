@@ -108,6 +108,7 @@ export const BACKUP_ENTITIES: readonly BackupEntity[] = [
     restore: 'replace',
     clearOrder: 59,
   },
+  { model: 'PayAssignment', key: 'payAssignments', option: 'vehicles', restore: 'replace', clearOrder: 1 },
   { model: 'SubcontractWork', key: 'subcontractWork', option: 'inventory', restore: 'replace', clearOrder: 1 },
   {
     model: 'ReceiptTransfer',
@@ -444,6 +445,7 @@ export const BACKUP_ENTITIES: readonly BackupEntity[] = [
  * oversight, and the next person reading this needs to tell them apart.
  */
 export const EXCLUDED_MODELS: Readonly<Record<string, string>> = {
+  SalaryRule: 'Retired shared salary catalog. Employee plans store the active rates.',
   CustomerLedgerDocument:
     'Exported with the immutable finance envelope; restore only through a consistent PostgreSQL snapshot.',
   CustomerLedgerEvent:

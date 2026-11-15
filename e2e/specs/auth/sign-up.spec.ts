@@ -47,7 +47,6 @@ test('an invited colleague signs up straight into the workshop', async ({ page, 
   const ownerPage = await owner.newPage()
   await ownerPage.goto('/settings/team')
   await ownerPage.getByRole('button', { name: 'Add', exact: true }).click()
-  await ownerPage.getByText('Someone in the office').click()
   await ownerPage.locator('#member-email').fill(invitee)
   await ownerPage.getByRole('button', { name: 'Invite', exact: true }).click()
   await expect(ownerPage.getByText(invitee).first()).toBeVisible()

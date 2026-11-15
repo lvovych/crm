@@ -1,4 +1,7 @@
 model ServiceRecord {
+  payAssignment PayAssignment?
+  payrollEarnedAt DateTime?
+  @@index([organizationId,payrollEarnedAt],map:"service_records_payroll_period")
   customerLedgerTracked Boolean @default(false)
   ledgerActorId String?
   ledgerActorName String?
@@ -298,6 +301,8 @@ model ServiceAttachment {
 }
 
 model ServicePart {
+  payrollSellerId String?
+  payrollSeller Technician? @relation(fields:[payrollSellerId],references:[id],onDelete:Restrict)
   discountType String @default("none")
   discountValue Float @default(0)
   sortOrder Int @default(0)

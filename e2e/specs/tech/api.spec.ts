@@ -139,18 +139,14 @@ test.describe('the technician app', () => {
   })
 
   test('the desk adds a technician and reads them a code', async ({ page }) => {
+    await page.goto('/employees')
+    await page.getByText('Додати працівника', { exact: true }).click()
+    await page.getByPlaceholder('Ім’я та прізвище').fill(TECHNICIAN)
+    await page.getByRole('button', { name: 'Створити' }).click()
+    await expect(page.getByRole('link', { name: TECHNICIAN })).toBeVisible()
     await openTeamSettings(page)
-
-    // One Add button, then a choice: the two kinds of person are set up
-    // differently, and a mechanic is the one who gets the app.
-    await expect(async () => {
-      await page.getByRole('button', { name: 'Add', exact: true }).first().click()
-      await expect(page.getByText('A mechanic')).toBeVisible({ timeout: 2_000 })
-    }).toPass({ timeout: 30_000 })
-    await page.getByText('A mechanic').click()
-
-    await expect(page.getByPlaceholder('Their full name')).toBeVisible({ timeout: 10_000 })
-    await page.getByPlaceholder('Their full name').fill(TECHNICIAN)
+    const employee = page.getByText(TECHNICIAN, { exact: true })
+    await employee.locator('../..').getByRole('button', { name: 'Give them the app' }).click()
 
     // A mobile number cannot be read without knowing which country's it is,
     // and this workshop has never said. Asked once, then remembered.
@@ -167,7 +163,7 @@ test.describe('the technician app', () => {
     }
 
     await page.getByPlaceholder('The phone in their pocket').fill(PHONE)
-    await page.getByRole('button', { name: 'Create', exact: true }).click()
+    await page.getByRole('button', { name: 'Create their account', exact: true }).click()
 
     // The dialog turns into the setup instructions, with the code printed for
     // a technician who is not standing at the desk.

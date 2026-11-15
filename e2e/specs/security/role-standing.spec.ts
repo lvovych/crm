@@ -59,9 +59,8 @@ async function joinTeam(browser: Browser, email: string, name: string) {
   await settle(page)
   await expect(async () => {
     await page.getByRole('button', { name: 'Add', exact: true }).first().click()
-    await expect(page.getByText('Someone in the office')).toBeVisible({ timeout: 2_000 })
+    await expect(page.locator('#member-email')).toBeVisible({ timeout: 2_000 })
   }).toPass({ timeout: 30_000 })
-  await page.getByText('Someone in the office').click()
   await page.locator('#member-email').fill(email)
   await page.getByRole('button', { name: 'Invite', exact: true }).click()
   await expect(page.getByText(email).first()).toBeVisible({ timeout: 30_000 })

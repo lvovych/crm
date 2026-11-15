@@ -3,7 +3,7 @@ import { headers } from 'next/headers'
 import { getCachedSession, getCachedMembership } from './cached-session'
 import { db } from './db'
 import type { PermissionInput } from './permissions'
-import { hasAllPermissions } from './permissions'
+import { PermissionSubject, hasAllPermissions } from './permissions'
 import { logAudit } from '@/lib/audit'
 import type { AuditEvent } from '@/lib/audit'
 import type { FeatureGatedError } from '@/lib/features'
@@ -32,6 +32,7 @@ export type AuthContext = {
   organizationId: string
   role: string
   isSuperAdmin: boolean
+  isOrganizationOwner?: boolean
   isAdmin: boolean
 }
 
@@ -87,7 +88,12 @@ export async function withAuth<T>(
       organizationId: membership.organizationId,
       role: isSuperAdmin ? 'super_admin' : (membership?.role ?? 'member'),
       isSuperAdmin,
+      isOrganizationOwner: membership.role === 'owner',
       isAdmin: isSuperAdmin || isOwnerOrAdmin || roleIsAdmin,
+    }
+
+    if (!ctx.isOrganizationOwner && options.requiredPermissions?.some(p => p.subject === PermissionSubject.PAYROLL)) {
+      return { success: false, error: 'Insufficient permissions', forbidden: true }
     }
 
     // Check permissions if required (super admins bypass all permission checks)

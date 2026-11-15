@@ -28,7 +28,6 @@ import { createRole } from '@/features/team/Actions/createRole'
 import { updateRole } from '@/features/team/Actions/updateRole'
 import { deleteRole } from '@/features/team/Actions/deleteRole'
 import { assignRole } from '@/features/team/Actions/assignRole'
-import { setMemberTechnician } from '@/features/team/Actions/setMemberTechnician'
 import { createDefaultRoles } from '@/features/team/Actions/createDefaultRoles'
 import { AddPersonDialog } from '@/features/team/Components/AddPersonDialog'
 import {
@@ -40,7 +39,6 @@ import {
 import { AppSetupCodeDialog } from '@/features/team/Components/AppSetupCodeDialog'
 import { GiveAppDialog } from '@/features/team/Components/GiveAppDialog'
 import { removeTechnicianAccess } from '@/features/team/Actions/removeTechnicianAccess'
-import { deleteTechnician } from '@/features/workboard/Actions/technicianActions'
 import { permissionGroups, PermissionAction } from '@/lib/permissions'
 
 /**
@@ -354,14 +352,7 @@ export function TeamSettings({
    * This makes the record first if it is missing, then hands over the code.
    */
   const handleSetUpApp = async (member: Member) => {
-    if (!technicians.has(member.user.id)) {
-      const result = await setMemberTechnician({ userId: member.user.id, enabled: true })
-      if (!result.success) {
-        modal.open('error', 'Error', result.error || t('team.technicianFailed'))
-        return
-      }
-      router.refresh()
-    }
+    if (!technicians.has(member.user.id)) return
     setSettingUp({ userId: member.user.id, name: member.user.name || member.user.email })
   }
 
@@ -383,8 +374,7 @@ export function TeamSettings({
     })
     if (!ok) return
 
-    await removeTechnicianAccess({ userId: member.user.id })
-    const result = await setMemberTechnician({ userId: member.user.id, enabled: false })
+    const result = await removeTechnicianAccess({ userId: member.user.id })
     if (result.success) {
       toast.success(t('team.revokeTechnicianDone', { name: member.user.name || member.user.email }))
       router.refresh()
@@ -485,23 +475,6 @@ export function TeamSettings({
    * Adding somebody happens here, so removing them should too, instead of
    * sending people to a scheduling screen to finish the job.
    */
-  const handleRemoveStandalone = async (tech: { id: string; name: string }) => {
-    const ok = await confirm({
-      title: t('team.removeBoardOnlyTitle', { name: tech.name }),
-      description: t('team.removeBoardOnlyBody', { name: tech.name }),
-      confirmLabel: t('team.removeButton'),
-      destructive: true,
-    })
-    if (!ok) return
-    const result = await deleteTechnician(tech.id)
-    if (result.success) {
-      toast.success(t('team.removeBoardOnlyDone', { name: tech.name }))
-      router.refresh()
-    } else {
-      modal.open('error', 'Error', result.error || t('team.failedRemoveMember'))
-    }
-  }
-
   if (!organization) {
     return (
       <div className="space-y-6">
@@ -622,7 +595,7 @@ export function TeamSettings({
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                          disabled={!canUseApp(member)}
+                          disabled={!technicians.has(member.user.id) || !canUseApp(member)}
                           onClick={() => handleSetUpApp(member)}
                           aria-label={t('team.giveApp')}
                         >
@@ -724,15 +697,6 @@ export function TeamSettings({
                     >
                       <Smartphone className="mr-1 h-4 w-4" />
                       {t('team.giveApp')}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={t('team.removeButton')}
-                      className="text-muted-foreground hover:text-destructive"
-                      onClick={() => handleRemoveStandalone(tech)}
-                    >
-                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </>
                 )}
@@ -1069,6 +1033,7 @@ export function TeamSettings({
           production; in development the origin is localhost, which is an
           address the technician's phone cannot reach. */}
       <AddPersonDialog
+        accountOnly
         open={adding}
         onOpenChange={setAdding}
         workshopUrl={workshopUrl}

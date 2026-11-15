@@ -2,12 +2,13 @@ import Link from 'next/link'
 import { PageHeader } from '@/components/page-header'
 import { withAuth } from '@/lib/with-auth'
 import { getCachedMembership } from '@/lib/cached-session'
-import { Users, Car, Ship, Layers, Package, Building2 } from 'lucide-react'
+import { UserRound, Users, Car, Ship, Layers, Package, Building2 } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 import { supplierDirectoryEnabled } from '@/features/suppliers/Lib/enabled'
 import { getLayoutData } from '@/lib/get-layout-data'
 
 const directories = [
+  { title: 'Працівники', description: 'Картки працівників майстерні.', href: '/employees', subject: 'employees', icon: UserRound },
   {
     title: 'Постачальники',
     description: 'Контакти, реквізити та документи постачальників.',
@@ -55,6 +56,7 @@ export default async function Page() {
   const [t, layout] = await Promise.all([getTranslations('navigation'), getLayoutData()])
   const marine = layout.status === 'ok' && layout.serviceType === 'marine'
   const titles: Record<string, string> = {
+    '/employees': t('sidebar.employees'),
     '/suppliers': t('sidebar.suppliers'),
     '/customers': t('sidebar.customers'),
     '/vehicles': t(marine ? 'sidebar.vessels' : 'sidebar.vehicles'),
@@ -100,7 +102,7 @@ export default async function Page() {
                 )}
                 <h2 className="text-lg font-semibold">{titles[d.href]}</h2>
                 <p className="mt-2 text-muted-foreground">
-                  {t(
+                  {d.subject === 'employees' ? d.description : t(
                     'directoryContent.' +
                       (d.href === '/vehicles' && marine
                         ? 'vesselsDescription'
