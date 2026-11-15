@@ -45,9 +45,8 @@ test.describe('a member with no role', () => {
     // anything until an admin says otherwise.
     await expect(async () => {
       await ownerPage.getByRole('button', { name: 'Add', exact: true }).first().click()
-      await expect(ownerPage.getByText('Someone in the office')).toBeVisible({ timeout: 2_000 })
+      await expect(ownerPage.locator('#member-email')).toBeVisible({ timeout: 2_000 })
     }).toPass({ timeout: 30_000 })
-    await ownerPage.getByText('Someone in the office').click()
     await ownerPage.locator('#member-email').fill(COLLEAGUE)
     await ownerPage.getByRole('button', { name: 'Invite', exact: true }).click()
     await expect(ownerPage.getByText(COLLEAGUE).first()).toBeVisible({ timeout: 30_000 })

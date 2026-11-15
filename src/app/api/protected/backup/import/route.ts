@@ -160,6 +160,7 @@ async function importServiceRecordTree(
       publicToken: (sr.publicToken as string) || null,
       // Only a technician this import restored: a job pointing at one the
       // backup does not carry would be refused, and take the import with it.
+      payrollEarnedAt: sr.payrollEarnedAt ? toSafeDate(sr.payrollEarnedAt as string) : null,
       technicianId: keptReference(sr.technicianId, opts.technicianIds),
       workBayId: (sr.workBayId as string) || null,
       // Only a status this import restored. A backup made without the workshop
@@ -207,6 +208,7 @@ async function importServiceRecordTree(
         markupPercent: (p.markupPercent as number) || 0,
         // Inventory parts are restored earlier in this transaction with their
         // ids preserved, so the stock link survives a restore verbatim.
+        payrollSellerId: keptReference(p.payrollSellerId, opts.technicianIds),
         inventoryPartId: (p.inventoryPartId as string) || null,
         serviceRecordId: sr.id as string,
       })),
@@ -499,6 +501,7 @@ export async function POST(request: NextRequest) {
         Customer: () => tx.customer.deleteMany({ where: { organizationId } }),
         LaborPreset: () => tx.laborPreset.deleteMany({ where: { organizationId } }),
         ConditionMarkType: () => tx.conditionMarkType.deleteMany({ where: { organizationId } }),
+        PayAssignment: () => tx.payAssignment.deleteMany({ where: { order: { organizationId } } }),
         SubcontractWork: () => tx.subcontractWork.deleteMany({ where: {labor: {serviceRecord: {organizationId}}} }),
         Webhook: () => tx.webhook.deleteMany({ where: { organizationId } }),
         ReportSchedule: () => tx.reportSchedule.deleteMany({ where: { organizationId } }),
@@ -684,6 +687,11 @@ export async function POST(request: NextRequest) {
             (t: Record<string, unknown>) => ({
               id: t.id as string,
               name: t.name as string,
+              givenName: (t.givenName as string) || null,
+              familyName: (t.familyName as string) || null,
+              workRoles: Array.isArray(t.workRoles) ? t.workRoles : ['mechanic'],
+              hiredOn: t.hiredOn ? toSafeDate(t.hiredOn as string) : null,
+              dismissedOn: t.dismissedOn ? toSafeDate(t.dismissedOn as string) : null,
               color: (t.color as string) || '#3b82f6',
               isActive: t.isActive !== false,
               sortOrder: (t.sortOrder as number) || 0,
@@ -1522,6 +1530,16 @@ export async function POST(request: NextRequest) {
       // 10b. The jobs and quotes raised from an inspection point back at it.
       // Both were restored before the inspections existed, so the link is
       // written now, and only where the inspection came back with the backup.
+      if (Array.isArray(data.payAssignments)) {
+        for (const row of data.payAssignments as {orderId: string; partsId: string | null; ownerId: string | null}[]) {
+          await tx.serviceRecord.findFirstOrThrow({ where: { id: row.orderId, organizationId } })
+          await tx.payAssignment.create({ data: {
+            orderId: row.orderId,
+            partsId: keptReference(row.partsId, technicianIds),
+            ownerId: keptReference(row.ownerId, technicianIds),
+          } })
+        }
+      }
       if (data.subcontractWork) {
         for (const row of data.subcontractWork as {laborId:string;supplierId:string;unitCost:string;receiptLineId:string|null}[]) {
           await tx.serviceLabor.findFirstOrThrow({where:{id:row.laborId,serviceRecord:{organizationId}}})

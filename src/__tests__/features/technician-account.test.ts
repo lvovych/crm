@@ -346,10 +346,10 @@ describe('removing a technician', () => {
     ] as never)
   })
 
-  it('deactivates rather than deletes, so the work still has an author', async () => {
+  it('unlinks CRM access while keeping the employee and their work', async () => {
     await removeTechnicianAccess({ userId: 'user-1' })
     expect(db.technician.update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: { isActive: false } })
+      expect.objectContaining({ data: { userId: null } })
     )
   })
 

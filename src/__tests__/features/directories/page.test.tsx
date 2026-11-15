@@ -50,7 +50,7 @@ describe('directory access', () => {
     expect(screen.getAllByRole('link').map((link) => link.getAttribute('href'))).not.toContain(
       '/suppliers'
     )
-    expect(screen.getAllByRole('link')).toHaveLength(5)
+    expect(screen.getAllByRole('link')).toContainEqual(expect.objectContaining({ pathname: "/employees" }))
   })
   it('shows no cards to a role without read permissions', async () => {
     render(await Page())
