@@ -49,7 +49,7 @@ export async function recordSettlement(supplierId: string, requestId: string, ra
   const action =
     d.op === 'reverse'
       ? A.DELETE
-      : ['opening', 'reconcile', 'due'].includes(d.op)
+      : ['opening', 'reconcile', 'due', 'adjustment'].includes(d.op)
         ? A.MANAGE
         : A.CREATE
   return access(action, async (ctx) => {

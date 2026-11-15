@@ -17,6 +17,8 @@ type Rights = Awaited<ReturnType<typeof settlementAccess>>
 const kinds: Record<string, string> = {
   receipt: 'Накладна',
   payment: 'Оплата',
+  adjustment_debt: 'Коригування · збільшення нашого боргу',
+  adjustment_credit: 'Коригування · зменшення нашого боргу',
   opening_credit: 'Початковий аванс',
   opening_debt: 'Початковий борг',
 }
@@ -316,6 +318,23 @@ export function Account({
               Підстава звірки
               <input required name="note" className={'block ' + box} />
             </label>
+          </Operation>
+        </details>
+      )}
+      {live && rights.manage && !receiptId && (
+        <details className="rounded border p-3">
+          <summary>Коригування взаєморозрахунків</summary>
+          <p className="my-2 text-sm">Вкажіть різницю за звіркою. Коригування змінює сальдо постачальника без руху грошей у касі.</p>
+          <Operation supplier={a.id} label="Провести коригування" build={f => ({
+            op: 'adjustment', kind: field(f, 'kind'), amount: field(f, 'amount'),
+            date: field(f, 'date'), note: field(f, 'note'),
+          })}>
+            <label>Дія<select name="kind" className={box}>
+              <option value="adjustment_credit">Зменшити наш борг</option>
+              <option value="adjustment_debt">Збільшити наш борг</option>
+            </select></label>
+            <Amount /><DateField />
+            <label>Підстава коригування<input name="note" className={box} required maxLength={500} /></label>
           </Operation>
         </details>
       )}

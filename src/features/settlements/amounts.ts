@@ -9,7 +9,7 @@ export function hryvnia(n: bigint) {
   return n < BigInt(0) ? '-' + decimalAmount(-n) : decimalAmount(n)
 }
 export function isCredit(kind: string) {
-  return kind === 'payment' || kind === 'opening_credit'
+  return kind === 'payment' || kind === 'opening_credit' || kind === 'adjustment_credit'
 }
 export function day(date: Date) {
   return date.toISOString().slice(0, 10)
