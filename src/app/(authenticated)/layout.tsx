@@ -383,6 +383,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
               </DateSettingsProvider>
             </SidebarProvider>
             <MobileBottomNav
+              financeEnabled={isOwnerOrAdmin || visibleSubjects.includes(PermissionSubject.FINANCE)}
               mutualSettlementsEnabled={
                 !visibleSubjects ||
                 visibleSubjects.includes('billing') ||

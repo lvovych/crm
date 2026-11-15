@@ -59,7 +59,7 @@ describe('MobileBottomNav', () => {
 it('shows settlements in More only when access is granted', () => {
   const { unmount } = render(
     <ServiceTypeProvider>
-      <MobileBottomNav mutualSettlementsEnabled />
+      <MobileBottomNav mutualSettlementsEnabled financeEnabled />
     </ServiceTypeProvider>
   )
   fireEvent.click(screen.getByRole('button', { name: 'More' }))
@@ -67,8 +67,10 @@ it('shows settlements in More only when access is granted', () => {
     'href',
     '/mutual-settlements'
   )
+  expect(screen.getByRole('link', { name: 'Cash accounts' })).toHaveAttribute('href', '/finance')
   unmount()
   renderNav()
   fireEvent.click(screen.getByRole('button', { name: 'More' }))
+  expect(screen.queryByRole('link', { name: 'Cash accounts' })).not.toBeInTheDocument()
   expect(screen.queryByRole('link', { name: 'Settlements' })).not.toBeInTheDocument()
 })
