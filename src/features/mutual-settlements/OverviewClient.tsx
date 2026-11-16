@@ -174,7 +174,7 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
   const [selected, setSelected] = useState<PartyRow | null>(null)
   const opener = useRef<HTMLButtonElement | null>(null)
   const [filtersOpen, setFiltersOpen] = useState(false)
-  const debtLabel = view === 'supplier' ? 'Ми винні' : tracked ? 'Клієнт винен' : 'Попередній борг'
+  const debtLabel = view === 'supplier' ? 'Загальний борг' : tracked ? 'Клієнт винен' : 'Попередній борг'
   const advanceLabel = view === 'supplier' ? 'Наш аванс' : 'Аванс клієнта'
   const relevant = (view === 'review' ? [...reviewMap.values()] : sourceParties).filter(
     (p) =>
@@ -488,7 +488,7 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
                   {[
                     [view === 'supplier' ? 'Постачальник' : 'Клієнт', 'name'],
                     [debtLabel, 'debt'],
-                    ['Із них прострочено', 'overdue'],
+                    [view === 'supplier' ? 'Прострочено' : 'Із них прострочено', 'overdue'],
                   ].map(([label, key]) => (
                     <th
                       key={key}
@@ -508,13 +508,13 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
                       </button>
                     </th>
                   ))}
-                  <th className="px-3 text-right">{advanceLabel}</th>
-                  <th className="px-3 text-right">Документи</th>
+                  {view !== 'supplier' && <th className="px-3 text-right">{advanceLabel}</th>}
+                  {view !== 'supplier' && <th className="px-3 text-right">Документи</th>}
                 </tr>
               </thead>
               <tbody className="block md:table-row-group">
                 {shown.map((p) => {
-                  const advanceOnly = p.debt === zero && p.advance !== zero
+                  const advanceOnly = view !== 'supplier' && p.debt === zero && p.advance !== zero
                   const excluded = p.documents.filter((d) => d.reason).length
                   return (
                     <tr
@@ -527,7 +527,11 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
                       }}
                     >
                       <td className="min-w-0 break-words font-medium md:px-3 md:py-2">
-                        {p.name}
+                        {view === 'supplier' ? (
+                          <button type="button" className="text-left underline" aria-label={`Документи: ${p.name}`}>
+                            {p.name}
+                          </button>
+                        ) : p.name}
                         {p.archived && <small> · Архівний</small>}
                         {excluded > 0 && (
                           <small className="block font-normal text-amber-600">
@@ -542,11 +546,12 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
                         <Amount value={p.debt} />
                       </td>
                       <td
-                        className={`text-right md:px-3 ${p.overdue === zero ? 'hidden md:table-cell' : 'col-span-2'}`}
+                        className={`text-right md:px-3 ${p.overdue === zero && view !== 'supplier' ? 'hidden md:table-cell' : 'col-span-2'}`}
                       >
                         <small className="mr-1 md:hidden">Прострочено</small>
-                        {p.overdue === zero ? '—' : <Amount value={p.overdue} />}
+                        {p.overdue === zero && view !== 'supplier' ? '—' : <Amount value={p.overdue} />}
                       </td>
+                      {view !== 'supplier' && <>
                       <td
                         className={`text-right md:px-3 ${p.advance === zero ? 'hidden md:table-cell' : advanceOnly ? 'font-semibold' : 'col-span-2'}`}
                       >
@@ -564,6 +569,7 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
                           <ChevronRight className="size-4" />
                         </button>
                       </td>
+                      </>}
                     </tr>
                   )
                 })}

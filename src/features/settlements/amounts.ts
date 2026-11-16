@@ -11,6 +11,27 @@ export function hryvnia(n: bigint) {
 export function isCredit(kind: string) {
   return kind === 'payment' || kind === 'opening_credit' || kind === 'adjustment_credit'
 }
+export function supplierTotals(rows: { kind: string; open: string; overdue: boolean }[]) {
+  let obligations = BigInt(0)
+  let credits = BigInt(0)
+  let advance = BigInt(0)
+  let overdue = BigInt(0)
+  for (const row of rows) {
+    const amount = kopecks(row.open)
+    if (isCredit(row.kind)) credits += amount
+    else obligations += amount
+    if (row.kind === 'payment' || row.kind === 'opening_credit') advance += amount
+    if (row.overdue) overdue += amount
+  }
+  const net = obligations - credits
+  // For this supplier total, cover past-due obligations first with unallocated credits.
+  return {
+    debt: hryvnia(net > 0 ? net : BigInt(0)),
+    net: hryvnia(net),
+    advance: hryvnia(advance),
+    overdue: hryvnia(overdue > credits ? overdue - credits : BigInt(0)),
+  }
+}
 export function day(date: Date) {
   return date.toISOString().slice(0, 10)
 }

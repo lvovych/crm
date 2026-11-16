@@ -206,8 +206,8 @@ export function Account({
   return (
     <div className="space-y-5">
       <p>
-        Відкриті зобов’язання <b>{a.debt} грн</b> · Вільні аванси <b>{a.advance} грн</b> · Сальдо
-        (борг мінус аванс) <b>{a.net} грн</b> · Прострочено <b>{a.overdue} грн</b>
+        До сплати <b>{a.debt} грн</b> · Вільні аванси <b>{a.advance} грн</b> · Сальдо
+        <b>{a.net} грн</b> · Прострочено <b>{a.overdue} грн</b>
       </p>
       {target && (
         <p>
@@ -251,7 +251,7 @@ export function Account({
       )}
       {live && rights.create && credit && debits.length > 0 && (!receiptId || selected) && (
         <section className="rounded border p-4">
-          <h2 className="font-semibold">Зарахувати наявний аванс</h2>
+          <h2 className="font-semibold">{credit.kind === 'adjustment_credit' ? 'Зарахувати коригування' : 'Зарахувати наявний аванс'}</h2>
           <label>
             Джерело
             <select className={box} value={credit.id} onChange={(e) => setCredit(e.target.value)}>
@@ -265,7 +265,7 @@ export function Account({
           <Operation
             key={credit.id + '-' + credit.open + '-' + (selected?.open ?? '')}
             supplier={a.id}
-            label="Зарахувати аванс"
+            label={credit.kind === 'adjustment_credit' ? 'Зарахувати коригування' : 'Зарахувати аванс'}
             build={(f) => ({
               op: 'allocate',
               credit: credit.id,
