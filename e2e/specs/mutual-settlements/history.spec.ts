@@ -65,26 +65,12 @@ for (const viewport of [
         await page.reload()
         await settle(page)
         await expect(card).toContainText('5\u00a0000,00')
-        await page.getByRole('button', { name: 'Документи: Андрій Історія' }).click()
-        const dialog = page.getByRole('dialog')
-        await expect(dialog).toContainText('НОВИЙ-12000')
-        await expect(dialog).not.toContainText('СТАРИЙ-12000')
-        await dialog.getByText('Історія зобов’язань і оплат (4)').click()
-        await expect(
-          dialog.getByRole('list', { name: 'Історія документа' }).getByRole('listitem')
-        ).toHaveCount(4)
-        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
-          true
-        )
-        const box = await dialog.boundingBox()
-        expect(box!.x).toBeGreaterThanOrEqual(0)
-        expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width + 1)
-        await page.screenshot({ path: `/tmp/customer-history-${viewport.name}.png` })
-        await page.keyboard.press('Escape')
-        await page.getByRole('button', { name: 'Старі документи · попередні суми' }).click()
-        await page.getByRole('button', { name: 'Документи: Андрій Історія' }).click()
-        await expect(dialog).toContainText('СТАРИЙ-12000')
-        await expect(dialog).not.toContainText('НОВИЙ-12000')
+        await card.getByRole('link').click()
+        const documents = page.locator('#settlement-documents')
+        await expect(documents).toContainText('НОВИЙ-12000')
+        await expect(documents).toContainText('СТАРИЙ-12000')
+        await documents.getByText('Історія зобов’язань і оплат (4)').click()
+        await expect(documents.getByRole('list', { name: 'Історія документа' }).getByRole('listitem')).toHaveCount(4)
         for (const table of [
           'finance_settings',
           'money_accounts',

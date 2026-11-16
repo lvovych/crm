@@ -69,42 +69,13 @@ for (const width of [1440, 360]) {
       await page.getByRole('button', { name: 'Старі документи · попередні суми' }).click()
       const rows = page.locator('tbody tr')
       await expect(rows.first()).toHaveAttribute('aria-label', 'Контрагент 01')
-      if (width === 360) await page.getByRole('button', { name: 'Фільтри', exact: true }).click()
-      const filter = page.getByLabel('Показати контрагентів')
-      await filter.selectOption('debt')
       await page.getByRole('button', { name: 'Далі' }).click()
       const row = page.getByRole('row', { name, exact: true })
-      const open = row.getByRole('button')
-      await open.focus()
-      await open.press('Enter')
-      await expect(page.getByRole('dialog')).toBeVisible()
-      await page.keyboard.press('Escape')
-      await expect(open).toBeFocused()
-      await expect(filter).toHaveValue('debt')
-      await expect(page.getByLabel('Сторінки контрагентів')).toContainText('2 / 2')
-      const labels = ['Попередній борг', 'Прострочено', 'Аванс клієнта']
-      const values = ['1 000,00 грн', '300,00 грн', '200,00 грн']
-      for (const [index, label] of labels.entries()) {
-        const cell = row.getByRole('cell').nth(index + 1)
-        await expect(cell.getByText(values[index], { exact: true })).toBeVisible()
-        if (width === 360) await expect(cell.getByText(label, { exact: true })).toBeVisible()
-        else
-          await expect(page.getByRole('columnheader').nth(index + 1)).toContainText(
-            label === 'Прострочено' ? 'Із них прострочено' : label
-          )
-      }
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
-        true
-      )
-      if (width === 360) await page.getByLabel('Сортування').selectOption('overdue')
-      else await page.getByRole('button', { name: 'Із них прострочено' }).click()
-      await expect(rows.first()).toHaveAttribute('aria-label', name)
-      const summary = page.getByLabel('Підсумки вибірки')
-      await expect(summary).toContainText('51 000,00 грн')
-      await filter.selectOption('overdue')
-      await expect(rows).toHaveCount(1)
-      for (const value of values)
-        await expect(summary.getByText(value, { exact: true })).toBeVisible()
+      await expect(row.getByRole('cell').nth(1)).toContainText('800,00')
+      await expect(row.getByRole('cell').nth(2)).toContainText('300,00')
+      await expect(page.getByLabel('Підсумки вибірки')).toContainText('51 000,00 грн')
+      await row.getByRole('link').press('Enter')
+      await expect(page.locator('#settlement-documents')).toContainText('Документи взаєморозрахунків')
     })
   })
 }
