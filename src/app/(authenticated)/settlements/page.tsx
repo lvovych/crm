@@ -79,7 +79,7 @@ export default async function Page({
                           {a.name}
                         </Link>
                       </td>
-                      <td>{a.debt}</td>
+                      <td>{a.net}</td>
                       <td>{a.overdue}</td>
                     </tr>
                   ))}

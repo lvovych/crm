@@ -9,8 +9,8 @@ describe('supplier amounts payable', () => {
       .toEqual({ debt: '8000.00', advance: '0.00', net: '8000.00', overdue: '8000.00' })
   })
   it('preserves excess correction as a signed balance', () => {
-    expect(supplierTotals([row('opening_debt', '100'), row('adjustment_credit', '100.01')]))
-      .toMatchObject({ debt: '0.00', advance: '0.00', net: '-0.01' })
+    expect(supplierTotals([row('receipt', '10723.32', true), row('adjustment_credit', '10802.22')]))
+      .toMatchObject({ debt: '0.00', advance: '0.00', net: '-78.90', overdue: '0.00' })
   })
   it('counts only unused payments and opening advances, and uses open amounts after allocation', () => {
     expect(supplierTotals([row('receipt', '600'), row('adjustment_debt', '90'),

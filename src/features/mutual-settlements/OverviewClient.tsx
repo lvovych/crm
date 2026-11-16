@@ -1,7 +1,7 @@
 'use client'
 import { useRef, useState } from 'react'
 import Link from 'next/link'
-import { ArrowDownLeft, ArrowUpRight, Search, ChevronRight, AlertTriangle } from 'lucide-react'
+import { ArrowDownLeft, ArrowUpRight, ChevronRight, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -17,26 +17,22 @@ import type { Overview, PartyRow, DocumentRow } from './types'
 
 type View = 'customer' | 'supplier' | 'review'
 const PAGE_SIZE = 25
-const selectClass = 'min-h-11 w-full rounded-md border bg-background px-3 text-sm'
 const zero = '0.00'
 function total(parties: PartyRow[], key: 'debt' | 'advance' | 'overdue' | 'expected') {
-  return decimal(parties.reduce((sum, p) => sum + cents(p[key]), BigInt(0)))
+  return decimal(parties.reduce((sum, p) => {
+    const amount = cents(p[key])
+    // A credit with one supplier cannot settle another supplier's bill.
+    if (p.kind === 'supplier' && key === 'debt' && amount < 0) return sum
+    return sum + amount
+  }, BigInt(0)))
 }
-function matches(p: PartyRow, query: string) {
-  const q = query.trim().toLocaleLowerCase('uk')
-  const digits = q.replace(/\D/g, '')
-  return (
-    !q ||
-    `${p.name} ${p.phone} ${p.documents.map((d) => d.label).join(' ')}`
-      .toLocaleLowerCase('uk')
-      .includes(q) ||
-    (digits.length >= 3 && /^[+\d\s()\-]+$/.test(q) && p.phone.replace(/\D/g, '').includes(digits))
-  )
+function balance(p: PartyRow) {
+  return p.kind === 'supplier' ? cents(p.debt) : cents(p.debt) - cents(p.advance)
 }
 function Amount({ value }: { value: string | null }) {
   return <span className="tabular-nums">{value === null ? 'Не визначено' : moneyLabel(value)}</span>
 }
-function Document({ row }: { row: DocumentRow }) {
+export function SettlementDocument({ row }: { row: DocumentRow }) {
   return (
     <article className="rounded-lg border p-4" aria-label={row.label}>
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -151,7 +147,7 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
   const available: View[] = [
     ...(data.customersAllowed ? ['customer' as const] : []),
     ...(data.suppliersAllowed ? ['supplier' as const] : []),
-    'review',
+    ...(data.canSwitchCustomerScope ? ['review' as const] : []),
   ]
   const [view, setView] = useState<View>(
     available.includes(initialView as View) ? (initialView as View) : available[0]
@@ -159,7 +155,7 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
   const [customerScope, setCustomerScope] = useState(
     data.trackedParties === undefined ? 'legacy' : 'tracked'
   )
-  const tracked = view === 'customer' && customerScope === 'tracked'
+  const tracked = view === 'customer' && (customerScope === 'tracked' || (data.trackedParties !== undefined && !data.canSwitchCustomerScope))
   const sourceParties = tracked ? (data.trackedParties ?? []) : data.parties
   const reviewMap = new Map<string, PartyRow>()
   for (const p of [...data.parties, ...(data.trackedParties ?? [])]) {
@@ -167,36 +163,18 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
     const prior = reviewMap.get(key)
     reviewMap.set(key, prior ? { ...prior, documents: [...prior.documents, ...p.documents] } : p)
   }
-  const [query, setQuery] = useState(''),
-    [filter, setFilter] = useState('all'),
-    [sort, setSort] = useState('debt'),
-    [page, setPage] = useState(1)
+  const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<PartyRow | null>(null)
   const opener = useRef<HTMLButtonElement | null>(null)
-  const [filtersOpen, setFiltersOpen] = useState(false)
-  const debtLabel = view === 'supplier' ? 'Загальний борг' : tracked ? 'Клієнт винен' : 'Попередній борг'
-  const advanceLabel = view === 'supplier' ? 'Наш аванс' : 'Аванс клієнта'
-  const relevant = (view === 'review' ? [...reviewMap.values()] : sourceParties).filter(
-    (p) =>
-      (view === 'review' ? p.documents.some((d) => d.reason) : p.kind === view) && matches(p, query)
-  )
-  const filtered = relevant
-    .filter(
-      (p) =>
-        filter === 'all' ||
-        (filter === 'review'
-          ? p.documents.some((d) => d.reason)
-          : cents(p[filter as 'debt' | 'overdue' | 'advance']) > 0)
-    )
-    .sort((a, b) =>
-      sort === 'name'
-        ? a.name.localeCompare(b.name, 'uk')
-        : cents(a[sort as 'debt' | 'overdue']) === cents(b[sort as 'debt' | 'overdue'])
-          ? a.name.localeCompare(b.name, 'uk')
-          : cents(a[sort as 'debt' | 'overdue']) > cents(b[sort as 'debt' | 'overdue'])
-            ? -1
-            : 1
-    )
+  const debtLabel = view === 'supplier' ? 'Загальний борг' : 'Заборгованість'
+  const overdueLabel = view === 'supplier' ? 'Прострочено' : 'Прострочена заборгованість'
+  const relevant = sourceParties.filter((p) => p.kind === view)
+  const filtered = view === 'review'
+    ? [...reviewMap.values()].filter((p) => p.documents.some((d) => d.reason))
+    : relevant.filter((p) => balance(p) !== BigInt(0)).sort((a, b) => {
+        const left = balance(a), right = balance(b)
+        return left === right ? a.name.localeCompare(b.name, 'uk') : left > right ? -1 : 1
+      })
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)),
     currentPage = Math.min(page, pages)
   const shown = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
@@ -245,7 +223,6 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
             className="h-auto min-h-11 whitespace-normal px-2 py-2"
             onClick={() => {
               setView(v)
-              setFilter('all')
               setPage(1)
             }}
           >
@@ -254,7 +231,7 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
           </Button>
         ))}
       </nav>
-      {view === 'customer' && data.trackedParties !== undefined && (
+      {view === 'customer' && data.canSwitchCustomerScope && data.trackedParties !== undefined && (
         <section aria-label="Область клієнтського обліку" className="grid grid-cols-2 gap-2">
           <Button
             variant={tracked ? 'default' : 'outline'}
@@ -281,13 +258,6 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
             Старі документи · попередні суми
           </Button>
         </section>
-      )}
-      {tracked && (
-        <p className="rounded-lg border p-4 text-sm">
-          Тільки документи нового обліку. Історія показана за датою реєстрації операцій; оплати
-          майбутньою датою враховуються з цієї дати. Старі документи та їхні суми показані окремо.
-          Аванси різних нарядів не зараховуються автоматично.
-        </p>
       )}
       {view === 'customer' && !tracked && !unavailable && (
         <aside
@@ -345,12 +315,12 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
                         ? 'Клієнти винні нам'
                         : 'Попередньо клієнти винні нам'
                       : 'Ми винні постачальникам',
-                  value: total(filtered, 'debt'),
+                  value: total(relevant, 'debt'),
                   Icon: view === 'customer' ? ArrowDownLeft : ArrowUpRight,
                 },
                 {
                   label: 'Із них прострочено',
-                  value: total(filtered, 'overdue'),
+                  value: total(relevant, 'overdue'),
                   Icon: AlertTriangle,
                 },
                 {
@@ -358,7 +328,7 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
                     view === 'customer'
                       ? 'Аванси / переплати клієнтів'
                       : 'Наші аванси постачальникам',
-                  value: total(filtered, 'advance'),
+                  value: total(relevant, 'advance'),
                   Icon: ArrowUpRight,
                 },
               ].map((m) => (
@@ -374,18 +344,6 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
               ))}
             </section>
           )}
-          {view === 'customer' && (
-            <p className="text-sm text-muted-foreground">
-              Очікувана сума нарядів у роботі: <Amount value={total(filtered, 'expected')} />. Не
-              включена до боргу.
-            </p>
-          )}
-          {view === 'supplier' && (
-            <p className="text-sm text-muted-foreground">
-              Борг за облікованими документами. Незвірені накладні не включено. Аванси показано
-              окремо від боргу.
-            </p>
-          )}
           {view === 'review' && (
             <p className="text-sm text-muted-foreground">
               Тут показано документи, які не включені до підсумків через відсутні або некоректні
@@ -393,90 +351,9 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
               потрібно перевірити за первинними документами.
             </p>
           )}
-          <section className="rounded-xl border p-4">
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-[minmax(0,1fr)_200px_200px]">
-              <label className="col-span-2 text-sm md:col-span-1">
-                Пошук
-                <div className="relative mt-1">
-                  <Search
-                    className="absolute left-3 top-3 size-5 text-muted-foreground"
-                    aria-hidden="true"
-                  />
-                  <Input
-                    className="min-h-11 pl-10"
-                    placeholder="Ім’я, назва, телефон або документ"
-                    value={query}
-                    onChange={(e) => {
-                      setQuery(e.target.value)
-                      setPage(1)
-                    }}
-                  />
-                </div>
-              </label>
-              <Button
-                type="button"
-                variant="outline"
-                aria-expanded={filtersOpen}
-                className="col-span-2 md:hidden"
-                onClick={() => setFiltersOpen(!filtersOpen)}
-              >
-                Фільтри{filter !== 'all' ? ' (1)' : ''}
-              </Button>
-              <label className={filtersOpen ? 'text-sm' : 'hidden text-sm md:block'}>
-                Показати
-                <select
-                  aria-label="Показати контрагентів"
-                  className={selectClass + ' mt-1'}
-                  value={filter}
-                  onChange={(e) => {
-                    setFilter(e.target.value)
-                    setPage(1)
-                  }}
-                >
-                  <option value="all">Усіх</option>
-                  <option value="debt">З боргом</option>
-                  <option value="overdue">З простроченням</option>
-                  <option value="advance">З авансом</option>
-                  <option value="review">Не враховано в підсумках</option>
-                </select>
-              </label>
-              <label className={filtersOpen ? 'text-sm' : 'hidden text-sm md:block'}>
-                Сортування
-                <select
-                  className={selectClass + ' mt-1'}
-                  value={sort}
-                  onChange={(e) => {
-                    setSort(e.target.value)
-                    setPage(1)
-                  }}
-                >
-                  <option value="debt">Найбільший борг</option>
-                  <option value="overdue">Найбільше прострочено</option>
-                  <option value="name">За назвою</option>
-                </select>
-              </label>
-            </div>
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-              <p role="status" className="text-sm text-muted-foreground">
-                Знайдено контрагентів: {filtered.length}. Підсумки враховують поточні фільтри.
-              </p>
-              <Button
-                variant="ghost"
-                className="min-h-11"
-                onClick={() => {
-                  setQuery('')
-                  setFilter('all')
-                  setSort('debt')
-                  setPage(1)
-                }}
-              >
-                Скинути фільтри
-              </Button>
-            </div>
-          </section>
           {!shown.length ? (
             <p className="rounded-xl border p-8 text-center" role="status">
-              За цими умовами документів не знайдено.
+              {view === 'review' ? 'Документів для звірки немає.' : 'Немає контрагентів із ненульовим сальдо.'}
             </p>
           ) : view !== 'review' ? (
             <table
@@ -488,50 +365,34 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
                   {[
                     [view === 'supplier' ? 'Постачальник' : 'Клієнт', 'name'],
                     [debtLabel, 'debt'],
-                    [view === 'supplier' ? 'Прострочено' : 'Із них прострочено', 'overdue'],
+                    [overdueLabel, 'overdue'],
                   ].map(([label, key]) => (
                     <th
                       key={key}
                       scope="col"
                       className="px-3 py-2 text-right first:text-left"
-                      aria-sort={
-                        sort === key ? (key === 'name' ? 'ascending' : 'descending') : 'none'
-                      }
                     >
-                      <button
-                        onClick={() => {
-                          setSort(key)
-                          setPage(1)
-                        }}
-                      >
-                        {label} {sort === key && (key === 'name' ? '↑' : '↓')}
-                      </button>
+                      {label}
                     </th>
                   ))}
-                  {view !== 'supplier' && <th className="px-3 text-right">{advanceLabel}</th>}
-                  {view !== 'supplier' && <th className="px-3 text-right">Документи</th>}
                 </tr>
               </thead>
               <tbody className="block md:table-row-group">
                 {shown.map((p) => {
-                  const advanceOnly = view !== 'supplier' && p.debt === zero && p.advance !== zero
                   const excluded = p.documents.filter((d) => d.reason).length
                   return (
                     <tr
                       key={p.id}
                       aria-label={p.name}
                       className="relative grid cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 border-t px-3 py-2 hover:bg-muted/40 focus-within:bg-muted/40 md:table-row"
-                      onClick={(e) => {
-                        opener.current = e.currentTarget.querySelector('button')
-                        setSelected(p)
-                      }}
                     >
                       <td className="min-w-0 break-words font-medium md:px-3 md:py-2">
-                        {view === 'supplier' ? (
-                          <button type="button" className="text-left underline" aria-label={`Документи: ${p.name}`}>
-                            {p.name}
-                          </button>
-                        ) : p.name}
+                        {p.id === 'unassigned' ? (
+                          <button onClick={e => { opener.current = e.currentTarget; setSelected(p) }}>{p.name}</button>
+                        ) : <Link className="text-left underline after:absolute after:inset-0"
+                          href={`/${p.kind === 'supplier' ? 'suppliers' : 'customers'}/${encodeURIComponent(p.id)}?date=${data.asOf}#settlement-documents`}>
+                          {p.name}
+                        </Link>}
                         {p.archived && <small> · Архівний</small>}
                         {excluded > 0 && (
                           <small className="block font-normal text-amber-600">
@@ -539,37 +400,14 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
                           </small>
                         )}
                       </td>
-                      <td
-                        className={`text-right font-semibold md:px-3 ${advanceOnly ? 'hidden md:table-cell' : ''}`}
-                      >
+                      <td className="text-right font-semibold md:px-3">
                         <small className="mr-1 md:hidden">{debtLabel}</small>
-                        <Amount value={p.debt} />
-                      </td>
-                      <td
-                        className={`text-right md:px-3 ${p.overdue === zero && view !== 'supplier' ? 'hidden md:table-cell' : 'col-span-2'}`}
-                      >
-                        <small className="mr-1 md:hidden">Прострочено</small>
-                        {p.overdue === zero && view !== 'supplier' ? '—' : <Amount value={p.overdue} />}
-                      </td>
-                      {view !== 'supplier' && <>
-                      <td
-                        className={`text-right md:px-3 ${p.advance === zero ? 'hidden md:table-cell' : advanceOnly ? 'font-semibold' : 'col-span-2'}`}
-                      >
-                        <small className="mr-1 md:hidden">{advanceLabel}</small>
-                        {p.advance === zero ? '—' : <Amount value={p.advance} />}
+                        <Amount value={decimal(balance(p))} />
                       </td>
                       <td className="col-span-2 text-right md:px-3">
-                        <button
-                          type="button"
-                          aria-label={`Документи: ${p.name}`}
-                          className="inline-flex items-center gap-1 text-xs md:text-sm"
-                        >
-                          <span className="md:hidden">Документи</span>
-                          {p.documents.length}
-                          <ChevronRight className="size-4" />
-                        </button>
+                        <small className="mr-1 md:hidden">{overdueLabel}</small>
+                        <Amount value={p.overdue} />
                       </td>
-                      </>}
                     </tr>
                   )
                 })}
@@ -680,7 +518,7 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
             {selected?.documents
               .filter((d) => view !== 'review' || d.reason)
               .map((d) => (
-                <Document key={d.id} row={d} />
+                <SettlementDocument key={d.id} row={d} />
               ))}
           </div>
         </SheetContent>
