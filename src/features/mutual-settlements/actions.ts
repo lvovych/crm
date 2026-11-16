@@ -13,15 +13,15 @@ import { isCredit } from '@/features/settlements/amounts'
 import { projectCustomers } from './projection'
 import type { Overview, PartyRow } from './types'
 
-export async function mutualSettlementsReport(requestedDate?: string) {
+export async function mutualSettlementsReport(requestedDate?: string, party?: { kind: 'customer' | 'supplier'; id: string }) {
   return withAuth(async (ctx): Promise<Overview> => {
     const member = ctx.isAdmin ? null : await getCachedMembership(ctx.userId)
     const can = (subject: S) =>
       ctx.isAdmin ||
       (member?.organizationId === ctx.organizationId &&
         hasPermission(member.customRole?.permissions ?? [], { action: A.READ, subject }))
-    const customersAllowed = can(S.BILLING)
-    const suppliersAllowed = can(S.SETTLEMENTS) && settlementsEnabled(ctx.organizationId)
+    const customersAllowed = party?.kind !== 'supplier' && can(S.BILLING)
+    const suppliersAllowed = party?.kind !== 'customer' && can(S.SETTLEMENTS) && settlementsEnabled(ctx.organizationId)
     if (!customersAllowed && !suppliersAllowed)
       throw new Error('Немає доступу до взаєморозрахунків.')
     const zone = await workshopTimeZone(ctx.organizationId)
@@ -34,7 +34,9 @@ export async function mutualSettlementsReport(requestedDate?: string) {
     const parties: PartyRow[] = []
     if (customersAllowed && asOf === today) {
       const records = await db.serviceRecord.findMany({
-        where: { organizationId: ctx.organizationId, customerLedgerTracked: false },
+        where: { organizationId: ctx.organizationId, customerLedgerTracked: false,
+          ...(party && { OR: [{ customerId: party.id }, { customerId: null, vehicle: { customerId: party.id } }] }),
+        },
         select: {
           id: true,
           title: true,
@@ -80,7 +82,7 @@ export async function mutualSettlementsReport(requestedDate?: string) {
     let trackedParties: PartyRow[] = []
     if (customersAllowed) {
       const documents = await db.customerLedgerDocument.findMany({
-        where: { organizationId: ctx.organizationId },
+        where: { organizationId: ctx.organizationId, ...(party && { customerId: party.id }) },
         include: {
           events: {
             where: { effectiveDate: { lte: new Date(asOf + 'T00:00:00Z') } },
@@ -121,7 +123,7 @@ export async function mutualSettlementsReport(requestedDate?: string) {
     }
     let supplierError: string | null = null
     if (suppliersAllowed) {
-      const report = await settlementReport(asOf)
+      const report = await settlementReport(asOf, party?.id)
       if (!report.success || !report.data)
         supplierError = 'Не вдалося завантажити розрахунки постачальників. Повторіть спробу.'
       else {
@@ -147,7 +149,7 @@ export async function mutualSettlementsReport(requestedDate?: string) {
               phone: phones.get(s.id) || '',
               kind: 'supplier' as const,
               archived: s.isArchived,
-              debt: s.debt,
+              debt: s.net,
               advance: s.advance,
               overdue: s.overdue,
               expected: '0.00',
@@ -159,7 +161,7 @@ export async function mutualSettlementsReport(requestedDate?: string) {
                     label: r.kind === 'adjustment_credit' ? 'Коригування · зменшення нашого боргу'
                       : r.kind === 'adjustment_debt' ? 'Коригування · збільшення нашого боргу'
                       : r.reference || (isCredit(r.kind) ? 'Оплата / аванс' : 'Зобов’язання'),
-                    href: '/settlements?' + new URLSearchParams({ supplier: s.id, date: asOf }),
+                    href: r.receiptId ? '/receipts/' + r.receiptId : '/settlements?' + new URLSearchParams({ supplier: s.id, date: asOf }),
                     date: r.date,
                     due: r.due,
                     amount: r.amount,
@@ -194,6 +196,7 @@ export async function mutualSettlementsReport(requestedDate?: string) {
       asOf,
       customersAllowed,
       suppliersAllowed,
+      canSwitchCustomerScope: ctx.isOrganizationOwner === true,
       customersHistoricalUnavailable: customersAllowed && asOf !== today,
       supplierError,
       parties,

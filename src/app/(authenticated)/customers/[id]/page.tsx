@@ -1,3 +1,4 @@
+import { PartyDocuments } from '@/features/mutual-settlements/PartyDocuments'
 import { getTranslations } from 'next-intl/server'
 import {
   getCustomer,
@@ -17,7 +18,7 @@ import { channelEnabled } from '@/features/integrations/Lib/messaging'
 import { CustomerDetailClient } from './customer-detail-client'
 import { PageHeader } from '@/components/page-header'
 
-export default async function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function CustomerDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ date?: string }> }) {
   const { id } = await params
   const [result, settingsResult, layoutData, customersResult, invoicesResult, quotesResult] =
     await Promise.all([
@@ -128,6 +129,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
           canReadQuotes={quotesResult.success}
           aiEnabled={aiEnabled}
         />
+        <PartyDocuments kind="customer" id={id} date={(await searchParams).date} />
       </div>
     </>
   )

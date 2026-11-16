@@ -1,6 +1,6 @@
 import { render, screen, within, cleanup, fireEvent } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
-import { OverviewClient } from '@/features/mutual-settlements/OverviewClient'
+import { OverviewClient, SettlementDocument } from '@/features/mutual-settlements/OverviewClient'
 import type { Overview, PartyRow } from '@/features/mutual-settlements/types'
 afterEach(cleanup)
 const party = (id: string, overrides: Partial<PartyRow> = {}): PartyRow => ({
@@ -34,6 +34,7 @@ const party = (id: string, overrides: Partial<PartyRow> = {}): PartyRow => ({
 const data = (overrides: Partial<Overview> = {}): Overview => ({
   today: '2026-11-10',
   asOf: '2026-11-10',
+  canSwitchCustomerScope: true,
   customersAllowed: true,
   suppliersAllowed: true,
   customersHistoricalUnavailable: false,
@@ -50,45 +51,30 @@ describe('settlement overview interactions', () => {
     expect(screen.getByRole('row', { name: 'Постачальник Б' })).toBeVisible()
     expect(screen.queryByRole('row', { name: 'Клієнт А' })).not.toBeInTheDocument()
   })
-  it('searches formatted phone and document then resets', () => {
-    render(<OverviewClient data={data()} />)
-    fireEvent.change(screen.getByPlaceholderText('Ім’я, назва, телефон або документ'), {
-      target: { value: '0671234567' },
-    })
-    expect(screen.getByRole('row', { name: 'Клієнт А' })).toBeVisible()
-    fireEvent.change(screen.getByPlaceholderText('Ім’я, назва, телефон або документ'), {
-      target: { value: 'невідомий' },
-    })
-    expect(screen.getByText('За цими умовами документів не знайдено.')).toBeVisible()
-    fireEvent.click(screen.getByRole('button', { name: 'Скинути фільтри' }))
-    expect(screen.getByRole('row', { name: 'Клієнт А' })).toBeVisible()
+  it('shows a negative supplier balance and zero overdue directly in the row', () => {
+    render(<OverviewClient initialView="supplier" data={data({ parties: [
+      party('bus', { name: 'Бус Маркет S', kind: 'supplier', debt: '-78.90', overdue: '0.00' }),
+    ] })} />)
+    const cells = within(screen.getByRole('row', { name: 'Бус Маркет S' })).getAllByRole('cell')
+    expect(cells[1]).toHaveTextContent('-78,90 грн')
+    expect(cells[2]).toHaveTextContent('0,00 грн')
   })
-  it('opens document details and preserves direct link, without payment controls', () => {
-    render(<OverviewClient data={data()} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Документи: Клієнт А' }))
-    const dialog = screen.getByRole('dialog')
-    expect(within(dialog).getByRole('link', { name: /Відкрити документ/ })).toHaveAttribute(
-      'href',
-      '/sales/А'
-    )
-    expect(within(dialog).getByText('Оплати за записами')).toBeVisible()
-    expect(
-      screen.queryByRole('button', { name: /Провести оплату|Зберегти/ })
-    ).not.toBeInTheDocument()
+  it.each(['customer', 'supplier'] as const)('orders nonzero %s balances and omits filters', (kind) => {
+    const parties = [30, -90, 0, 800, -5].map((net) => party(String(net), {
+      kind, debt: String(kind === 'supplier' ? net : 1000 + net),
+      advance: kind === 'supplier' ? '25.00' : '1000.00',
+    }))
+    render(<OverviewClient initialView={kind} data={data({ parties })} />)
+    expect(screen.getAllByRole('row').slice(1).map(r => r.getAttribute('aria-label')))
+      .toEqual([800, 30, -5, -90].map(n => 'Клієнт ' + n))
+    expect(screen.queryByPlaceholderText('Ім’я, назва, телефон або документ')).toBeNull()
+    expect(screen.queryByRole('combobox')).toBeNull()
   })
-  it('filters advances separately from debt', () => {
-    render(
-      <OverviewClient
-        data={data({
-          parties: [party('А'), party('Б', { advance: '25.00', debt: '0.00', overdue: '0.00' })],
-        })}
-      />
+  it.each(['customer', 'supplier'] as const)('opens the dated %s card from its row', kind => {
+    render(<OverviewClient initialView={kind} data={data({ parties: [party('id', { kind })] })} />)
+    expect(screen.getByRole('link', { name: 'Клієнт id' })).toHaveAttribute(
+      'href', `/${kind === 'supplier' ? 'suppliers' : 'customers'}/id?date=2026-11-10#settlement-documents`
     )
-    fireEvent.change(screen.getByRole('combobox', { name: 'Показати контрагентів' }), {
-      target: { value: 'advance' },
-    })
-    expect(screen.queryByRole('row', { name: 'Клієнт А' })).not.toBeInTheDocument()
-    expect(screen.getByRole('row', { name: 'Клієнт Б' })).toBeVisible()
   })
   it('shows review reason and excludes ordinary documents in review details', () => {
     const p = party('А')
@@ -140,7 +126,7 @@ describe('settlement overview interactions', () => {
       'true'
     )
   })
-  it('paginates and returns to page one on search', () => {
+  it('paginates and returns to the previous page', () => {
     render(
       <OverviewClient
         data={data({
@@ -151,18 +137,15 @@ describe('settlement overview interactions', () => {
     expect(screen.getAllByRole('row', { name: /Клієнт \d/ })).toHaveLength(25)
     fireEvent.click(screen.getByRole('button', { name: 'Далі' }))
     expect(screen.getAllByRole('row', { name: /Клієнт \d/ })).toHaveLength(1)
-    fireEvent.change(screen.getByPlaceholderText('Ім’я, назва, телефон або документ'), {
-      target: { value: 'Наряд 00' },
-    })
+    fireEvent.click(screen.getByRole('button', { name: 'Назад' }))
     expect(screen.getByRole('row', { name: 'Клієнт 00' })).toBeVisible()
   })
 })
 it('shows both the advance and expected amount for a job in progress', () => {
   const p = party('А', { debt: '0.00', advance: '40.00', expected: '100.00' })
   p.documents = [{ ...p.documents[0], debt: '0.00', advance: '40.00', expected: '100.00' }]
-  render(<OverviewClient data={data({ parties: [p] })} />)
-  fireEvent.click(screen.getByRole('button', { name: 'Документи: Клієнт А' }))
-  const dialog = within(screen.getByRole('dialog'))
+  render(<SettlementDocument row={p.documents[0]} />)
+  const dialog = within(screen.getByRole('article'))
   expect(dialog.getByText('Аванс / переплата')).toBeVisible()
   expect(dialog.getByText('40,00 грн')).toBeVisible()
   expect(dialog.getByText('Очікувана сума в роботі')).toBeVisible()
@@ -174,7 +157,6 @@ it('uses the exclusion label consistently in the tab, filter and party notice', 
   p.documents[0].reason = 'Позначено оплаченим вручну'
   render(<OverviewClient data={data({ parties: [p] })} />)
   expect(screen.getByRole('button', { name: 'Не враховано в підсумках (1)' })).toBeVisible()
-  expect(screen.getByRole('option', { name: 'Не враховано в підсумках' })).toBeInTheDocument()
   expect(screen.getByRole('row', { name: 'Клієнт А' })).toHaveTextContent(
     'Не враховано в підсумках: 1'
   )
@@ -206,11 +188,19 @@ describe('tracked customer history UI', () => {
     render(<OverviewClient data={data({ trackedParties: [tracked] })} />)
     expect(screen.getByRole('row', { name: 'Клієнт Новий' })).toBeVisible()
     expect(screen.queryByRole('row', { name: 'Клієнт А' })).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Документи: Клієнт Новий' }))
-    const dialog = screen.getByRole('dialog')
+    render(<SettlementDocument row={tracked.documents[0]} />)
+    const dialog = screen.getByRole('article')
     expect(within(dialog).getByText(/Історія зобов’язань і оплат/)).toBeVisible()
     fireEvent.click(within(dialog).getByText(/Історія зобов’язань і оплат/))
     expect(within(dialog).getByText(/Менеджер/)).toBeVisible()
+  })
+  it('shows tracked customer balances without the scope switch for a non-owner', () => {
+    render(<OverviewClient data={data({ canSwitchCustomerScope: false, trackedParties: [party('Новий')] })} />)
+    expect(screen.queryByRole('button', { name: /Не враховано в підсумках/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Новий облік з історією' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Старі документи · попередні суми' })).toBeNull()
+    expect(screen.getByRole('row', { name: 'Клієнт Новий' })).toBeVisible()
+    expect(screen.queryByRole('row', { name: 'Клієнт А' })).toBeNull()
   })
   it('allows legacy access without mixing balances', () => {
     render(<OverviewClient data={data({ trackedParties: [] })} />)

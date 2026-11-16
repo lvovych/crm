@@ -31,6 +31,7 @@ export type Overview = {
   asOf: string
   customersAllowed: boolean
   suppliersAllowed: boolean
+  canSwitchCustomerScope: boolean
   customersHistoricalUnavailable: boolean
   supplierError: string | null
   parties: PartyRow[]

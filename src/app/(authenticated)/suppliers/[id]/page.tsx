@@ -1,3 +1,4 @@
+import { PartyDocuments } from '@/features/mutual-settlements/PartyDocuments'
 import {receiptAccess} from '@/features/receipts/actions'
 import {settlementAccess} from '@/features/settlements/actions'
 import Link from 'next/link'
@@ -5,7 +6,7 @@ import { getTranslations } from 'next-intl/server'
 import { PageHeader } from '@/components/page-header'
 import { getSupplier, getSupplierCapabilities } from '@/features/suppliers/Actions/supplierActions'
 import { ArchiveSupplier } from '@/features/suppliers/Components/ArchiveSupplier'
-export default async function SupplierPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function SupplierPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ date?: string }> }) {
   const { id } = await params
   const [r, cap, t] = await Promise.all([
     getSupplier(id),
@@ -105,6 +106,7 @@ export default async function SupplierPage({ params }: { params: Promise<{ id: s
             </p>
           ))}
         </section>
+        <PartyDocuments kind="supplier" id={id} date={(await searchParams).date} />
       </main>
     </>
   )

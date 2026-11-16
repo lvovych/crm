@@ -98,7 +98,7 @@ describe('overview authorization and source isolation', () => {
     const r = await mutualSettlementsReport('2020-01-01')
     expect(r.data).toMatchObject({ customersHistoricalUnavailable: true })
     expect(m.records).not.toHaveBeenCalled()
-    expect(m.suppliers).toHaveBeenCalledWith('2020-01-01')
+    expect(m.suppliers).toHaveBeenCalledWith('2020-01-01', undefined)
   })
   it.each(['2099-01-01', '2026-02-30', 'bad'])('rejects invalid report date %s', async (date) => {
     rights('billing')
@@ -126,6 +126,7 @@ it('preserves supplier debt and advances separately and excludes unverified rece
         name: 'Supplier',
         isArchived: false,
         debt: '500.01',
+        net: '500.01',
         advance: '100.00',
         overdue: '500.01',
         rows: [
