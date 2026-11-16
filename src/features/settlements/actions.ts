@@ -13,7 +13,7 @@ import { getCachedMembership } from '@/lib/cached-session'
 import { revalidatePath } from 'next/cache'
 import { settlementsEnabled, withLinks } from './ledger'
 import { operationDate, operation, applyOperation } from './operations'
-import { dueOn, workshopDay, activeOn, day, hryvnia, isCredit, kopecks, remaining } from './amounts'
+import { dueOn, workshopDay, activeOn, day, hryvnia, isCredit, supplierTotals, remaining } from './amounts'
 import { receiptTotal } from '@/features/receipts/money'
 
 function access<T>(action: A, fn: (ctx: AuthContext) => Promise<T>) {
@@ -85,6 +85,7 @@ export async function recordSettlement(supplierId: string, requestId: string, ra
         })
     })
     revalidatePath('/settlements')
+    revalidatePath('/mutual-settlements')
     revalidatePath('/receipts')
     return true
   })
@@ -183,17 +184,10 @@ export async function settlementReport(asOf: string, supplierId?: string) {
               })),
           }
         })
-      const total = (filter: (r: (typeof rows)[number]) => boolean) =>
-        rows.filter(filter).reduce((a, r) => a + kopecks(r.open), BigInt(0))
-      const debt = total((r) => !isCredit(r.kind)),
-        advance = total((r) => isCredit(r.kind))
       return {
         ...s,
         rows,
-        debt: hryvnia(debt),
-        advance: hryvnia(advance),
-        net: hryvnia(debt - advance),
-        overdue: hryvnia(total((r) => r.overdue)),
+        ...supplierTotals(rows),
         unknown: unknown
           .filter(
             (r) =>

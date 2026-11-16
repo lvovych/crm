@@ -59,10 +59,8 @@ export default async function Page({
                 <tr>
                   {[
                     'Постачальник',
-                    'До сплати, грн',
+                    'Загальний борг, грн',
                     'Прострочено, грн',
-                    'Аванси, грн',
-                    'До звірки, документів',
                   ].map((t) => (
                     <th key={t}>{t}</th>
                   ))}
@@ -83,8 +81,6 @@ export default async function Page({
                       </td>
                       <td>{a.debt}</td>
                       <td>{a.overdue}</td>
-                      <td>{a.advance}</td>
-                      <td>{a.unknown.length}</td>
                     </tr>
                   ))}
               </tbody>

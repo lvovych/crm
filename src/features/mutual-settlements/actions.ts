@@ -156,14 +156,16 @@ export async function mutualSettlementsReport(requestedDate?: string) {
                   .filter((r) => r.active)
                   .map((r) => ({
                     id: r.id,
-                    label: r.reference || (isCredit(r.kind) ? 'Оплата / аванс' : 'Зобов’язання'),
+                    label: r.kind === 'adjustment_credit' ? 'Коригування · зменшення нашого боргу'
+                      : r.kind === 'adjustment_debt' ? 'Коригування · збільшення нашого боргу'
+                      : r.reference || (isCredit(r.kind) ? 'Оплата / аванс' : 'Зобов’язання'),
                     href: '/settlements?' + new URLSearchParams({ supplier: s.id, date: asOf }),
                     date: r.date,
                     due: r.due,
                     amount: r.amount,
                     paid: null,
-                    debt: isCredit(r.kind) ? '0.00' : r.open,
-                    advance: isCredit(r.kind) ? r.open : '0.00',
+                    debt: r.kind === 'adjustment_credit' && r.open !== '0.00' ? '-' + r.open : isCredit(r.kind) ? '0.00' : r.open,
+                    advance: r.kind === 'payment' || r.kind === 'opening_credit' ? r.open : '0.00',
                     expected: '0.00',
                     reason: null,
                     provisional: false,

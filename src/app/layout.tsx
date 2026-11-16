@@ -6,11 +6,11 @@ import {
   Geist,
   Geist_Mono,
   IBM_Plex_Mono,
-  IBM_Plex_Sans,
   Inter,
   Inter_Tight,
   JetBrains_Mono,
 } from 'next/font/google'
+import localFont from 'next/font/local'
 import { NextIntlClientProvider } from 'next-intl'
 import { getLocale, getMessages } from 'next-intl/server'
 import { Toaster } from '@/components/ui/sonner'
@@ -47,10 +47,10 @@ const geistMono = Geist_Mono({
 // The "workshop" font set (Settings → Appearance). Not preloaded: a browser
 // fetches a font file only when some text is actually set in it, so whoever
 // stays on the default never downloads these.
-const plexSans = IBM_Plex_Sans({
+const plexSans = localFont({
+  src: './fonts/ibm-plex-sans/IBMPlexSans.ttf',
   variable: '--font-plex-sans',
-  weight: ['400', '500', '600', '700'],
-  subsets: ['latin', 'latin-ext', 'cyrillic'],
+  weight: '100 700',
   preload: false,
 })
 
