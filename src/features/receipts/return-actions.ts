@@ -3,6 +3,7 @@ import { lockFinance } from '@/features/finance/ledger'
 import { db } from '@/lib/db'
 import { withAuth } from '@/lib/with-auth'
 import { PermissionAction as A, PermissionSubject as S } from '@/lib/permissions'
+import { availableQuantity } from './transfer-schema'
 import { receiptsEnabled } from './enabled'
 import { postSupplierReturn } from './return-ledger'
 import { assertOperationDate } from '@/features/finance/access'
@@ -66,10 +67,10 @@ export async function supplierReturnData(receiptId: string) {
           name: l.name,
           unit: l.unit,
           unitPrice: l.unitPrice.toString(),
-          available: l.quantity
-            .minus(l.returns.reduce((n, v) => n + Number(v.quantity), 0))
-            .minus(l.transfers.reduce((n, v) => n + Number(v.quantity), 0))
-            .toString(),
+          available: availableQuantity(
+            l.quantity.toString(),
+            [...l.returns, ...l.transfers].map((item) => item.quantity.toString())
+          ),
         })),
         documents: r.returns.map((d) => ({
           id: d.id,

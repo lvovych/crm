@@ -144,6 +144,68 @@ describe.skipIf(!url)('supplier returns on PostgreSQL', () => {
     const input = f.request('1')
     await expect(f.post({ ...input, lines: [...input.lines, ...input.lines] })).rejects.toThrow()
   })
+  it('rolls back earlier line movements when a later line cannot be returned', async () => {
+    const f = await setup()
+    const second = await db.supplierReceiptLine.create({
+      data: {
+        receiptId: f.receipt.id,
+        position: 1,
+        kind: 'part',
+        name: 'Second',
+        unit: 'шт',
+        quantity: 3,
+        unitPrice: 100,
+        amount: 300,
+        partId: f.part.id,
+      },
+    })
+    const input = f.request('1')
+    await expect(
+      f.post({ ...input, lines: [...input.lines, { id: second.id, quantity: '3' }] })
+    ).rejects.toThrow('залишок')
+    expect((await db.inventoryPart.findUniqueOrThrow({ where: { id: f.part.id } })).quantity).toBe(
+      3
+    )
+    expect(await db.stockMovement.count({ where: { organizationId: f.org.id } })).toBe(0)
+    expect(await db.supplierReturn.count({ where: { receiptId: f.receipt.id } })).toBe(0)
+    expect(
+      await db.supplierEntry.count({ where: { organizationId: f.org.id, kind: 'return_credit' } })
+    ).toBe(0)
+  })
+  it('rejects closed periods, drafts and lines belonging to another receipt', async () => {
+    const f = await setup()
+    await db.financeSettings.create({
+      data: { organizationId: f.org.id, closedThrough: f.receipt.receivedDate },
+    })
+    await expect(f.post(f.request('1'))).rejects.toThrow('Період закрито')
+    await db.financeSettings.update({
+      where: { organizationId: f.org.id },
+      data: { closedThrough: null },
+    })
+    await db.supplierReceipt.update({ where: { id: f.receipt.id }, data: { status: 'draft' } })
+    await expect(f.post(f.request('1'))).rejects.toThrow('проведеної')
+    await db.supplierReceipt.update({ where: { id: f.receipt.id }, data: { status: 'posted' } })
+    const other = await setup()
+    await expect(
+      f.post({ ...f.request('1'), lines: [{ id: other.receipt.lines[0].id, quantity: '1' }] })
+    ).rejects.toThrow('цієї накладної')
+    expect(await db.supplierReturn.count({ where: { receiptId: f.receipt.id } })).toBe(0)
+  })
+  it('returns free goods and keeps money and debt at zero', async () => {
+    const f = await setup('part', '1', '0')
+    await f.post(f.request('1'))
+    expect((await db.inventoryPart.findUniqueOrThrow({ where: { id: f.part.id } })).quantity).toBe(
+      0
+    )
+    expect(
+      (
+        await db.supplierEntry.findFirstOrThrow({
+          where: { organizationId: f.org.id, kind: 'return_credit' },
+        })
+      ).amount.toFixed(2)
+    ).toBe('0.00')
+    expect(await db.moneyEntry.count({ where: { organizationId: f.org.id } })).toBe(0)
+  })
   it('prevents concurrent over-return', async () => {
     const f = await setup('part', '1')
     const results = await Promise.allSettled([f.post(f.request('1')), f.post(f.request('1'))])

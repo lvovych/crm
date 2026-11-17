@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { createSupplierReturn, type supplierReturnData } from './return-actions'
@@ -19,6 +19,7 @@ export function Returns({
   const [quantities, setQuantities] = useState<Record<string, string>>({})
   const [reason, setReason] = useState('')
   const [requestId, setRequestId] = useState<string>()
+  const submitting = useRef(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   return (
@@ -34,6 +35,8 @@ export function Returns({
             className="space-y-4"
             onSubmit={async (e) => {
               e.preventDefault()
+              if (submitting.current) return
+              submitting.current = true
               setBusy(true)
               setError('')
               const id = requestId ?? crypto.randomUUID()
@@ -60,6 +63,7 @@ export function Returns({
                   'Не вдалося отримати відповідь. Повторіть проведення з тими самими даними.'
                 )
               } finally {
+                submitting.current = false
                 setBusy(false)
               }
             }}
