@@ -592,7 +592,6 @@ const url = process.env.FINANCE_TEST_DATABASE_URL
       amount: 10.01,
       amountExact: '10.01',
       date: today,
-      method: 'cash',
       requestId: randomUUID(),
     }
     const docs = { organizationId: state.org, requestId: input.requestId }
@@ -605,8 +604,23 @@ const url = process.env.FINANCE_TEST_DATABASE_URL
     expect(payments[0].data?.id).toBe(payments[1].data?.id)
     expect((await createPayment({ ...input, amountExact: '10.02' })).success).toBe(false)
     const document = await state.db.financialDocument.findFirstOrThrow({ where: docs })
+    expect(payments[0].data?.method).toBe('cash')
     expect(document.paymentId).toBe(payments[0].data!.id)
     expect(await state.db.moneyEntry.count({ where: { documentId: document.id } })).toBe(1)
     expect((await deletePayment(document.paymentId!)).success).toBe(false)
+  })
+  it('records a transfer into the selected named bank account', async () => {
+    const source = await state.db.moneyAccount.findUniqueOrThrow({ where: { id: cash } })
+    const bank = await state.db.moneyAccount.create({
+      data: { organizationId: state.org, legalEntityId: source.legalEntityId, name: 'Second bank', kind: 'bank' },
+    })
+    const job = await state.db.serviceRecord.create({
+      data: { organizationId: state.org, title: 'Bank payment', issuedAt: new Date(), totalAmount: 50 },
+    })
+    const requestId = randomUUID()
+    const result = await createPayment({ serviceRecordId: job.id, moneyAccountId: bank.id, amount: 50, date: today, requestId })
+    expect(result.data?.method).toBe('transfer')
+    const doc = await state.db.financialDocument.findFirstOrThrow({ where: { organizationId: state.org, requestId } })
+    expect(doc.targetAccountId).toBe(bank.id)
   })
 })

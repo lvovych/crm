@@ -297,7 +297,7 @@ export function useServiceActions({
     amountExact?: string
     amount: number
     date: string
-    method: string
+    method?: string
     note?: string
   }) => {
     setPaymentLoading(true)

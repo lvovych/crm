@@ -27,7 +27,9 @@ export async function assertFinancePermission(ctx: AuthContext, action: A, subje
     member?.organizationId !== ctx.organizationId ||
     !hasPermission(member.customRole?.permissions ?? [], { action, subject })
   )
-    throw new Error('Недостатньо прав для фінансової операції.')
+    throw new Error(subject === S.FINANCE_BACKDATE
+      ? 'Недостатньо прав для оплати попередньою датою. Виберіть сьогоднішню дату або зверніться до власника.'
+      : 'Недостатньо прав для фінансової операції.')
 }
 export async function accessibleAccounts(ctx: AuthContext, post = false, tx: TxClient = db) {
   const member = ctx.isAdmin ? null : await getCachedMembership(ctx.userId)

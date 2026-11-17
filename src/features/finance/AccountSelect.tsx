@@ -1,14 +1,16 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { type ReactNode, useEffect, useState } from 'react'
 import { financeChoices } from './actions'
 export function AccountSelect({
   value,
   onChange,
   name = 'moneyAccountId',
+  inactiveFallback,
 }: {
   value?: string
   onChange?: (value: string) => void
   name?: string
+  inactiveFallback?: ReactNode
 }) {
   const [state, setState] = useState<Awaited<ReturnType<typeof financeChoices>>['data']>()
   const [failed, setFailed] = useState(false)
@@ -33,7 +35,8 @@ export function AccountSelect({
   }, [state, value, onChange])
   if (failed)
     return <p role="alert">Не вдалося завантажити каси. Оновіть сторінку перед оплатою.</p>
-  if (!state?.active) return null
+  if (!state) return null
+  if (!state.active) return inactiveFallback ?? null
   return (
     <label className="block space-y-1">
       <span>Каса / рахунок</span>

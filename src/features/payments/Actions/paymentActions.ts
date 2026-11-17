@@ -38,7 +38,7 @@ export async function createPayment(input: unknown) {
         serviceRecordId: data.serviceRecordId,
         amount: data.amount,
         date: toSafeWorkshopDate(data.date, timeZone) ?? new Date(),
-        method: data.method,
+        method: data.method ?? ('other' as const),
         note: data.note || null,
       }
       const { payment, issued } = await db.$transaction(async (tx) => {
@@ -82,6 +82,15 @@ export async function createPayment(input: unknown) {
         const date = zonedDayKey(write.date, timeZone)
         await assertOperationDate(ctx, date)
         await assertAccountAccess(ctx, [data.moneyAccountId], tx)
+        if (data.method === undefined) {
+          const account = await tx.moneyAccount.findFirstOrThrow({
+            where: { id: data.moneyAccountId, organizationId, isArchived: false },
+            select: { kind: true },
+          })
+          if (account.kind !== 'cash' && account.kind !== 'bank')
+            throw new Error('Невідомий тип рахунку надходження.')
+          write.method = account.kind === 'cash' ? 'cash' : 'transfer'
+        }
         const old = await tx.financialDocument.findUnique({
           where: { organizationId_requestId: { organizationId, requestId: data.requestId } },
           include: { payment: true },
@@ -93,7 +102,7 @@ export async function createPayment(input: unknown) {
             old.targetAccountId !== data.moneyAccountId ||
             old.note !== (data.note || 'Оплата клієнта') ||
             old.date.toISOString().slice(0, 10) !== date ||
-            old.payment.method !== data.method
+            old.payment.method !== write.method
           )
             throw new Error('Запит уже виконано з іншими даними.')
           return { payment: old.payment, issued: false }
@@ -134,7 +143,6 @@ export async function createPayment(input: unknown) {
         amountExact: payment.amountExact?.toFixed(2) ?? null,
         serviceRecordId: data.serviceRecordId,
         amount: payment.amount,
-        method: data.method,
       }
     },
     {

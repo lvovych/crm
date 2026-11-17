@@ -71,7 +71,17 @@ export async function recordSettlement(supplierId: string, requestId: string, ra
         if (!d.moneyAccountId) throw new Error('Оберіть рахунок списання.')
         await assertOperationDate(ctx, day(d.date))
         await assertAccountAccess(ctx, [d.moneyAccountId], tx)
+        if (!d.method) {
+          const account = await tx.moneyAccount.findFirst({
+            where: { id: d.moneyAccountId, organizationId, isArchived: false },
+            select: { kind: true },
+          })
+          if (account?.kind !== 'cash' && account?.kind !== 'bank')
+            throw new Error('Невідомий тип рахунку списання.')
+          d.method = account.kind
+        }
       }
+      if (d.op === 'payment' && !d.method) throw new Error('Оберіть спосіб оплати.')
       await applyOperation(tx, organizationId, supplierId, userId, requestId, d)
       if (active && d.op === 'payment')
         await postMoney(tx, organizationId, userId, {

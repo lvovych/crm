@@ -14,7 +14,7 @@ export const operation = z.discriminatedUnion('op', [
     op: z.literal('payment'),
     moneyAccountId: z.string().optional(),
     amount: positive,
-    method: z.enum(['bank', 'cash', 'card']),
+    method: z.enum(['bank', 'cash', 'card']).optional(),
     reference: z.string().trim().max(150),
     note: z.string().trim().max(500),
     target: z.string().optional(),
