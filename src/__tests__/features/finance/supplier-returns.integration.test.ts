@@ -102,6 +102,39 @@ describe.skipIf(!url)('supplier returns on PostgreSQL', () => {
     await expect(f.post(f.request('1'))).rejects.toThrow('перевищує')
     await expect(f.post({ ...input, reason: 'Different' })).rejects.toThrow('іншого')
   })
+  it('returns all lines of one receipt together to its supplier', async () => {
+    const f = await setup()
+    const second = await db.supplierReceiptLine.create({
+      data: {
+        receiptId: f.receipt.id,
+        position: 1,
+        kind: 'part',
+        name: 'Second line',
+        unit: 'шт',
+        quantity: 2,
+        unitPrice: 100,
+        amount: 200,
+        partId: f.part.id,
+      },
+    })
+    await db.inventoryPart.update({ where: { id: f.part.id }, data: { quantity: 5 } })
+    await db.supplierEntry.update({
+      where: { id: f.receipt.settlement!.id },
+      data: { amount: 500 },
+    })
+    const input = f.request('3')
+    await f.post({ ...input, lines: [...input.lines, { id: second.id, quantity: '2' }] })
+    const document = await db.supplierReturn.findUniqueOrThrow({
+      where: { id: input.id },
+      include: { settlement: true, lines: true },
+    })
+    expect(document.lines).toHaveLength(2)
+    expect(document.settlement?.supplierId).toBe(f.supplier.id)
+    expect(document.settlement?.amount.toFixed(2)).toBe('500.00')
+    expect((await db.inventoryPart.findUniqueOrThrow({ where: { id: f.part.id } })).quantity).toBe(
+      0
+    )
+  })
   it('rolls back insufficient stock, rejects foreign organizations and duplicate lines', async () => {
     const f = await setup()
     await db.inventoryPart.update({ where: { id: f.part.id }, data: { quantity: 0 } })

@@ -204,7 +204,8 @@
     "finance_activateCashOpening": "Активація касового обліку",
     "finance_reverseMoneyDocument": "Сторно грошової операції",
     "finance_assignUnlinkedPayment": "Звірка зовнішньої оплати",
-    "finance_refundMoneyDocument": "Повернення оплати"
+    "finance_refundMoneyDocument": "Повернення оплати",
+    "receipts_return": "Повернення постачальнику"
   },
   "summary": {
     "customField_create": "Створено поле налаштування «.{name}»",
