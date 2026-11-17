@@ -206,6 +206,28 @@ describe.skipIf(!url)('supplier returns on PostgreSQL', () => {
     ).toBe('0.00')
     expect(await db.moneyEntry.count({ where: { organizationId: f.org.id } })).toBe(0)
   })
+  it('uses the server-resolved workshop date for document and settlement', async () => {
+    const f = await setup()
+    const today = new Date(f.receipt.receivedDate)
+    today.setUTCDate(today.getUTCDate() - 1)
+    const day = today.toISOString().slice(0, 10)
+    await db.supplierReceipt.update({ where: { id: f.receipt.id }, data: { receivedDate: today } })
+    await db.supplierEntry.update({
+      where: { id: f.receipt.settlement!.id },
+      data: { date: today },
+    })
+    const input = f.request('1')
+    const actor = await db.inventoryPart.findUniqueOrThrow({ where: { id: f.part.id } })
+    await db.$transaction((tx) =>
+      postSupplierReturn(tx as TxClient, f.org.id, actor.userId, input, day)
+    )
+    const doc = await db.supplierReturn.findUniqueOrThrow({
+      where: { id: input.id },
+      include: { settlement: true },
+    })
+    expect(doc.date.toISOString().slice(0, 10)).toBe(day)
+    expect(doc.settlement!.date.toISOString().slice(0, 10)).toBe(day)
+  })
   it('prevents concurrent over-return', async () => {
     const f = await setup('part', '1')
     const results = await Promise.allSettled([f.post(f.request('1')), f.post(f.request('1'))])

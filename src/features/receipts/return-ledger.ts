@@ -26,7 +26,13 @@ export const returnSchema = z
   })
   .refine((v) => new Set(v.lines.map((l) => l.id)).size === v.lines.length, 'Позиції повторюються.')
 
-export async function postSupplierReturn(tx: TxClient, org: string, userId: string, raw: unknown) {
+export async function postSupplierReturn(
+  tx: TxClient,
+  org: string,
+  userId: string,
+  raw: unknown,
+  today = workshopDay()
+) {
   const input = returnSchema.parse(raw)
   const fingerprint = createHash('sha256')
     .update(
@@ -59,7 +65,6 @@ export async function postSupplierReturn(tx: TxClient, org: string, userId: stri
   if (current.status !== 'posted') throw new Error('Повернення доступне з проведеної накладної.')
   if (!current.settlement || current.settlement.reversedAt)
     throw new Error('Спочатку звірте накладну у взаєморозрахунках.')
-  const today = workshopDay()
   const settings = await tx.financeSettings.findUnique({ where: { organizationId: org } })
   if (settings?.closedThrough && settings.closedThrough.toISOString().slice(0, 10) >= today)
     throw new Error('Період закрито для проведення документів.')

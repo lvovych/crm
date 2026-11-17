@@ -21,7 +21,7 @@ test('returns all receipt goods in one document and updates supplier debt and st
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
-    }).format(new Date())
+    }).format(new Date(Date.now() - 86400000))
     await db.query(
       'insert into supplier_receipts (id,"organizationId","supplierId",number,"documentDate","receivedDate",status,"createdById") values ($1,$2,$3,$4,$5,$5,\'posted\',$6)',
       [

@@ -7,7 +7,8 @@ import { availableQuantity } from './transfer-schema'
 import { receiptsEnabled } from './enabled'
 import { postSupplierReturn } from './return-ledger'
 import { assertOperationDate } from '@/features/finance/access'
-import { workshopDay } from '@/features/settlements/amounts'
+import { zonedDayKey } from '@/lib/timezone'
+import { workshopTimeZone } from '@/lib/workshop-timezone'
 import { revalidatePath } from 'next/cache'
 import { onInventoryChanged } from '@/features/inventory/Lib/onInventoryChanged'
 
@@ -15,11 +16,12 @@ export async function createSupplierReturn(raw: unknown) {
   return withAuth(
     async (ctx) => {
       if (!receiptsEnabled(ctx.organizationId)) throw new Error('Надходження вимкнено.')
-      await assertOperationDate(ctx, workshopDay())
+      const today = zonedDayKey(new Date(), await workshopTimeZone(ctx.organizationId))
+      await assertOperationDate(ctx, today)
       const id = await db.$transaction(async (tx) => {
         await lockFinance(tx, ctx.organizationId)
-        await assertOperationDate(ctx, workshopDay())
-        return postSupplierReturn(tx, ctx.organizationId, ctx.userId, raw)
+        await assertOperationDate(ctx, today)
+        return postSupplierReturn(tx, ctx.organizationId, ctx.userId, raw, today)
       })
       await onInventoryChanged(ctx.organizationId)
       revalidatePath('/receipts')
