@@ -62,6 +62,8 @@ export async function transitionReceipt(
   if (receipt.status === target) return
   const posting = target === 'posted'
   if (posting && !sameKind(receipt.lines)) throw new Error(mixedReceiptMessage)
+  if (!posting && await tx.supplierReturn.count({ where: { receiptId: id } }))
+    throw new Error('Накладна має повернення. Скасування недоступне.')
   if (!posting && !reason.trim()) throw new Error('Вкажіть причину скасування.')
   if (
     posting &&

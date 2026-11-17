@@ -252,7 +252,7 @@ describe('the routes implement the manifest', () => {
     // already there, which is a failed import on the second restore.
     const missing = topLevelEntities()
       .filter((entity) => entity.restore === 'replace')
-      .filter((entity) => !importRoute.includes(`${entity.model}: () =>`))
+      .filter((entity) => !importRoute.includes(`${entity.model}: () =>`) && !importRoute.includes(`${entity.model}: async () =>`))
       .map((entity) => entity.model)
 
     expect(missing, `Restored but never cleared: ${missing.join(', ')}`).toEqual([])

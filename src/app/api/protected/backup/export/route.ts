@@ -189,6 +189,7 @@ export async function POST(request: NextRequest) {
           data.supplierEntries = rows
         })
     )
+    queries.push(db.supplierReturn.findMany({ where: { organizationId: ctx.organizationId }, include: { lines: true } }).then(rows => { data.supplierReturns = rows }))
     queries.push(
       db.supplierReceipt
         .findMany({

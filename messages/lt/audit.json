@@ -204,7 +204,8 @@
     "finance_activateCashOpening": "Finance: activateCashOpening",
     "finance_reverseMoneyDocument": "Finance: reverseMoneyDocument",
     "finance_assignUnlinkedPayment": "Finance: assignUnlinkedPayment",
-    "finance_refundMoneyDocument": "Finance: refundMoneyDocument"
+    "finance_refundMoneyDocument": "Finance: refundMoneyDocument",
+    "receipts_return": "Grąžinimas tiekėjui"
   },
   "summary": {
     "customField_create": "Sukurtas pasirinktinis laukas „{name}“",

@@ -99,6 +99,8 @@ export async function assignReceiptService(
       return
     throw new Error('Послугу вже віднесено до іншої роботи.')
   }
+  if (await tx.supplierReturnLine.count({ where: { lineId } }))
+    throw new Error('Послуга має повернення. Віднесення до іншого наряду недоступне.')
   const supplierId = line.receipt.supplierId
   if (laborId) {
     const work = await tx.subcontractWork.findFirstOrThrow({

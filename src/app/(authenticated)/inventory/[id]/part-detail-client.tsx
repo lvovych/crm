@@ -105,6 +105,7 @@ export function PartDetailClient({
   const reasonLabel = (value: string) => {
     switch (value) {
       case 'supplier_receipt': return 'Надходження від постачальника'
+      case 'supplier_return': return 'Повернення постачальнику'
       case 'supplier_receipt_cancelled': return 'Скасування надходження'
       case 'service_record':
         return t('history.reasons.service_record')

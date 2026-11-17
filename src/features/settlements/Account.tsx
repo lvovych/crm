@@ -17,6 +17,7 @@ type Rights = Awaited<ReturnType<typeof settlementAccess>>
 const kinds: Record<string, string> = {
   receipt: 'Накладна',
   payment: 'Оплата',
+  return_credit: 'Повернення постачальнику',
   adjustment_debt: 'Коригування · збільшення нашого боргу',
   adjustment_credit: 'Коригування · зменшення нашого боргу',
   opening_credit: 'Початковий аванс',
@@ -252,7 +253,7 @@ export function Account({
       )}
       {live && rights.create && credit && debits.length > 0 && (!receiptId || selected) && (
         <section className="rounded border p-4">
-          <h2 className="font-semibold">{credit.kind === 'adjustment_credit' ? 'Зарахувати коригування' : 'Зарахувати наявний аванс'}</h2>
+          <h2 className="font-semibold">{credit.kind === 'return_credit' ? 'Зарахувати повернення' : credit.kind === 'adjustment_credit' ? 'Зарахувати коригування' : 'Зарахувати наявний аванс'}</h2>
           <label>
             Джерело
             <select className={box} value={credit.id} onChange={(e) => setCredit(e.target.value)}>
@@ -266,7 +267,7 @@ export function Account({
           <Operation
             key={credit.id + '-' + credit.open + '-' + (selected?.open ?? '')}
             supplier={a.id}
-            label={credit.kind === 'adjustment_credit' ? 'Зарахувати коригування' : 'Зарахувати аванс'}
+            label={credit.kind === 'return_credit' ? 'Зарахувати повернення' : credit.kind === 'adjustment_credit' ? 'Зарахувати коригування' : 'Зарахувати аванс'}
             build={(f) => ({
               op: 'allocate',
               credit: credit.id,
@@ -356,6 +357,7 @@ export function Account({
               {new Date(r.createdAt).toLocaleString('uk-UA', { timeZone: 'Europe/Kyiv' })}{' '}
               {r.reversedBy && '· Скасував ' + r.reversedBy}
             </p>
+            {r.returnUrl && <Link className="underline" href={r.returnUrl}>Відкрити повернення</Link>}
             {r.receiptId && (
               <Link className="underline" href={'/receipts/' + r.receiptId}>
                 Відкрити накладну
@@ -404,7 +406,7 @@ export function Account({
                 )}
               </div>
             ))}
-            {live && rights.reverse && r.active && r.kind !== 'receipt' && (
+            {live && rights.reverse && r.active && r.kind !== 'receipt' && r.kind !== 'return_credit' && (
               <Operation
                 supplier={a.id}
                 label="Скасувати запис"

@@ -204,7 +204,8 @@
     "finance_activateCashOpening": "Finance: activateCashOpening",
     "finance_reverseMoneyDocument": "Finance: reverseMoneyDocument",
     "finance_assignUnlinkedPayment": "Finance: assignUnlinkedPayment",
-    "finance_refundMoneyDocument": "Finance: refundMoneyDocument"
+    "finance_refundMoneyDocument": "Finance: refundMoneyDocument",
+    "receipts_return": "Reso al fornitore"
   },
   "summary": {
     "customField_create": "Campo personalizzato «{name}» creato",

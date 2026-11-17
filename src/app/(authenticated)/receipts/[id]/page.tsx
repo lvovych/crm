@@ -1,3 +1,5 @@
+import { Returns } from '@/features/receipts/Returns'
+import { supplierReturnData } from '@/features/receipts/return-actions'
 import { AssignService } from '@/features/receipts/AssignService'
 import { TransferGoods } from '@/features/receipts/TransferGoods'
 import { receiptTransferOptions } from '@/features/receipts/transfer-actions'
@@ -44,6 +46,7 @@ export default async function Page({
   }
   const transfers = d.status === 'posted' ? (await receiptTransferOptions(id)).data : null
   const rights = await settlementAccess()
+  const returns = await supplierReturnData(id)
   const account =
     rights.read && d.status === 'posted'
       ? (await settlementReport(workshopDay(), d.supplierId)).data?.[0]
@@ -113,6 +116,7 @@ export default async function Page({
           <Account account={account} rights={rights} receiptId={id} live />
         </section>
       )}
+      {returns.data && <Returns receiptId={id} data={returns.data} canCreate={access.create && access.post && rights.create} />}
       <p>Створено · {d.creator}</p>
       {d.postedAt && (
         <p>

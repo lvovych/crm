@@ -492,6 +492,10 @@ export async function POST(request: NextRequest) {
         CustomFieldDefinition: () =>
           tx.customFieldDefinition.deleteMany({ where: { organizationId } }),
         SupplierEntry: () => tx.supplierEntry.deleteMany({ where: { organizationId } }),
+        SupplierReturn: async () => {
+          await tx.supplierReturnLine.deleteMany({ where: { document: { organizationId } } })
+          await tx.supplierReturn.deleteMany({ where: { organizationId } })
+        },
         SupplierReceipt: () => tx.supplierReceipt.deleteMany({ where: { organizationId } }),
         Counterparty: () => tx.counterparty.deleteMany({ where: { organizationId } }),
         SupplierImportRun: () => tx.supplierImportRun.deleteMany({ where: { organizationId } }),
@@ -516,6 +520,7 @@ export async function POST(request: NextRequest) {
       }
 
       if (data.supplierReceipts) {
+        data.supplierReturns ??= []
         await tx.stockMovement.deleteMany({
           where: { organizationId, receiptLineId: { not: null } },
         })
@@ -914,6 +919,17 @@ export async function POST(request: NextRequest) {
           }
         }
       }
+      if (data.supplierReturns) {
+        for (const raw of data.supplierReturns as Record<string, unknown>[]) {
+          const receipt = await tx.supplierReceipt.findFirstOrThrow({ where: { id: String(raw.receiptId), organizationId } })
+          const { lines, ...fields } = raw
+          await tx.supplierReturn.create({ data: columnsOf(fields, { organizationId, createdById: ctx.userId }) as never })
+          for (const line of (lines ?? []) as Record<string, unknown>[]) {
+            await tx.supplierReceiptLine.findFirstOrThrow({ where: { id: String(line.lineId), receiptId: receipt.id } })
+            await tx.supplierReturnLine.create({ data: columnsOf(line, { returnId: raw.id }) as never })
+          }
+        }
+      }
       if (data.supplierEntries) {
         const entries = data.supplierEntries as Record<string, unknown>[]
         const owners = new Map(entries.map((e) => [e.id, e.supplierId]))
@@ -926,6 +942,7 @@ export async function POST(request: NextRequest) {
         for (const raw of entries) {
           if (raw.receiptId && receipts.get(raw.receiptId) !== raw.supplierId)
             throw new Error('Invalid settlement receipt')
+          if (raw.returnId) await tx.supplierReturn.findFirstOrThrow({ where: { id: String(raw.returnId), organizationId, receipt: { supplierId: String(raw.supplierId) } } })
           const { credits, termChanges, ...fields } = raw
           await tx.supplierEntry.create({
             data: columnsOf(fields, {
@@ -1541,11 +1558,11 @@ export async function POST(request: NextRequest) {
         }
       }
       if (data.subcontractWork) {
-        for (const row of data.subcontractWork as {laborId:string;supplierId:string;unitCost:string;receiptLineId:string|null}[]) {
+        for (const row of data.subcontractWork as {laborId:string;supplierId:string;unitCost:string;returnedCost?:string;receiptLineId:string|null}[]) {
           await tx.serviceLabor.findFirstOrThrow({where:{id:row.laborId,serviceRecord:{organizationId}}})
           await tx.counterparty.findFirstOrThrow({where:{id:row.supplierId,organizationId}})
           if (row.receiptLineId) await tx.supplierReceiptLine.findFirstOrThrow({where:{id:row.receiptLineId,kind:'service',receipt:{organizationId,supplierId:row.supplierId}}})
-          await tx.subcontractWork.create({data:{laborId:row.laborId,supplierId:row.supplierId,unitCost:row.unitCost,receiptLineId:row.receiptLineId}})
+          await tx.subcontractWork.create({data:{laborId:row.laborId,supplierId:row.supplierId,unitCost:row.unitCost,returnedCost:row.returnedCost ?? 0,receiptLineId:row.receiptLineId}})
         }
       }
       if (data.inspections?.length) {

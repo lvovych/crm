@@ -55,6 +55,9 @@ export async function reverseEntry(
   userId: string,
   reason: string
 ) {
+  const original = await tx.supplierEntry.findFirstOrThrow({ where: { id, organizationId: org, supplierId } })
+  if (original.returnId || (original.receiptId && await tx.supplierReturn.count({ where: { receiptId: original.receiptId } })))
+    throw new Error('Документ пов’язаний із поверненням постачальнику. Скасування недоступне.')
   const where = { id, organizationId: org, supplierId, reversedAt: null }
   const data = { reversedAt: new Date(), reversedById: userId, reason }
   if (!(await tx.supplierEntry.updateMany({ where, data })).count)

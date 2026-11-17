@@ -29,7 +29,7 @@ export async function transferReceiptGoods(
   await tx.$queryRaw`SELECT id FROM "public"."supplier_receipts" WHERE id=${receipt.id} AND "organizationId"=${organizationId} FOR UPDATE`
   const current = await tx.supplierReceipt.findUniqueOrThrow({
     where: { id: receipt.id },
-    include: { lines: { include: { transfers: true } } },
+    include: { lines: { include: { transfers: true, returns: true } } },
   })
   const prior = await tx.receiptTransfer.findMany({
     where: { requestId: data.requestId, line: { receipt: { organizationId } } },
@@ -60,7 +60,7 @@ export async function transferReceiptGoods(
         throw new Error('Оберіть товари з цієї накладної.')
       const available = availableQuantity(
         line.quantity.toString(),
-        line.transfers.map((t) => t.quantity.toString())
+        [...line.transfers, ...line.returns].map((t) => t.quantity.toString())
       )
       if (quantityUnits(request.quantity) > quantityUnits(available))
         throw new Error(`«${line.name}»: кількість перевищує залишок для передавання.`)
