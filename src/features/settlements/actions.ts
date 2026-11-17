@@ -115,7 +115,7 @@ export async function settlementReport(asOf: string, supplierId?: string) {
       }),
       db.supplierEntry.findMany({
         where: { organizationId, ...(supplierId ? { supplierId } : {}), date: { lte: cutoff } },
-        include: { ...withLinks, termChanges: { orderBy: [{ changedAt: 'asc' }, { id: 'asc' }] } },
+        include: { ...withLinks, returnDocument: { select: { receiptId: true } }, termChanges: { orderBy: [{ changedAt: 'asc' }, { id: 'asc' }] } },
         orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
       }),
       db.supplierReceipt.findMany({
@@ -173,6 +173,7 @@ export async function settlementReport(asOf: string, supplierId?: string) {
             overdue: active && !isCredit(e.kind) && open > 0 && !!due && due < asOf,
             active,
             receiptId: e.receiptId,
+            returnUrl: e.returnId && e.returnDocument ? '/receipts/' + e.returnDocument.receiptId + '/returns/' + e.returnId : null,
             reference: e.reference,
             note: e.note,
             method: e.method,

@@ -24,7 +24,7 @@ export async function receiptTransferOptions(receiptId: string) {
         include: {
           lines: {
             orderBy: { position: 'asc' },
-            include: { part: true, transfers: { orderBy: { createdAt: 'asc' } } },
+            include: { part: true, returns: true, transfers: { orderBy: { createdAt: 'asc' } } },
           },
         },
       })
@@ -90,7 +90,7 @@ export async function receiptTransferOptions(receiptId: string) {
             received: l.quantity.toString(),
             available: availableQuantity(
               l.quantity.toString(),
-              l.transfers.map((t) => t.quantity.toString())
+              [...l.transfers, ...l.returns].map((t) => t.quantity.toString())
             ),
             stock: l.part!.quantity,
             unitPrice: String(

@@ -109,6 +109,8 @@ export const BACKUP_ENTITIES: readonly BackupEntity[] = [
     clearOrder: 59,
   },
   { model: 'PayAssignment', key: 'payAssignments', option: 'vehicles', restore: 'replace', clearOrder: 1 },
+  { model: 'SupplierReturn', key: 'supplierReturns', option: 'inventory', restore: 'replace', clearOrder: 58.5 },
+  { model: 'SupplierReturnLine', nestedUnder: 'SupplierReturn', option: 'inventory', restore: 'replace' },
   { model: 'SubcontractWork', key: 'subcontractWork', option: 'inventory', restore: 'replace', clearOrder: 1 },
   {
     model: 'ReceiptTransfer',

@@ -9,7 +9,7 @@ export function hryvnia(n: bigint) {
   return n < BigInt(0) ? '-' + decimalAmount(-n) : decimalAmount(n)
 }
 export function isCredit(kind: string) {
-  return kind === 'payment' || kind === 'opening_credit' || kind === 'adjustment_credit'
+  return kind === 'payment' || kind === 'opening_credit' || kind === 'adjustment_credit' || kind === 'return_credit'
 }
 export function supplierTotals(rows: { kind: string; open: string; overdue: boolean }[]) {
   let obligations = BigInt(0)

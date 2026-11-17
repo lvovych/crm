@@ -120,7 +120,7 @@ export async function calculate(
       if (labor.technicianId === employee && !labor.subcontract)
         commission(labor.description, plan.labor, includesDiscounts('labor', plan) ? amount.mul(factor) : amount)
       margin = margin.plus(includesDiscounts('orderMargin', plan) ? amount.mul(factor) : amount)
-      if (labor.subcontract) margin = margin.minus(labor.subcontract.unitCost.mul(labor.hours))
+      if (labor.subcontract) margin = margin.minus(D.max(0, labor.subcontract.unitCost.mul(labor.hours).minus(labor.subcontract.returnedCost ?? 0)))
     }
     for (const p of o.partItems) {
       const seller = p.payrollSellerId ?? o.payAssignment?.partsId

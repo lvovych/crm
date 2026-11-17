@@ -20,6 +20,7 @@ model SupplierReceipt {
   sourceAccount String?
   externalId String?
   lines SupplierReceiptLine[]
+  returns SupplierReturn[]
   settlement SupplierEntry?
   @@unique([organizationId, supplierId, number, documentDate])
   @@unique([organizationId, source, sourceAccount, externalId])
@@ -41,6 +42,7 @@ model SupplierReceiptLine {
   article String?
   partId String?
   part InventoryPart? @relation(fields: [partId], references: [id], onDelete: Restrict)
+  returns SupplierReturnLine[]
   transfers ReceiptTransfer[]
   movements StockMovement[]
   @@unique([receiptId,position])
@@ -83,6 +85,7 @@ model ReceiptTransfer {
 }
 
 model SubcontractWork {
+  returnedCost Decimal @default(0) @db.Decimal(18,2)
   laborId String @id
   labor ServiceLabor @relation(fields: [laborId], references: [id], onDelete: NoAction)
   supplierId String
@@ -91,4 +94,34 @@ model SubcontractWork {
   receiptLineId String? @unique
   receiptLine SupplierReceiptLine? @relation(fields: [receiptLineId], references: [id], onDelete: NoAction)
   @@map("subcontract_work")
+}
+
+
+model SupplierReturn {
+  id String @id
+  organizationId String
+  receiptId String
+  receipt SupplierReceipt @relation(fields:[receiptId], references:[id], onDelete:Restrict)
+  number String
+  date DateTime @db.Date
+  reason String
+  fingerprint String
+  createdById String
+  createdAt DateTime @default(now())
+  lines SupplierReturnLine[]
+  settlement SupplierEntry?
+  @@index([organizationId, date])
+  @@map("supplier_returns")
+}
+
+model SupplierReturnLine {
+  id String @id @default(cuid())
+  returnId String
+  document SupplierReturn @relation(fields:[returnId], references:[id], onDelete:Restrict)
+  lineId String
+  line SupplierReceiptLine @relation(fields:[lineId], references:[id], onDelete:Restrict)
+  quantity Decimal @db.Decimal(14,3)
+  amount Decimal @db.Decimal(18,2)
+  @@unique([returnId,lineId])
+  @@map("supplier_return_lines")
 }
