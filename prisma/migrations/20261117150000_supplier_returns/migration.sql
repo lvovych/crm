@@ -16,6 +16,9 @@ CREATE TABLE "supplier_returns" (
     "createdById" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
+    CONSTRAINT "supplier_returns_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateTable
 CREATE TABLE "supplier_return_lines" (
     "id" TEXT NOT NULL,
@@ -23,6 +26,9 @@ CREATE TABLE "supplier_return_lines" (
     "lineId" TEXT NOT NULL,
     "quantity" DECIMAL(14,3) NOT NULL,
     "amount" DECIMAL(18,2) NOT NULL,
+
+    CONSTRAINT "supplier_return_lines_pkey" PRIMARY KEY ("id")
+);
 
 -- CreateIndex
 CREATE INDEX "supplier_returns_organizationId_date_idx" ON "supplier_returns"("organizationId", "date");
