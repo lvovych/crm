@@ -37,7 +37,7 @@ interface PaymentsSectionProps {
     moneyAccountId?: string
     requestId?: string
     date: string
-    method: string
+    method?: string
     note?: string
   }) => Promise<boolean>
   onDeletePayment: (id: string) => void
@@ -106,7 +106,7 @@ export function PaymentsSection({
       amountExact: amount.value,
       amount: Number(amount.value),
       date: date?.value || new Date().toISOString(),
-      method: paymentMethod,
+      method: moneyAccountId ? undefined : paymentMethod,
       note: note?.value || undefined,
     })
     if (success) {
@@ -156,19 +156,26 @@ export function PaymentsSection({
           />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs">{t('method')}</Label>
-          <AccountSelect value={moneyAccountId} onChange={setMoneyAccountId} />
-          <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="cash">{t('methodOptions.cash')}</SelectItem>
-              <SelectItem value="card">{t('methodOptions.card')}</SelectItem>
-              <SelectItem value="transfer">{t('methodOptions.transfer')}</SelectItem>
-              <SelectItem value="other">{t('methodOptions.other')}</SelectItem>
-            </SelectContent>
-          </Select>
+          <AccountSelect
+            value={moneyAccountId}
+            onChange={setMoneyAccountId}
+            inactiveFallback={
+              <>
+                <Label className="text-xs">{t('method')}</Label>
+                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">{t('methodOptions.cash')}</SelectItem>
+                    <SelectItem value="card">{t('methodOptions.card')}</SelectItem>
+                    <SelectItem value="transfer">{t('methodOptions.transfer')}</SelectItem>
+                    <SelectItem value="other">{t('methodOptions.other')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </>
+            }
+          />
         </div>
         <div className="space-y-1">
           <Label htmlFor="paymentNote" className="text-xs">
