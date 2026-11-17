@@ -149,22 +149,23 @@ function PaymentForm({
           expectedOpen: selected?.open,
           amount: field(f, 'amount'),
           date: field(f, 'date'),
-          method: field(f, 'method'),
+          method: field(f, 'method') || undefined,
           reference: field(f, 'reference'),
           note: field(f, 'note'),
         })}
       >
         <Amount value={selected?.open} onInput={setTyped} />
         <DateField />
-        <label>
-          Спосіб
-          <AccountSelect />
-          <select name="method" className={'block ' + box}>
-            <option value="bank">Банк</option>
-            <option value="cash">Готівка</option>
-            <option value="card">Картка</option>
-          </select>
-        </label>
+        <AccountSelect inactiveFallback={
+          <label>
+            Спосіб
+            <select name="method" className={'block ' + box}>
+              <option value="bank">Банк</option>
+              <option value="cash">Готівка</option>
+              <option value="card">Картка</option>
+            </select>
+          </label>
+        } />
         <label>
           Платіжний документ
           <input name="reference" className={'block ' + box} />
