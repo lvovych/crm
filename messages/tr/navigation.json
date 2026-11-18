@@ -79,7 +79,9 @@
     "tireSetDetails": "Lastik takımı",
     "tireForecast": "Gelecek sezon",
     "whatsapp": "WhatsApp",
-    "inspectionReminders": "Muayene hatırlatmaları"
+    "inspectionReminders": "Muayene hatırlatmaları",
+    "documents": "Document journal",
+    "documentDetails": "Document connections"
   },
   "search": "Ara...",
   "shortcut": "Ctrl+K",
@@ -164,6 +166,7 @@
     "payroll": "Payroll",
     "staffSettlements": "Employee settlements",
     "employees": "Employees",
-    "mutualSettlements": "Settlements"
+    "mutualSettlements": "Settlements",
+    "documents": "Document journal"
   }
 }

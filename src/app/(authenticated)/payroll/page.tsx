@@ -40,6 +40,14 @@ export default async function Payroll({
         </Link>
         <DocumentHeader
           title={'SAL · ' + employee.name}
+          actions={
+            <Link
+              className="rounded-md border px-4 py-2 text-sm"
+              href={'/documents/salary/' + saved.id}
+            >
+              Пов’язані виплати
+            </Link>
+          }
           status={
             <DocumentStatus tone={saved.status === 'completed' ? 'success' : 'neutral'}>
               {saved.status === 'new' ? 'Новий' : 'Завершено'}

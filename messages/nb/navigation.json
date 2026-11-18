@@ -79,7 +79,9 @@
     "tireSetDetails": "Dekksett",
     "tireForecast": "Neste sesong",
     "whatsapp": "WhatsApp",
-    "inspectionReminders": "EU-kontroll-påminnelser"
+    "inspectionReminders": "EU-kontroll-påminnelser",
+    "documents": "Document journal",
+    "documentDetails": "Document connections"
   },
   "search": "Søk...",
   "shortcut": "Ctrl+K",
@@ -164,6 +166,7 @@
     "payroll": "Payroll",
     "staffSettlements": "Employee settlements",
     "employees": "Employees",
-    "mutualSettlements": "Settlements"
+    "mutualSettlements": "Settlements",
+    "documents": "Document journal"
   }
 }

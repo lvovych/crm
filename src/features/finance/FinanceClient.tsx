@@ -895,7 +895,12 @@ export function FinanceClient({
                   >
                     <div className="text-sm">
                       <p>{dayLabel(e.date)}</p>
-                      <p className="font-medium">{labels[e.kind] || e.kind}</p>
+                      <Link
+                        className="font-medium underline-offset-4 hover:underline"
+                        href={'/documents/finance/' + e.documentId}
+                      >
+                        {labels[e.kind] || e.kind} ↗
+                      </Link>
                       <span
                         className={`mt-1 inline-block rounded border px-2 py-1 text-xs ${e.reversed ? 'border-amber-500' : ''}`}
                       >

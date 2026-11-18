@@ -79,7 +79,9 @@
     "tireSetDetails": "Padangų komplektas",
     "tireForecast": "Kitas sezonas",
     "whatsapp": "„WhatsApp“",
-    "inspectionReminders": "Apžiūros priminimai"
+    "inspectionReminders": "Apžiūros priminimai",
+    "documents": "Document journal",
+    "documentDetails": "Document connections"
   },
   "search": "Ieškoti...",
   "shortcut": "Ctrl+K",
@@ -164,6 +166,7 @@
     "payroll": "Payroll",
     "staffSettlements": "Employee settlements",
     "employees": "Employees",
-    "mutualSettlements": "Settlements"
+    "mutualSettlements": "Settlements",
+    "documents": "Document journal"
   }
 }

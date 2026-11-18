@@ -1,3 +1,5 @@
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
 import { DocumentHeader, DocumentStatus, MoneySummary } from '@/components/operations/document-ui'
 import { dayLabel, moneyLabel } from '@/features/finance/presentation'
 import { notFound } from 'next/navigation'
@@ -18,6 +20,11 @@ export default async function Page({
       <DocumentHeader
         title={'Повернення постачальнику № ' + document.number}
         back={{ href: '/receipts/' + id + '?tab=returns', label: 'До прихідної накладної' }}
+        actions={
+          <Button asChild variant="outline">
+            <Link href={'/documents/return/' + returnId}>Пов’язані документи</Link>
+          </Button>
+        }
         status={<DocumentStatus tone="success">Проведено</DocumentStatus>}
         description={result.data.supplier + ' · ' + dayLabel(document.date)}
       />

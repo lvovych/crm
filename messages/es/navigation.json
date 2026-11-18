@@ -79,7 +79,9 @@
     "tireSetDetails": "Juego de neumáticos",
     "tireForecast": "La próxima temporada",
     "whatsapp": "WhatsApp",
-    "inspectionReminders": "Recordatorios de inspección"
+    "inspectionReminders": "Recordatorios de inspección",
+    "documents": "Document journal",
+    "documentDetails": "Document connections"
   },
   "search": "Buscar...",
   "shortcut": "Ctrl+K",
@@ -164,6 +166,7 @@
     "payroll": "Payroll",
     "staffSettlements": "Employee settlements",
     "employees": "Employees",
-    "mutualSettlements": "Settlements"
+    "mutualSettlements": "Settlements",
+    "documents": "Document journal"
   }
 }

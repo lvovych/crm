@@ -1,3 +1,4 @@
+import { RelatedDocuments } from '@/features/documents/RelatedDocuments'
 import { DocumentHeader, DocumentStatus, MoneySummary } from '@/components/operations/document-ui'
 import { DocumentTabs } from '@/components/operations/document-tabs'
 import { Button } from '@/components/ui/button'
@@ -218,6 +219,11 @@ export default async function Page({
                 },
               ]
             : []),
+          {
+            id: 'connections',
+            label: 'Пов’язані документи',
+            content: <RelatedDocuments type="receipt" id={id} />,
+          },
         ]}
       />
       <details className="ops-panel text-sm text-muted-foreground">

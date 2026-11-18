@@ -79,7 +79,9 @@
     "tireSetDetails": "Комплект шин",
     "tireForecast": "Следующий сезон",
     "whatsapp": "WhatsApp",
-    "inspectionReminders": "Напоминания о техосмотре"
+    "inspectionReminders": "Напоминания о техосмотре",
+    "documents": "Document journal",
+    "documentDetails": "Document connections"
   },
   "search": "Поиск...",
   "shortcut": "Ctrl+K",
@@ -164,6 +166,7 @@
     "payroll": "Payroll",
     "staffSettlements": "Employee settlements",
     "employees": "Employees",
-    "mutualSettlements": "Settlements"
+    "mutualSettlements": "Settlements",
+    "documents": "Document journal"
   }
 }

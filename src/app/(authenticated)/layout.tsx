@@ -106,8 +106,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // Determine which subjects the user can access (for sidebar visibility)
   const isOwnerOrAdmin =
     data.role === 'owner' || data.role === 'admin' || data.role === 'super_admin'
-  const isOrganizationOwner = data.organizations.some(o => o.id === data.organizationId && o.role === 'owner')
-  const allSubjects = Object.values(PermissionSubject).filter(subject => subject !== PermissionSubject.PAYROLL || isOrganizationOwner)
+  const isOrganizationOwner = data.organizations.some(
+    (o) => o.id === data.organizationId && o.role === 'owner'
+  )
+  const allSubjects = Object.values(PermissionSubject).filter(
+    (subject) => subject !== PermissionSubject.PAYROLL || isOrganizationOwner
+  )
   let visibleSubjects: string[] = allSubjects
 
   /**
@@ -383,6 +387,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
               </DateSettingsProvider>
             </SidebarProvider>
             <MobileBottomNav
+              documentsEnabled={
+                isOwnerOrAdmin ||
+                visibleSubjects.some((s) => ['finance', 'services', 'payroll'].includes(s)) ||
+                (receiptsEnabled(data.organizationId) && visibleSubjects.includes('receipts')) ||
+                (settlementsEnabled(data.organizationId) &&
+                  visibleSubjects.includes('supplier_settlements'))
+              }
               financeEnabled={isOwnerOrAdmin || visibleSubjects.includes(PermissionSubject.FINANCE)}
               mutualSettlementsEnabled={
                 !visibleSubjects ||

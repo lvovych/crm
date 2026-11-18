@@ -244,6 +244,11 @@ export function AppSidebar({
   ].filter((item) => !item.subject || canAccess(item.subject))
 
   const businessItems: NavItem[] = [
+    ...((receiptsEnabled && canAccess('receipts')) ||
+    ['finance', 'services', 'payroll'].some(canAccess) ||
+    (supplierDirectoryEnabled && canAccess('supplier_settlements'))
+      ? [{ titleKey: 'sidebar.documents', url: '/documents', icon: FileText, subject: '' }]
+      : []),
 
     ...(mutualSettlementsEnabled
       ? [
@@ -261,7 +266,9 @@ export function AppSidebar({
       icon: WalletCards,
       subject: 'finance',
     },
-    ...(['employees', 'customers', 'vehicles', 'labor_presets', 'inventory', 'brands'].some(canAccess) ||
+    ...(['employees', 'customers', 'vehicles', 'labor_presets', 'inventory', 'brands'].some(
+      canAccess
+    ) ||
     (supplierDirectoryEnabled && canAccess('suppliers'))
       ? [{ titleKey: 'sidebar.directories', url: '/directories', icon: Layers, subject: '' }]
       : []),
@@ -372,7 +379,14 @@ export function AppSidebar({
     items.map((item) => {
       const isActive =
         (item.url === '/directories' &&
-          (['/employees', '/payroll', '/employee-settlements', '/customers', '/vehicles', '/labor-presets'].some((p) => pathname === p) ||
+          ([
+            '/employees',
+            '/payroll',
+            '/employee-settlements',
+            '/customers',
+            '/vehicles',
+            '/labor-presets',
+          ].some((p) => pathname === p) ||
             pathname === '/suppliers' ||
             pathname.startsWith('/suppliers/'))) ||
         pathname === item.url ||

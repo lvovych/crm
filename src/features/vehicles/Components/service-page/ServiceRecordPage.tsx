@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { resolveCurrencyCode } from '@/lib/currencies'
 import { parseTaxComponents } from '@/lib/tax-components'
 import { getServiceRecord } from '@/features/vehicles/Actions/serviceActions'
@@ -242,7 +243,7 @@ export async function ServiceRecordPage({
     where: { labor: { serviceRecordId: serviceId, serviceRecord: { organizationId } } },
     include: { receiptLine: { include: { receipt: { select: { id: true, status: true } } } } },
   })
-  const subcontracts = new Map(subcontractRows.map(row => [row.laborId, row]))
+  const subcontracts = new Map(subcontractRows.map((row) => [row.laborId, row]))
   const initialData = {
     id: record.id,
     title: record.title,
@@ -411,6 +412,11 @@ export async function ServiceRecordPage({
   return (
     <div className="flex h-svh flex-col overflow-hidden">
       <PageHeader />
+      <div className="shrink-0 px-4 py-2 text-right text-sm">
+        <Link className="underline underline-offset-4" href={'/documents/order/' + serviceId}>
+          Пов’язані накладні та оплати
+        </Link>
+      </div>
       <ServicePageClient
         record={result.data}
         videoCall={
