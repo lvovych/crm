@@ -22,6 +22,8 @@ const NOT_FILES: Record<string, string> = {
   'PayPlan.discountsByBasis': 'Boolean flags for salary calculation',
   'PaySlip.lines': 'Frozen payroll amounts and descriptions',
   'StaffPayment.documentId': 'FinancialDocument foreign key',
+  'SupplierReturn.supplierDocumentNumber':
+    'Supplier return reference number, not a file or attachment',
   'CustomerLedgerEvent.documentId': 'Foreign key to an obligation document, not a file',
   'FinanceCutoverBatch.balances': 'Account IDs and decimal opening balances; no file references',
   'MoneyEntry.documentId': 'Foreign key to a financial ledger document, not a file',

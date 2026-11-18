@@ -205,7 +205,8 @@
     "finance_reverseMoneyDocument": "Finance: reverseMoneyDocument",
     "finance_assignUnlinkedPayment": "Finance: assignUnlinkedPayment",
     "finance_refundMoneyDocument": "Finance: refundMoneyDocument",
-    "receipts_return": "Grąžinimas tiekėjui"
+    "receipts_return": "Grąžinimas tiekėjui",
+    "receipts_return_post": "Registruoti grąžinimą tiekėjui"
   },
   "summary": {
     "customField_create": "Sukurtas pasirinktinis laukas „{name}“",

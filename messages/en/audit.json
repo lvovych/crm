@@ -205,7 +205,8 @@
     "finance_reverseMoneyDocument": "Finance: reverseMoneyDocument",
     "finance_assignUnlinkedPayment": "Finance: assignUnlinkedPayment",
     "finance_refundMoneyDocument": "Finance: refundMoneyDocument",
-    "receipts_return": "Supplier return"
+    "receipts_return": "Supplier return",
+    "receipts_return_post": "Post supplier return"
   },
   "summary": {
     "customField_create": "Created custom field \"{name}\"",

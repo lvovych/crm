@@ -29,7 +29,7 @@ import {
   ShieldCheck,
   Ship,
   Users,
-  WalletCards,
+  DollarSign,
 } from 'lucide-react'
 import { useServiceType } from '@/components/service-type-context'
 import {
@@ -86,7 +86,7 @@ const mutualItem = {
   icon: Scale,
   labelKey: 'mutualSettlements',
 } as const
-const financeItem = { href: '/finance', icon: WalletCards, labelKey: 'finance' } as const
+const financeItem = { href: '/finance', icon: DollarSign, labelKey: 'finance' } as const
 const documentsItem = { href: '/documents', icon: FileText, labelKey: 'documents' } as const
 const allDrawerItems = [
   documentsItem,

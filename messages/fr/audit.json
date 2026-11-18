@@ -205,7 +205,8 @@
     "finance_reverseMoneyDocument": "Finance: reverseMoneyDocument",
     "finance_assignUnlinkedPayment": "Finance: assignUnlinkedPayment",
     "finance_refundMoneyDocument": "Finance: refundMoneyDocument",
-    "receipts_return": "Retour au fournisseur"
+    "receipts_return": "Retour au fournisseur",
+    "receipts_return_post": "Comptabiliser le retour fournisseur"
   },
   "summary": {
     "customField_create": "Champ personnalisé « {name} » créé",

@@ -205,7 +205,8 @@
     "finance_reverseMoneyDocument": "Finance: reverseMoneyDocument",
     "finance_assignUnlinkedPayment": "Finance: assignUnlinkedPayment",
     "finance_refundMoneyDocument": "Finance: refundMoneyDocument",
-    "receipts_return": "Retur til leverandør"
+    "receipts_return": "Retur til leverandør",
+    "receipts_return_post": "Bokfør leverandørretur"
   },
   "summary": {
     "customField_create": "Opprettet egendefinert felt «{name}»",

@@ -205,7 +205,8 @@
     "finance_reverseMoneyDocument": "Finance: reverseMoneyDocument",
     "finance_assignUnlinkedPayment": "Finance: assignUnlinkedPayment",
     "finance_refundMoneyDocument": "Finance: refundMoneyDocument",
-    "receipts_return": "Zwrot do dostawcy"
+    "receipts_return": "Zwrot do dostawcy",
+    "receipts_return_post": "Zaksięguj zwrot do dostawcy"
   },
   "summary": {
     "customField_create": "Utworzono pole niestandardowe „{name}”",

@@ -205,7 +205,8 @@
     "finance_reverseMoneyDocument": "Finance: reverseMoneyDocument",
     "finance_assignUnlinkedPayment": "Finance: assignUnlinkedPayment",
     "finance_refundMoneyDocument": "Finance: refundMoneyDocument",
-    "receipts_return": "Lieferantenretoure"
+    "receipts_return": "Lieferantenretoure",
+    "receipts_return_post": "Lieferantenretoure buchen"
   },
   "summary": {
     "customField_create": "Benutzerdefiniertes Feld „{name}“ erstellt",

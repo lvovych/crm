@@ -94,7 +94,7 @@ export async function postSupplierReturn(
         : 'Оберіть позиції накладних цього постачальника.'
     )
   await tx.$queryRaw(
-    Prisma.sql`SELECT id FROM supplier_receipts WHERE "organizationId"=${org} AND id IN (${Prisma.join(sourceIds.map((r) => r.id))}) ORDER BY id FOR UPDATE`
+    Prisma.sql`SELECT id FROM "public"."supplier_receipts" WHERE "organizationId"=${org} AND id IN (${Prisma.join(sourceIds.map((r) => r.id))}) ORDER BY id FOR UPDATE`
   )
   const receipts = await tx.supplierReceipt.findMany({
     where: { organizationId: org, supplierId, id: { in: sourceIds.map((r) => r.id) } },

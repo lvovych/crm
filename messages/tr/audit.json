@@ -205,7 +205,8 @@
     "finance_reverseMoneyDocument": "Finance: reverseMoneyDocument",
     "finance_assignUnlinkedPayment": "Finance: assignUnlinkedPayment",
     "finance_refundMoneyDocument": "Finance: refundMoneyDocument",
-    "receipts_return": "Tedarikçiye iade"
+    "receipts_return": "Tedarikçiye iade",
+    "receipts_return_post": "Tedarikçi iadesini kaydet"
   },
   "summary": {
     "customField_create": "\"{name}\" özel alanı oluşturuldu",

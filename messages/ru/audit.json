@@ -205,7 +205,8 @@
     "finance_reverseMoneyDocument": "Finance: reverseMoneyDocument",
     "finance_assignUnlinkedPayment": "Finance: assignUnlinkedPayment",
     "finance_refundMoneyDocument": "Finance: refundMoneyDocument",
-    "receipts_return": "Возврат поставщику"
+    "receipts_return": "Возврат поставщику",
+    "receipts_return_post": "Проведение возврата поставщику"
   },
   "summary": {
     "customField_create": "Создано настраиваемое поле «{name}»",

@@ -56,6 +56,7 @@ export function AccountSelect({
     <label className="block space-y-1">
       <span>Каса / рахунок</span>
       <select
+        key="loaded-accounts"
         name={name}
         aria-label="Каса / рахунок"
         required
