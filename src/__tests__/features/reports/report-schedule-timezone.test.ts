@@ -19,7 +19,7 @@ vi.mock('@react-pdf/renderer', () => ({
   renderToBuffer: vi.fn(async () => Buffer.from('pdf')),
 }))
 vi.mock('@/features/vehicles/Components/invoice-pdf/fonts', () => ({
-  preparePdfFonts: vi.fn(async () => {}),
+  preparePdfFonts: vi.fn(async () => undefined),
 }))
 vi.mock('@/features/reports/Components/ReportPDF', () => ({ ReportPDF: () => null }))
 // A plain function, so a resetAllMocks in a beforeEach cannot blank it.

@@ -34,7 +34,7 @@ vi.mock('@/features/custom-fields/Lib/getCustomFieldsForPrint', () => ({
   getCustomFieldsForPrint: vi.fn(async () => []),
 }))
 vi.mock('@/features/vehicles/Components/invoice-pdf/fonts', () => ({
-  preparePdfFonts: vi.fn(async () => {}),
+  preparePdfFonts: vi.fn(async () => undefined),
 }))
 vi.mock('@/features/quotes/Components/QuotePDF', () => ({ QuotePDF: () => null }))
 vi.mock('@react-pdf/renderer', () => ({
