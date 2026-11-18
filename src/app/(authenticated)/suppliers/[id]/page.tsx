@@ -15,9 +15,10 @@ export default async function SupplierPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ date?: string }>
+  searchParams: Promise<{ date?: string; returnsPage?: string }>
 }) {
   const { id } = await params
+  const query = await searchParams
   const [r, cap, t] = await Promise.all([
     getSupplier(id),
     getSupplierCapabilities(),
@@ -76,7 +77,16 @@ export default async function SupplierPage({
                   {
                     id: 'returns',
                     label: 'Повернення',
-                    content: <ReturnList filters={{ supplier: id }} />,
+                    content: (
+                      <ReturnList
+                        filters={{ supplier: id, page: query.returnsPage }}
+                        paginationHref={
+                          '/suppliers/' +
+                          id +
+                          (query.date ? '?date=' + encodeURIComponent(query.date) : '')
+                        }
+                      />
+                    ),
                   },
                 ]
               : []),

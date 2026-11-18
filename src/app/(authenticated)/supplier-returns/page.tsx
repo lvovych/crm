@@ -1,7 +1,7 @@
+import { ReturnSupplierFilter } from '@/features/receipts/ReturnSupplierFilter'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { DocumentHeader } from '@/components/operations/document-ui'
-import { listSupplierReturns } from '@/features/receipts/return-actions'
 import { ReturnList } from '@/features/receipts/ReturnList'
 export default async function Page({
   searchParams,
@@ -9,7 +9,6 @@ export default async function Page({
   searchParams: Promise<Record<string, string>>
 }) {
   const q = await searchParams
-  const options = await listSupplierReturns()
   return (
     <div className="space-y-6">
       <DocumentHeader
@@ -22,24 +21,10 @@ export default async function Page({
         }
       />
       <form className="ops-panel flex flex-wrap items-end gap-4 [&_label]:grid [&_label]:gap-2 [&_input]:rounded-md [&_input]:border [&_input]:bg-background [&_input]:p-3">
-        <label>
-          Постачальник
-          <select
-            name="supplier"
-            defaultValue={q.supplier || ''}
-            className="rounded-md border bg-background p-3"
-          >
-            <option value="">Усі</option>
-            {options.data?.suppliers.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <ReturnSupplierFilter key={q.supplier || ''} initialId={q.supplier} />
         <label>
           Номер або постачальник
-          <input name="q" defaultValue={q.q} />
+          <input name="q" maxLength={120} defaultValue={q.q} />
         </label>
         <label>
           Статус

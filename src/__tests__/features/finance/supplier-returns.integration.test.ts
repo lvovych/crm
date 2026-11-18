@@ -1,3 +1,4 @@
+import { readReturnList, readReturnOptions } from '@/features/receipts/return-search'
 import { restoreSupplierReturn } from '@/features/receipts/return-backup'
 import { readDocument } from '@/features/documents/queries'
 import { reverseEntry } from '@/features/settlements/ledger'
@@ -85,6 +86,141 @@ describe.skipIf(!url)('supplier returns on PostgreSQL', () => {
       db.$transaction((tx) => postSupplierReturn(tx as TxClient, organizationId, user.id, input))
     return { org, receipt, part, request, post, supplier }
   }
+
+  it('paginates available goods after excluding exhausted stock and searches in PostgreSQL', async () => {
+    const f = await setup()
+    const empty = await db.inventoryPart.create({
+      data: {
+        organizationId: f.org.id,
+        userId: f.part.userId,
+        brandId: f.part.brandId,
+        name: 'Empty',
+        quantity: 0,
+      },
+    })
+    await db.supplierReceiptLine.createMany({
+      data: Array.from({ length: 80 }, (_, i) => ({
+        id: randomUUID(),
+        receiptId: f.receipt.id,
+        position: i + 1,
+        kind: 'part',
+        name: 'Search item ' + i,
+        article: i === 79 ? 'SKU%_SPECIAL' : 'ARTICLE-' + i,
+        unit: 'шт',
+        quantity: '1',
+        unitPrice: '100',
+        amount: '100',
+        partId: i < 55 ? empty.id : f.part.id,
+      })),
+    })
+    const first = await readReturnOptions(db, f.org.id, f.supplier.id, workshopDay())
+    const second = await readReturnOptions(db, f.org.id, f.supplier.id, workshopDay(), { page: 2 })
+    expect(first.lines).toHaveLength(25)
+    expect(first.hasMore).toBe(true)
+    expect(second.lines).toHaveLength(1)
+    expect(second.hasMore).toBe(false)
+    expect(new Set([...first.lines, ...second.lines].map((line) => line.id)).size).toBe(26)
+    expect(first.lines.every((line) => Number(line.available) > 0)).toBe(true)
+    for (const q of ['sku%_', '%', '_', 'search item 79']) {
+      const result = await readReturnOptions(db, f.org.id, f.supplier.id, workshopDay(), { q })
+      expect(result.lines).toHaveLength(1)
+      expect(result.lines[0].article).toBe('SKU%_SPECIAL')
+    }
+    const byReceipt = await readReturnOptions(db, f.org.id, f.supplier.id, workshopDay(), {
+      q: f.receipt.number,
+    })
+    expect(byReceipt.lines).toHaveLength(25)
+    expect(
+      (await readReturnOptions(db, f.org.id, 'foreign-supplier', workshopDay())).lines
+    ).toHaveLength(0)
+    expect(
+      (
+        await readReturnOptions(db, 'foreign-org', f.supplier.id, workshopDay(), {}, [
+          second.lines[0].id,
+        ])
+      ).selectedLines
+    ).toHaveLength(0)
+    const pinned = await readReturnOptions(
+      db,
+      f.org.id,
+      f.supplier.id,
+      workshopDay(),
+      { q: 'no match' },
+      [second.lines[0].id]
+    )
+    expect(pinned.lines).toHaveLength(0)
+    expect(pinned.selectedLines.map((line) => line.id)).toEqual([second.lines[0].id])
+    await db.supplierReceipt.update({ where: { id: f.receipt.id }, data: { status: 'cancelled' } })
+    const cancelled = await readReturnOptions(db, f.org.id, f.supplier.id, workshopDay(), {}, [
+      second.lines[0].id,
+    ])
+    expect(cancelled.lines).toHaveLength(0)
+    expect(cancelled.selectedLines[0].available).toBe('0.000')
+  })
+
+  it('never rounds a fractional stock balance up into a quantity that cannot be returned', async () => {
+    const f = await setup()
+    await db.inventoryPart.update({ where: { id: f.part.id }, data: { quantity: 0.0009 } })
+    expect(
+      (await readReturnOptions(db, f.org.id, f.supplier.id, workshopDay())).lines
+    ).toHaveLength(0)
+    await db.inventoryPart.update({ where: { id: f.part.id }, data: { quantity: 1.2349 } })
+    expect(
+      (await readReturnOptions(db, f.org.id, f.supplier.id, workshopDay())).lines[0].available
+    ).toBe('1.234')
+  })
+
+  it('paginates return summaries with stable ties and preserves supplier, status, date and reference filters', async () => {
+    const f = await setup()
+    const createdAt = new Date('2026-11-18T10:00:00Z')
+    for (let i = 0; i < 28; i++)
+      await db.supplierReturn.create({
+        data: {
+          id: randomUUID(),
+          organizationId: f.org.id,
+          supplierId: f.supplier.id,
+          number: 'PAGE-' + i,
+          supplierDocumentNumber: i === 27 ? 'REFERENCE%_27' : null,
+          date: f.receipt.documentDate,
+          reason: 'Інше',
+          fingerprint: 'test',
+          createdById: 'test',
+          createdAt,
+          status: i % 2 ? 'posted' : 'draft',
+          lines: { create: { lineId: f.receipt.lines[0].id, quantity: '0.1', amount: '10.00' } },
+        },
+      })
+    const one = await readReturnList(db as TxClient, f.org.id)
+    const two = await readReturnList(db as TxClient, f.org.id, { page: 2 })
+    expect(one.total).toBe(28)
+    expect(one.documents).toHaveLength(25)
+    expect(two.documents).toHaveLength(3)
+    expect(new Set([...one.documents, ...two.documents].map((d) => d.id)).size).toBe(28)
+    expect(one.documents.every((d) => d.amount === '10.00')).toBe(true)
+    expect(one.documents[0]).not.toHaveProperty('lines')
+    expect((await readReturnList(db as TxClient, f.org.id, { page: 999 })).page).toBe(2)
+    expect(
+      (
+        await readReturnList(db as TxClient, f.org.id, {
+          q: 'reference%_27',
+          status: 'posted',
+          supplier: f.supplier.id,
+          from: workshopDay(),
+          to: workshopDay(),
+        })
+      ).total
+    ).toBe(1)
+    expect((await readReturnList(db as TxClient, f.org.id, { q: '%' })).total).toBe(1)
+    expect((await readReturnList(db as TxClient, f.org.id, { status: 'draft' })).total).toBe(14)
+    expect((await readReturnList(db as TxClient, 'other-org')).total).toBe(0)
+    expect(
+      (await readReturnList(db as TxClient, f.org.id, { supplier: 'other-supplier' })).total
+    ).toBe(0)
+    await expect(readReturnList(db as TxClient, f.org.id, { from: '2026-02-30' })).rejects.toThrow()
+    await expect(
+      readReturnOptions(db, f.org.id, f.supplier.id, workshopDay(), { page: -1 })
+    ).rejects.toThrow()
+  })
 
   it('drafts do not reserve stock or reduce debt; editing uses versions and posting is atomic', async () => {
     const f = await setup()
@@ -478,8 +614,16 @@ describe.skipIf(!url)('supplier returns on PostgreSQL', () => {
       data: { serviceRecordId: order.id, inventoryPartId: f.part.id, name: 'Oil', quantity: 8 },
     })
     await expect(f.post(f.request('1'))).rejects.toThrow('перевищує')
+    expect(
+      (await readReturnOptions(db, f.org.id, f.supplier.id, workshopDay())).lines
+    ).toHaveLength(0)
     await db.servicePart.delete({ where: { id: replacement.id } })
+    const restoredOptions = await readReturnOptions(db, f.org.id, f.supplier.id, workshopDay())
+    expect(restoredOptions.lines[0].available).toBe('8.000')
     await f.post(f.request('8'))
+    expect(
+      (await readReturnOptions(db, f.org.id, f.supplier.id, workshopDay())).lines
+    ).toHaveLength(0)
     expect((await db.inventoryPart.findUniqueOrThrow({ where: { id: f.part.id } })).quantity).toBe(
       0
     )

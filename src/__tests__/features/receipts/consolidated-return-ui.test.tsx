@@ -1,13 +1,20 @@
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-const f = vi.hoisted(() => ({ send: vi.fn(), push: vi.fn(), refresh: vi.fn() }))
-vi.mock('@/features/receipts/return-actions', () => ({ createSupplierReturn: f.send }))
+const f = vi.hoisted(() => ({ send: vi.fn(), search: vi.fn(), push: vi.fn(), refresh: vi.fn() }))
+vi.mock('@/features/receipts/return-actions', () => ({
+  createSupplierReturn: f.send,
+  supplierReturnOptions: f.search,
+}))
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: f.push, refresh: f.refresh }) }))
 import { ConsolidatedReturnForm } from '@/features/receipts/ConsolidatedReturnForm'
 import { returnLineAmount } from '@/features/receipts/return-money'
 const data = {
   supplierId: 'supplier',
   supplier: 'Supplier',
+  selectedLines: [],
+  page: 1,
+  q: '',
+  hasMore: false,
   lines: ['A', 'B'].map((id, i) => ({
     id,
     name: 'Part ' + id,
@@ -30,12 +37,26 @@ afterEach(cleanup)
 beforeEach(() => {
   vi.clearAllMocks()
   f.send.mockResolvedValue({ success: true, data: 'return-id' })
+  f.search.mockImplementation(async (_supplier, _ids, search) => ({
+    success: true,
+    data: {
+      ...data,
+      ...search,
+      lines: data.lines.filter((line) => !search.q || line.article.includes(search.q)),
+    },
+  }))
 })
 it('keeps selections across searches and submits one document for two invoices', async () => {
   render(<ConsolidatedReturnForm data={data} />)
   fireEvent.change(screen.getByLabelText('Знайти позицію'), { target: { value: 'SKU-A' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Знайти' }))
+  await waitFor(() =>
+    expect(screen.queryByLabelText('Обрати Part B · INV-B')).not.toBeInTheDocument()
+  )
   fireEvent.click(screen.getByLabelText('Обрати Part A · INV-A'))
   fireEvent.change(screen.getByLabelText('Знайти позицію'), { target: { value: 'SKU-B' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Знайти' }))
+  await screen.findByLabelText('Обрати Part B · INV-B')
   fireEvent.click(screen.getByLabelText('Обрати Part B · INV-B'))
   expect(screen.getByText('Сума: 300,00 грн')).toBeVisible()
   fireEvent.change(screen.getByLabelText('Причина повернення'), {
@@ -138,4 +159,65 @@ it('blocks a second submission while the first draft is being saved', async () =
   expect(screen.getByRole('button', { name: 'Збереження…' })).toBeDisabled()
   finish({ success: true, data: 'return-id' })
   await waitFor(() => expect(f.push).toHaveBeenCalledWith('/supplier-returns/return-id'))
+})
+
+it('keeps positions from different server pages in a single draft', async () => {
+  f.search.mockResolvedValueOnce({
+    success: true,
+    data: { ...data, lines: [data.lines[1]], page: 2, hasMore: false },
+  })
+  render(<ConsolidatedReturnForm data={{ ...data, lines: [data.lines[0]], hasMore: true }} />)
+  fireEvent.click(screen.getByLabelText('Обрати Part A · INV-A'))
+  fireEvent.click(screen.getByRole('button', { name: 'Далі' }))
+  await screen.findByLabelText('Обрати Part B · INV-B')
+  fireEvent.click(screen.getByLabelText('Обрати Part B · INV-B'))
+  expect(screen.getByText('Сума: 300,00 грн')).toBeVisible()
+  expect(f.search).toHaveBeenCalledWith('supplier', [], { page: 2, q: '' })
+  fireEvent.change(screen.getByLabelText('Причина повернення'), { target: { value: 'Інше' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Зберегти чернетку' }))
+  await waitFor(() => expect(f.send).toHaveBeenCalledTimes(1))
+  expect(f.send.mock.calls[0][0].lines).toEqual([
+    { id: 'A', quantity: '1' },
+    { id: 'B', quantity: '1' },
+  ])
+})
+
+it('loads the selected draft rows separately even when they are not on the first page', async () => {
+  render(
+    <ConsolidatedReturnForm
+      data={{ ...data, lines: [data.lines[0]], selectedLines: [data.lines[1]] }}
+      initial={{ id: 'draft', version: 2, reason: 'Інше', quantities: { B: '2' } }}
+    />
+  )
+  expect(screen.getByText('Сума: 400,00 грн')).toBeVisible()
+  expect(screen.queryByLabelText('Обрати Part B · INV-B')).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Зберегти чернетку' }))
+  await waitFor(() => expect(f.send).toHaveBeenCalledTimes(1))
+  expect(f.send.mock.calls[0][0].lines).toEqual([{ id: 'B', quantity: '2' }])
+})
+
+it('ignores an older search response arriving after a newer result', async () => {
+  let old!: (value: unknown) => void
+  f.search.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        old = resolve
+      })
+  )
+  f.search.mockResolvedValueOnce({
+    success: true,
+    data: { ...data, q: 'B', lines: [data.lines[1]] },
+  })
+  render(<ConsolidatedReturnForm data={data} />)
+  const input = screen.getByLabelText('Знайти позицію')
+  fireEvent.change(input, { target: { value: 'A' } })
+  fireEvent.keyDown(input, { key: 'Enter' })
+  fireEvent.change(input, { target: { value: 'B' } })
+  fireEvent.keyDown(input, { key: 'Enter' })
+  await waitFor(() =>
+    expect(screen.queryByLabelText('Обрати Part A · INV-A')).not.toBeInTheDocument()
+  )
+  old({ success: true, data: { ...data, q: 'A', lines: [data.lines[0]] } })
+  await waitFor(() => expect(screen.getByLabelText('Обрати Part B · INV-B')).toBeVisible())
+  expect(screen.queryByLabelText('Обрати Part A · INV-A')).not.toBeInTheDocument()
 })

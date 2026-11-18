@@ -1,10 +1,10 @@
 'use client'
 import { ReturnReasonSelect } from './ReturnReasonSelect'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { createSupplierReturn, type supplierReturnOptions } from './return-actions'
+import { createSupplierReturn, supplierReturnOptions } from './return-actions'
 import { dayLabel, moneyLabel, unitPriceLabel } from '@/features/finance/presentation'
 import { receiptTotal } from './money'
 import { returnLineAmount } from './return-money'
@@ -33,15 +33,50 @@ export function ConsolidatedReturnForm({
     [reason, setReason] = useState(initial?.reason ?? ''),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false)
-  const selected = data.lines.filter((l) => Object.hasOwn(quantities, l.id))
-  const visible = data.lines.filter((l) =>
-    [l.name, l.brand, l.article, l.receiptNumber]
-      .join(' ')
-      .toLowerCase()
-      .includes(search.toLowerCase().trim())
+  const [pageData, setPageData] = useState(data)
+  const [selectedRows, setSelectedRows] = useState<Record<string, Data['lines'][number]>>(() =>
+    Object.fromEntries(
+      [...data.lines, ...data.selectedLines]
+        .filter((line) => Object.hasOwn(initial?.quantities ?? {}, line.id))
+        .map((line) => [line.id, line])
+    )
   )
+  const [loading, setLoading] = useState(false)
+  const [searchError, setSearchError] = useState('')
+  const searchRequest = useRef(0)
+  useEffect(
+    () => () => {
+      searchRequest.current++
+    },
+    []
+  )
+  async function load(page: number, q: string) {
+    const sequence = ++searchRequest.current
+    setLoading(true)
+    setSearchError('')
+    try {
+      const result = await supplierReturnOptions(data.supplierId, [], { page, q })
+      if (sequence !== searchRequest.current) return
+      if (!result.success || !result.data)
+        throw new Error(result.error || 'Не вдалося завантажити позиції.')
+      setPageData(result.data)
+      setSelectedRows((current) => {
+        const updated = { ...current }
+        for (const line of result.data!.lines) if (updated[line.id]) updated[line.id] = line
+        return updated
+      })
+    } catch {
+      if (sequence === searchRequest.current)
+        setSearchError('Не вдалося завантажити позиції. Спробуйте ще раз.')
+    } finally {
+      if (sequence === searchRequest.current) setLoading(false)
+    }
+  }
+  const selected = Object.values(selectedRows).filter((line) => Object.hasOwn(quantities, line.id))
+  const visible = pageData.lines
   const valid =
     selected.length > 0 &&
+    selected.length === Object.keys(quantities).length &&
     selected.length <= 200 &&
     selected.every(
       (l) =>
@@ -60,6 +95,15 @@ export function ConsolidatedReturnForm({
   )
   function update(id: string, value?: string) {
     request.current = undefined
+    setSelectedRows((current) => {
+      const next = { ...current }
+      if (value === undefined) delete next[id]
+      else {
+        const line = visible.find((row) => row.id === id)
+        if (line) next[id] = line
+      }
+      return next
+    })
     setQuantities((q) => {
       const next = { ...q }
       if (value === undefined) delete next[id]
@@ -72,7 +116,7 @@ export function ConsolidatedReturnForm({
       className="space-y-5"
       onSubmit={async (e) => {
         e.preventDefault()
-        if (pending.current || !valid) return
+        if (pending.current || loading || !valid) return
         pending.current = true
         setBusy(true)
         setError('')
@@ -112,12 +156,32 @@ export function ConsolidatedReturnForm({
           Знайти позицію
           <input
             value={search}
+            maxLength={120}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault()
+                void load(1, search)
+              }
+            }}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Артикул, бренд, назва або номер накладної"
             className="h-11 rounded-md border bg-background px-3"
           />
         </label>
-        <div className="ops-table-scroll">
+        <Button
+          type="button"
+          variant="outline"
+          disabled={busy}
+          onClick={() => void load(1, search)}
+        >
+          {loading ? 'Пошук…' : 'Знайти'}
+        </Button>
+        {searchError && (
+          <p role="alert" className="text-destructive">
+            {searchError}
+          </p>
+        )}
+        <div className="ops-table-scroll" aria-busy={loading}>
           <table>
             <thead>
               <tr>
@@ -139,7 +203,7 @@ export function ConsolidatedReturnForm({
                       className="size-4"
                       aria-label={'Обрати ' + l.name + ' · ' + l.receiptNumber}
                       checked={Object.hasOwn(quantities, l.id)}
-                      disabled={busy}
+                      disabled={busy || loading || Number(l.available) <= 0}
                       onChange={(e) =>
                         update(
                           l.id,
@@ -186,11 +250,30 @@ export function ConsolidatedReturnForm({
         </div>
         {!visible.length && (
           <p role="status" className="p-4 text-sm text-muted-foreground">
-            {data.lines.length
+            {pageData.q
               ? 'Позицій за цим пошуком немає.'
               : 'Немає доступних залишків для повернення.'}
           </p>
         )}
+        <nav aria-label="Сторінки доступних позицій" className="flex flex-wrap items-center gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={busy || loading || pageData.page <= 1}
+            onClick={() => void load(pageData.page - 1, pageData.q)}
+          >
+            Назад
+          </Button>
+          <span aria-live="polite">Сторінка {pageData.page}</span>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={busy || loading || !pageData.hasMore}
+            onClick={() => void load(pageData.page + 1, pageData.q)}
+          >
+            Далі
+          </Button>
+        </nav>
       </section>
       <section className="ops-panel space-y-4">
         <h2 className="text-lg font-semibold">2. Перевірте повернення · {selected.length} поз.</h2>
@@ -223,6 +306,7 @@ export function ConsolidatedReturnForm({
           <input
             type="text"
             maxLength={120}
+            disabled={busy}
             value={supplierDocumentNumber}
             onChange={(e) => {
               request.current = undefined
@@ -245,7 +329,9 @@ export function ConsolidatedReturnForm({
             {error}
           </p>
         )}
-        <Button disabled={busy || !valid}>{busy ? 'Збереження…' : 'Зберегти чернетку'}</Button>
+        <Button disabled={busy || loading || !valid}>
+          {busy ? 'Збереження…' : 'Зберегти чернетку'}
+        </Button>
       </section>
     </form>
   )

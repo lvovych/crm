@@ -25,6 +25,7 @@ model SupplierReceipt {
   @@unique([organizationId, supplierId, number, documentDate])
   @@unique([organizationId, source, sourceAccount, externalId])
   @@index([organizationId, receivedDate])
+  @@index([organizationId, supplierId, status, receivedDate(sort: Desc), id], map: "receipt_return_search_idx")
   @@map("supplier_receipts")
 }
 model SupplierReceiptLine {
@@ -119,6 +120,8 @@ model SupplierReturn {
   lines SupplierReturnLine[]
   settlement SupplierEntry?
   @@index([organizationId, date])
+  @@index([organizationId, createdAt(sort: Desc), id], map: "return_list_page_idx")
+  @@index([organizationId, supplierId, createdAt(sort: Desc), id], map: "return_supplier_page_idx")
   @@index([organizationId,supplierId],map:"supplier_returns_supplier_idx")
   @@map("supplier_returns")
 }
@@ -134,5 +137,6 @@ model SupplierReturnLine {
   quantity Decimal @db.Decimal(14,3)
   amount Decimal @db.Decimal(18,2)
   @@unique([returnId,lineId])
+  @@index([lineId], map: "return_line_availability_idx")
   @@map("supplier_return_lines")
 }

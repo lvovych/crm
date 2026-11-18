@@ -1,5 +1,10 @@
 'use server'
-import { Prisma } from '@/generated/prisma/client'
+import {
+  literalSearch,
+  returnSearchSchema,
+  readReturnList,
+  readReturnOptions,
+} from './return-search'
 import { returnDocumentInclude, serializeReturn } from './return-document'
 import { lockFinance } from '@/features/finance/ledger'
 import { db } from '@/lib/db'
@@ -110,73 +115,31 @@ export async function supplierReturnDetail(id: string) {
     { requiredPermissions: [{ action: A.READ, subject: S.RECEIPTS }] }
   )
 }
-export async function supplierReturnOptions(supplierId: string, includeLineIds: string[] = []) {
+export async function supplierReturnOptions(
+  supplierId: string,
+  includeLineIds: string[] = [],
+  search: { q?: string; page?: number } = {}
+) {
   return withAuth(
     async (ctx) => {
       if (!receiptsEnabled(ctx.organizationId)) throw new Error('Надходження вимкнено.')
       const supplier = await db.counterparty.findFirstOrThrow({
         where: { id: supplierId, organizationId: ctx.organizationId },
+        select: { id: true, name: true },
       })
       const today = zonedDayKey(new Date(), await workshopTimeZone(ctx.organizationId))
-      const date = new Date(today + 'T00:00:00Z')
-      const receipts = await db.supplierReceipt.findMany({
-        where: {
-          organizationId: ctx.organizationId,
+      return {
+        supplierId,
+        supplier: supplier.name,
+        ...(await readReturnOptions(
+          db,
+          ctx.organizationId,
           supplierId,
-          status: 'posted',
-          receivedDate: { lte: date },
-          settlement: { is: { reversedAt: null, date: { lte: date } } },
-        },
-        orderBy: [{ receivedDate: 'desc' }, { id: 'asc' }],
-        include: {
-          lines: {
-            orderBy: { position: 'asc' },
-            include: {
-              returns: { where: { document: { status: 'posted' } } },
-              transfers: true,
-              part: { include: { brand: true } },
-            },
-          },
-        },
-      })
-      const transferred = await currentTransferred(
-        db,
-        ctx.organizationId,
-        receipts.flatMap((r) => r.lines)
-      )
-      const lines = receipts
-        .flatMap((r) =>
-          r.lines.map((l) => {
-            const available = availableQuantity(l.quantity.toString(), [
-              ...l.returns.map((x) => x.quantity.toString()),
-              transferred.get(l.id)!.toString(),
-            ])
-            const stock = l.kind === 'part' ? Math.max(0, l.part?.quantity ?? 0) : Number(available)
-            return {
-              id: l.id,
-              name: l.name,
-              brand: l.part?.brand.name ?? '',
-              article: l.article || l.part?.partNumber || '',
-              kind: l.kind,
-              receiptId: r.id,
-              receiptNumber: r.number,
-              receiptDate: r.documentDate.toISOString().slice(0, 10),
-              unit: l.unit,
-              unitPrice: l.unitPrice.toString(),
-              originalQuantity: l.quantity.toString(),
-              originalAmount: l.amount.toFixed(2),
-              returnedQuantity: l.returns
-                .reduce((sum, r) => sum.plus(r.quantity), new Prisma.Decimal(0))
-                .toString(),
-              returnedAmount: l.returns
-                .reduce((sum, r) => sum.plus(r.amount), new Prisma.Decimal(0))
-                .toFixed(2),
-              available: Math.min(Number(available), stock).toFixed(3),
-            }
-          })
-        )
-        .filter((l) => Number(l.available) > 0 || includeLineIds.includes(l.id))
-      return { supplierId, supplier: supplier.name, lines }
+          today,
+          search,
+          includeLineIds
+        )),
+      }
     },
     {
       requiredPermissions: [
@@ -241,39 +204,51 @@ export async function completeSupplierReturn(id: string, version: number) {
 }
 
 export async function listSupplierReturns(
-  filters: { supplier?: string; status?: string; q?: string; from?: string; to?: string } = {}
+  filters: {
+    supplier?: string
+    status?: string
+    q?: string
+    from?: string
+    to?: string
+    page?: string | number
+  } = {}
 ) {
   return withAuth(
     async ({ organizationId }) => {
       if (!receiptsEnabled(organizationId)) throw new Error('Надходження вимкнено.')
-      const where: Prisma.SupplierReturnWhereInput = { organizationId }
-      if (filters.supplier) where.supplierId = filters.supplier
-      if (['draft', 'posted'].includes(filters.status || '')) where.status = filters.status
-      if (filters.q)
-        where.OR = [
-          { supplierDocumentNumber: { contains: filters.q.slice(0, 120), mode: 'insensitive' } },
-          { number: { contains: filters.q.slice(0, 120), mode: 'insensitive' } },
-          { supplier: { name: { contains: filters.q.slice(0, 120), mode: 'insensitive' } } },
-        ]
-      const validDate = (s?: string) =>
-        s && /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s))
-          ? new Date(s + 'T00:00:00Z')
-          : undefined
-      if (validDate(filters.from) || validDate(filters.to))
-        where.date = { gte: validDate(filters.from), lte: validDate(filters.to) }
-      const [documents, suppliers] = await Promise.all([
-        db.supplierReturn.findMany({
-          where,
-          orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
-          include: returnDocumentInclude,
-        }),
+      return readReturnList(db, organizationId, filters)
+    },
+    { requiredPermissions: [{ action: A.READ, subject: S.RECEIPTS }] }
+  )
+}
+
+export async function searchReturnSuppliers(q = '', selectedId = '') {
+  return withAuth(
+    async ({ organizationId }) => {
+      if (!receiptsEnabled(organizationId)) throw new Error('Надходження вимкнено.')
+      const query = returnSearchSchema.parse({ q }).q
+      if (selectedId.length > 100) throw new Error('Некоректний постачальник.')
+      const [items, selected] = await Promise.all([
         db.counterparty.findMany({
-          where: { organizationId, returns: { some: {} } },
+          where: {
+            organizationId,
+            returns: { some: {} },
+            ...(query
+              ? { name: { contains: literalSearch(query), mode: 'insensitive' as const } }
+              : {}),
+          },
           select: { id: true, name: true },
-          orderBy: { name: 'asc' },
+          take: 20,
+          orderBy: [{ name: 'asc' }, { id: 'asc' }],
         }),
+        selectedId
+          ? db.counterparty.findFirst({
+              where: { id: selectedId, organizationId },
+              select: { id: true, name: true },
+            })
+          : null,
       ])
-      return { documents: documents.map(serializeReturn), suppliers }
+      return { items, selected }
     },
     { requiredPermissions: [{ action: A.READ, subject: S.RECEIPTS }] }
   )
