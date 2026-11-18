@@ -79,7 +79,9 @@
     "tireSetDetails": "Комплект шин",
     "tireForecast": "Наступний сезон",
     "whatsapp": "WhatsApp",
-    "inspectionReminders": "Нагадування про техогляд"
+    "inspectionReminders": "Нагадування про техогляд",
+    "documents": "Журнал документів",
+    "documentDetails": "Зв’язки документа"
   },
   "search": "Пошук...",
   "shortcut": "Ctrl+K",
@@ -159,11 +161,12 @@
     "receipts": "Надходження",
     "suppliers": "Постачальники",
     "directories": "Довідники",
-    "finance": "Каси та рахунки",
+    "finance": "Каси",
     "myPay": "Моя зарплата",
     "payroll": "Зарплата",
     "staffSettlements": "Розрахунки з працівниками",
     "employees": "Працівники",
-    "mutualSettlements": "Взаєморозрахунки"
+    "mutualSettlements": "Взаєморозрахунки",
+    "documents": "Журнал документів"
   }
 }

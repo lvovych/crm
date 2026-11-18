@@ -24,7 +24,11 @@ export async function receiptTransferOptions(receiptId: string) {
         include: {
           lines: {
             orderBy: { position: 'asc' },
-            include: { part: true, returns: true, transfers: { orderBy: { createdAt: 'asc' } } },
+            include: {
+              part: true,
+              returns: { where: { document: { status: 'posted' } } },
+              transfers: { orderBy: { createdAt: 'asc' } },
+            },
           },
         },
       })

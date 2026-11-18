@@ -205,7 +205,8 @@
     "finance_reverseMoneyDocument": "Сторно грошової операції",
     "finance_assignUnlinkedPayment": "Звірка зовнішньої оплати",
     "finance_refundMoneyDocument": "Повернення оплати",
-    "receipts_return": "Повернення постачальнику"
+    "receipts_return": "Повернення постачальнику",
+    "receipts_return_post": "Проведення повернення постачальнику"
   },
   "summary": {
     "customField_create": "Створено поле налаштування «.{name}»",

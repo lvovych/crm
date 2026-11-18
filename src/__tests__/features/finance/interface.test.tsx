@@ -152,7 +152,7 @@ describe('account selection in existing payment forms', () => {
     })
     const onChange = vi.fn()
     render(<AccountSelect onChange={onChange} />)
-    expect(await screen.findByRole('combobox')).toHaveValue('cash')
+    await waitFor(() => expect(screen.getByRole('combobox')).toHaveValue('cash'))
     await waitFor(() => expect(onChange).toHaveBeenCalledWith('cash'))
   })
   it('requires a choice when multiple accounts are available', async () => {
@@ -452,15 +452,15 @@ describe('account list and journal filters', () => {
 })
 
 describe('account action icons', () => {
-  it('keeps all actions labelled for assistive technology while showing only icons', () => {
+  it('keeps all actions labelled for assistive technology with visible action labels', () => {
     render(<FinanceClient initial={fixture()} today="2026-11-10" />)
     const actions = within(screen.getByRole('group', { name: 'Дії: Офіс' }))
     for (const name of ['Списання', 'Надходження', 'Переміщення', 'Історія']) {
       const button = actions.getByRole('button', { name })
       expect(button).toHaveAttribute('title', name)
-      expect(button.textContent).toBe('')
+      expect(button).toHaveTextContent(name)
       expect(button.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
-      expect(button).toHaveClass('size-11')
+      expect(button).toHaveClass('min-h-11')
     }
   })
 })

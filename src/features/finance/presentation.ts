@@ -28,3 +28,10 @@ export function groupMovements<T extends { documentId: string; kind: string; amo
   }
   return groups
 }
+
+/** Receipt unit prices retain up to four decimals; they are not ledger totals. */
+export function unitPriceLabel(value: string) {
+  if (!/^-?\d+(\.\d{1,4})?$/.test(value)) return value
+  const [whole, fraction = ''] = value.split('.')
+  return `${whole.replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0')},${fraction.padEnd(2, '0')} грн`
+}

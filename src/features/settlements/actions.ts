@@ -13,7 +13,16 @@ import { getCachedMembership } from '@/lib/cached-session'
 import { revalidatePath } from 'next/cache'
 import { settlementsEnabled, withLinks } from './ledger'
 import { operationDate, operation, applyOperation } from './operations'
-import { dueOn, workshopDay, activeOn, day, hryvnia, isCredit, supplierTotals, remaining } from './amounts'
+import {
+  dueOn,
+  workshopDay,
+  activeOn,
+  day,
+  hryvnia,
+  isCredit,
+  supplierTotals,
+  remaining,
+} from './amounts'
 import { receiptTotal } from '@/features/receipts/money'
 
 function access<T>(action: A, fn: (ctx: AuthContext) => Promise<T>) {
@@ -115,7 +124,11 @@ export async function settlementReport(asOf: string, supplierId?: string) {
       }),
       db.supplierEntry.findMany({
         where: { organizationId, ...(supplierId ? { supplierId } : {}), date: { lte: cutoff } },
-        include: { ...withLinks, returnDocument: { select: { receiptId: true } }, termChanges: { orderBy: [{ changedAt: 'asc' }, { id: 'asc' }] } },
+        include: {
+          ...withLinks,
+          returnDocument: { select: { receiptId: true } },
+          termChanges: { orderBy: [{ changedAt: 'asc' }, { id: 'asc' }] },
+        },
         orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
       }),
       db.supplierReceipt.findMany({
@@ -173,7 +186,7 @@ export async function settlementReport(asOf: string, supplierId?: string) {
             overdue: active && !isCredit(e.kind) && open > 0 && !!due && due < asOf,
             active,
             receiptId: e.receiptId,
-            returnUrl: e.returnId && e.returnDocument ? '/receipts/' + e.returnDocument.receiptId + '/returns/' + e.returnId : null,
+            returnUrl: e.returnId && e.returnDocument ? '/supplier-returns/' + e.returnId : null,
             reference: e.reference,
             note: e.note,
             method: e.method,

@@ -1,4 +1,6 @@
 'use client'
+import { MoneySummary } from '@/components/operations/document-ui'
+import { moneyLabel, dayLabel } from '@/features/finance/presentation'
 import { useState, useTransition, useRef, type ReactNode } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -23,7 +25,7 @@ const kinds: Record<string, string> = {
   opening_credit: 'Початковий аванс',
   opening_debt: 'Початковий борг',
 }
-const box = 'rounded-md border bg-background px-3 py-2'
+const box = 'min-h-11 min-w-0 w-full rounded-md border bg-background px-3 py-2'
 const button = 'rounded-md bg-primary px-4 py-2 text-primary-foreground'
 function Operation({
   supplier,
@@ -44,7 +46,7 @@ function Operation({
     key = useRef('')
   return (
     <form
-      className="flex flex-wrap items-end gap-3 py-2"
+      className="ops-form py-4"
       onSubmit={(e) => {
         e.preventDefault()
         const form = e.currentTarget
@@ -133,7 +135,7 @@ function PaymentForm({
       ? splitPayment(kopecks(typed), kopecks(selected.open))
       : null
   return (
-    <section className="rounded border p-4">
+    <section className="ops-panel space-y-4">
       <h2 className="font-semibold">
         {selected
           ? 'Оплата за накладною № ' + selected.reference
@@ -157,16 +159,18 @@ function PaymentForm({
       >
         <Amount value={selected?.open} onInput={setTyped} />
         <DateField />
-        <AccountSelect inactiveFallback={
-          <label>
-            Спосіб
-            <select name="method" className={'block ' + box}>
-              <option value="bank">Банк</option>
-              <option value="cash">Готівка</option>
-              <option value="card">Картка</option>
-            </select>
-          </label>
-        } />
+        <AccountSelect
+          inactiveFallback={
+            <label>
+              Спосіб
+              <select name="method" className={'block ' + box}>
+                <option value="bank">Банк</option>
+                <option value="cash">Готівка</option>
+                <option value="card">Картка</option>
+              </select>
+            </label>
+          }
+        />
         <label>
           Платіжний документ
           <input name="reference" className={'block ' + box} />
@@ -206,21 +210,33 @@ export function Account({
   const proposal = credit ? suggestedDistribution(credit.open, selected ? [selected] : debits) : {}
   const unknown = a.unknown.filter((r) => !receiptId || r.id === receiptId)
   return (
-    <div className="space-y-5">
-      <p>
-        До сплати <b>{a.debt} грн</b> · Вільні аванси <b>{a.advance} грн</b> · Сальдо
-        <b>{a.net} грн</b> · Прострочено <b>{a.overdue} грн</b>
-      </p>
-      {target && (
-        <p>
-          Накладна № {target.reference} · Зараховано{' '}
-          {hryvnia(kopecks(target.amount) - kopecks(target.open))} грн · Відкрито до сплати{' '}
-          <strong>{target.open} грн</strong> · Строк {target.due || 'не вказано'}
-        </p>
-      )}
+    <div className="ops-workspace space-y-5">
+      <MoneySummary
+        items={
+          target
+            ? [
+                { label: 'Сума накладної', value: target.amount },
+                {
+                  label: 'Зараховано',
+                  value: hryvnia(kopecks(target.amount) - kopecks(target.open)),
+                },
+                {
+                  label: 'До сплати',
+                  value: target.open,
+                  emphasis: true,
+                  hint: target.due ? 'Строк оплати: ' + target.due : undefined,
+                },
+              ]
+            : [
+                { label: 'Сальдо постачальника', value: a.net, emphasis: true },
+                { label: 'Прострочено', value: a.overdue },
+                { label: 'Вільні аванси', value: a.advance },
+              ]
+        }
+      />
       {live &&
         unknown.map((r) => (
-          <section className="rounded border p-3" key={r.id}>
+          <section className="ops-panel" key={r.id}>
             № {r.number} · {r.total} грн · Розрахунки не звірено
             {rights.manage && (
               <Operation
@@ -252,9 +268,15 @@ export function Account({
         />
       )}
       {live && rights.create && credit && debits.length > 0 && (!receiptId || selected) && (
-        <section className="rounded border p-4">
-          <h2 className="font-semibold">{credit.kind === 'return_credit' ? 'Зарахувати повернення' : credit.kind === 'adjustment_credit' ? 'Зарахувати коригування' : 'Зарахувати наявний аванс'}</h2>
-          <label>
+        <details className="ops-panel">
+          <summary>
+            {credit.kind === 'return_credit'
+              ? 'Зарахувати повернення'
+              : credit.kind === 'adjustment_credit'
+                ? 'Зарахувати коригування'
+                : 'Зарахувати наявний аванс'}
+          </summary>
+          <label className="grid min-w-0 gap-2 text-sm">
             Джерело
             <select className={box} value={credit.id} onChange={(e) => setCredit(e.target.value)}>
               {credits.map((r) => (
@@ -267,7 +289,13 @@ export function Account({
           <Operation
             key={credit.id + '-' + credit.open + '-' + (selected?.open ?? '')}
             supplier={a.id}
-            label={credit.kind === 'return_credit' ? 'Зарахувати повернення' : credit.kind === 'adjustment_credit' ? 'Зарахувати коригування' : 'Зарахувати аванс'}
+            label={
+              credit.kind === 'return_credit'
+                ? 'Зарахувати повернення'
+                : credit.kind === 'adjustment_credit'
+                  ? 'Зарахувати коригування'
+                  : 'Зарахувати аванс'
+            }
             build={(f) => ({
               op: 'allocate',
               credit: credit.id,
@@ -293,10 +321,10 @@ export function Account({
               </label>
             ))}
           </Operation>
-        </section>
+        </details>
       )}
       {live && rights.manage && !receiptId && (
-        <details>
+        <details className="ops-panel">
           <summary>Внести початкове сальдо після звірки</summary>
           <p>Включайте лише суми, які ще не враховано за окремими накладними.</p>
           <Operation
@@ -324,19 +352,36 @@ export function Account({
         </details>
       )}
       {live && rights.manage && !receiptId && (
-        <details className="rounded border p-3">
+        <details className="ops-panel">
           <summary>Коригування взаєморозрахунків</summary>
-          <p className="my-2 text-sm">Вкажіть різницю за звіркою. Коригування змінює сальдо постачальника без руху грошей у касі.</p>
-          <Operation supplier={a.id} label="Провести коригування" build={f => ({
-            op: 'adjustment', kind: field(f, 'kind'), amount: field(f, 'amount'),
-            date: field(f, 'date'), note: field(f, 'note'),
-          })}>
-            <label>Дія<select name="kind" className={box}>
-              <option value="adjustment_credit">Зменшити наш борг</option>
-              <option value="adjustment_debt">Збільшити наш борг</option>
-            </select></label>
-            <Amount /><DateField />
-            <label>Підстава коригування<input name="note" className={box} required maxLength={500} /></label>
+          <p className="my-2 text-sm">
+            Вкажіть різницю за звіркою. Коригування змінює сальдо постачальника без руху грошей у
+            касі.
+          </p>
+          <Operation
+            supplier={a.id}
+            label="Провести коригування"
+            build={(f) => ({
+              op: 'adjustment',
+              kind: field(f, 'kind'),
+              amount: field(f, 'amount'),
+              date: field(f, 'date'),
+              note: field(f, 'note'),
+            })}
+          >
+            <label>
+              Дія
+              <select name="kind" className={box}>
+                <option value="adjustment_credit">Зменшити наш борг</option>
+                <option value="adjustment_debt">Збільшити наш борг</option>
+              </select>
+            </label>
+            <Amount />
+            <DateField />
+            <label>
+              Підстава коригування
+              <input name="note" className={box} required maxLength={500} />
+            </label>
           </Operation>
         </details>
       )}
@@ -347,17 +392,33 @@ export function Account({
             !receiptId || r.receiptId === receiptId || r.links.some((l) => l.debit === target?.id)
         )
         .map((r) => (
-          <details key={r.id} className="rounded border p-3">
+          <details key={r.id} className="ops-panel">
             <summary>
-              {r.date} · {kinds[r.kind]} {r.reference} · {r.amount} грн ·{' '}
-              {r.active ? 'Залишок ' + r.open + ' грн' : 'Скасовано'}
+              <span className="inline-grid w-[calc(100%-1rem)] gap-2 align-top sm:grid-cols-[minmax(0,1fr)_auto]">
+                <span>
+                  <span className="block text-xs font-normal text-muted-foreground">
+                    {dayLabel(r.date)}
+                  </span>
+                  {kinds[r.kind]} {r.reference}
+                </span>
+                <span className="sm:text-right">
+                  {moneyLabel(r.amount)}
+                  <span className="block text-xs font-normal text-muted-foreground">
+                    {r.active ? 'Залишок ' + moneyLabel(r.open) : 'Скасовано'}
+                  </span>
+                </span>
+              </span>
             </summary>
             <p>
               {r.note} {r.reason} · Вніс {r.createdBy} ·{' '}
               {new Date(r.createdAt).toLocaleString('uk-UA', { timeZone: 'Europe/Kyiv' })}{' '}
               {r.reversedBy && '· Скасував ' + r.reversedBy}
             </p>
-            {r.returnUrl && <Link className="underline" href={r.returnUrl}>Відкрити повернення</Link>}
+            {r.returnUrl && (
+              <Link className="underline" href={r.returnUrl}>
+                Відкрити повернення
+              </Link>
+            )}
             {r.receiptId && (
               <Link className="underline" href={'/receipts/' + r.receiptId}>
                 Відкрити накладну
@@ -406,26 +467,30 @@ export function Account({
                 )}
               </div>
             ))}
-            {live && rights.reverse && r.active && r.kind !== 'receipt' && r.kind !== 'return_credit' && (
-              <Operation
-                supplier={a.id}
-                label="Скасувати запис"
-                build={(f) => ({
-                  op: 'reverse',
-                  kind: 'entry',
-                  id: r.id,
-                  reason: field(f, 'reason'),
-                })}
-              >
-                <input
-                  aria-label="Причина"
-                  className={box}
-                  name="reason"
-                  required
-                  placeholder="Причина"
-                />
-              </Operation>
-            )}
+            {live &&
+              rights.reverse &&
+              r.active &&
+              r.kind !== 'receipt' &&
+              r.kind !== 'return_credit' && (
+                <Operation
+                  supplier={a.id}
+                  label="Скасувати запис"
+                  build={(f) => ({
+                    op: 'reverse',
+                    kind: 'entry',
+                    id: r.id,
+                    reason: field(f, 'reason'),
+                  })}
+                >
+                  <input
+                    aria-label="Причина"
+                    className={box}
+                    name="reason"
+                    required
+                    placeholder="Причина"
+                  />
+                </Operation>
+              )}
           </details>
         ))}
     </div>

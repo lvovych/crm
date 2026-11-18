@@ -205,7 +205,8 @@
     "finance_reverseMoneyDocument": "Finance: reverseMoneyDocument",
     "finance_assignUnlinkedPayment": "Finance: assignUnlinkedPayment",
     "finance_refundMoneyDocument": "Finance: refundMoneyDocument",
-    "receipts_return": "Devolução ao fornecedor"
+    "receipts_return": "Devolução ao fornecedor",
+    "receipts_return_post": "Registar devolução ao fornecedor"
   },
   "summary": {
     "customField_create": "Campo personalizado \"{name}\" criado",

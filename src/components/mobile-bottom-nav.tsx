@@ -29,7 +29,7 @@ import {
   ShieldCheck,
   Ship,
   Users,
-  WalletCards,
+  DollarSign,
 } from 'lucide-react'
 import { useServiceType } from '@/components/service-type-context'
 import {
@@ -86,8 +86,10 @@ const mutualItem = {
   icon: Scale,
   labelKey: 'mutualSettlements',
 } as const
-const financeItem = { href: '/finance', icon: WalletCards, labelKey: 'finance' } as const
+const financeItem = { href: '/finance', icon: DollarSign, labelKey: 'finance' } as const
+const documentsItem = { href: '/documents', icon: FileText, labelKey: 'documents' } as const
 const allDrawerItems = [
+  documentsItem,
   financeItem,
   mutualItem,
   vehiclesItem,
@@ -103,9 +105,11 @@ export function MobileBottomNav({
   tireHotelEnabled,
   mutualSettlementsEnabled = false,
   financeEnabled = false,
+  documentsEnabled = false,
 }: {
   isSuperAdmin?: boolean
   financeEnabled?: boolean
+  documentsEnabled?: boolean
   mutualSettlementsEnabled?: boolean
   tireHotelEnabled?: boolean
 }) {
@@ -116,6 +120,7 @@ export function MobileBottomNav({
     ? [isMarine ? vesselsItem : vehiclesItem, ...workshopItems, tireHotelItem]
     : [isMarine ? vesselsItem : vehiclesItem, ...workshopItems]
   const visibleBusinessItems = [
+    ...(documentsEnabled ? [documentsItem] : []),
     ...(mutualSettlementsEnabled ? [mutualItem] : []),
     ...(financeEnabled ? [financeItem] : []),
     ...businessItems,
@@ -247,27 +252,25 @@ export function MobileBottomNav({
                 {t('business')}
               </p>
               <nav className="grid grid-cols-4 gap-2">
-                {visibleBusinessItems.map(
-                  ({ href, icon: Icon, labelKey }) => {
-                    const isActive = pathname === href || pathname.startsWith(`${href}/`)
-                    return (
-                      <Link
-                        key={href}
-                        href={href}
-                        onClick={() => setDrawerOpen(false)}
-                        className={cn(
-                          'flex flex-col items-center gap-1.5 rounded-lg py-3 text-xs transition-colors',
-                          isActive
-                            ? 'bg-primary/10 text-primary'
-                            : 'text-muted-foreground hover:bg-accent'
-                        )}
-                      >
-                        <Icon className="h-5 w-5" />
-                        <span className="w-full break-words text-center">{t(labelKey)}</span>
-                      </Link>
-                    )
-                  }
-                )}
+                {visibleBusinessItems.map(({ href, icon: Icon, labelKey }) => {
+                  const isActive = pathname === href || pathname.startsWith(`${href}/`)
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      onClick={() => setDrawerOpen(false)}
+                      className={cn(
+                        'flex flex-col items-center gap-1.5 rounded-lg py-3 text-xs transition-colors',
+                        isActive
+                          ? 'bg-primary/10 text-primary'
+                          : 'text-muted-foreground hover:bg-accent'
+                      )}
+                    >
+                      <Icon className="h-5 w-5" />
+                      <span className="w-full break-words text-center">{t(labelKey)}</span>
+                    </Link>
+                  )
+                })}
               </nav>
             </div>
 

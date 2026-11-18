@@ -132,6 +132,7 @@ const docsMap: Record<string, string> = {
 
 const breadcrumbMap: Record<string, BreadcrumbSegment[]> = {
   '/': [{ key: 'dashboard' }],
+  '/documents': [{ key: 'documents' }],
   '/vehicles': [{ key: 'vehicles', href: '/vehicles' }, { key: 'allVehicles' }],
   '/customers': [{ key: 'customers', href: '/customers' }, { key: 'allCustomers' }],
   '/work-orders': [{ key: 'workOrders', href: '/work-orders' }, { key: 'allWorkOrders' }],
@@ -224,7 +225,9 @@ export function PageHeader() {
 
   if (!segments) {
     // /tire-hotel/[id]
-    if (/^\/tire-hotel\/[^/]+$/.test(pathname)) {
+    if (pathname.startsWith('/documents/')) {
+      segments = [{ key: 'documents', href: '/documents' }, { key: 'documentDetails' }]
+    } else if (/^\/tire-hotel\/[^/]+$/.test(pathname)) {
       segments = [{ key: 'tireHotel', href: '/tire-hotel' }, { key: 'tireSetDetails' }]
     }
     // /quotes/[id]/edit

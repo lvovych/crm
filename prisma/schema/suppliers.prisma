@@ -22,6 +22,7 @@ model Counterparty {
   preferredParts InventoryPart[]
   subcontractWork SubcontractWork[]
   receipts SupplierReceipt[]
+  returns SupplierReturn[]
   settlements SupplierEntry[]
   supplierArticles SupplierArticle[]
   @@unique([organizationId, id])

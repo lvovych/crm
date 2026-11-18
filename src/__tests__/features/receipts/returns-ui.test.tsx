@@ -3,16 +3,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Returns } from '@/features/receipts/Returns'
 const { send, refresh } = vi.hoisted(() => ({ send: vi.fn(), refresh: vi.fn() }))
 vi.mock('@/features/receipts/return-actions', () => ({ createSupplierReturn: send }))
-vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh }) }))
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh, push: vi.fn() }) }))
 const data = {
   supplier: 'Supplier',
+  supplierId: 'supplier',
   enabled: true,
   documents: [],
   lines: [
     { id: 'a', name: 'Filter', unit: 'шт', unitPrice: '100', available: '2.000' },
     { id: 'b', name: 'Oil', unit: 'л', unitPrice: '200', available: '0.700' },
     { id: 'c', name: 'Returned', unit: 'шт', unitPrice: '50', available: '0.000' },
-  ],
+  ].map((l) => ({ ...l, brand: 'Brand', article: l.id })),
 }
 beforeEach(() => {
   send.mockReset()
@@ -23,37 +24,52 @@ function open() {
   const view = render(<Returns receiptId="receipt" data={data} canCreate />)
   fireEvent.click(screen.getByText('Створити повернення з накладної'))
   fireEvent.change(screen.getByLabelText('Причина повернення'), {
-    target: { value: 'Wrong parts' },
+    target: { value: 'Неправильно підібраний товар' },
   })
   return view
 }
 describe('supplier return form', () => {
+  it('explains an exhausted receipt and disables selecting all', () => {
+    render(
+      <Returns
+        receiptId="receipt"
+        data={{ ...data, lines: data.lines.map((l) => ({ ...l, available: '0.000' })) }}
+        canCreate
+      />
+    )
+    expect(screen.getByRole('status')).toHaveTextContent('Немає доступних позицій')
+    fireEvent.click(screen.getByText('Створити повернення з накладної'))
+    expect(
+      screen.getByRole('button', { name: 'Повернути все доступне з накладної' })
+    ).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Зберегти чернетку' })).toBeDisabled()
+  })
   it('selects all available goods in one request, excludes exhausted lines and clears after success', async () => {
     open()
     fireEvent.click(screen.getByRole('button', { name: 'Повернути все доступне з накладної' }))
     expect(screen.getByLabelText('Повернути Oil')).toHaveValue(0.7)
     expect(screen.getByLabelText('Повернути Returned')).toBeDisabled()
-    fireEvent.click(screen.getByRole('button', { name: 'Провести повернення' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Зберегти чернетку' }))
     await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1))
     expect(send).toHaveBeenCalledTimes(1)
     expect(send.mock.calls[0][0]).toMatchObject({
       receiptId: 'receipt',
-      reason: 'Wrong parts',
+      reason: 'Неправильно підібраний товар',
       lines: [
         { id: 'a', quantity: '2.000' },
         { id: 'b', quantity: '0.700' },
       ],
     })
     expect(screen.getByLabelText('Причина повернення')).toHaveValue('')
-    expect(screen.getByRole('button', { name: 'Провести повернення' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Зберегти чернетку' })).toBeDisabled()
   })
   it('keeps the request key after a lost response and sends only the selected partial quantity', async () => {
     send.mockRejectedValueOnce(new Error('Connection lost'))
     open()
     fireEvent.change(screen.getByLabelText('Повернути Oil'), { target: { value: '0.1' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Провести повернення' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Зберегти чернетку' }))
     await screen.findByRole('alert')
-    fireEvent.click(screen.getByRole('button', { name: 'Провести повернення' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Зберегти чернетку' }))
     await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1))
     expect(send.mock.calls[0][0].id).toBe(send.mock.calls[1][0].id)
     expect(send.mock.calls[1][0].lines).toEqual([{ id: 'b', quantity: '0.1' }])
@@ -94,10 +110,30 @@ describe('supplier return form', () => {
           documents: [
             {
               id: 'return-id',
+              supplierDocumentNumber: null,
+              status: 'posted',
+              version: 1,
               number: 'ПП-1',
               date: '2026-11-18',
               reason: 'Return',
-              lines: [{ name: 'Filter', unit: 'шт', quantity: '1', amount: '100.00' }],
+              supplierId: 'supplier',
+              supplier: 'Supplier',
+              lines: [
+                {
+                  id: 'line',
+                  lineId: 'source-line',
+                  name: 'Filter',
+                  brand: 'Brand',
+                  article: 'SKU',
+                  receiptId: 'receipt',
+                  receiptNumber: 'INV',
+                  receiptDate: '2026-11-18',
+                  unitPrice: '100',
+                  unit: 'шт',
+                  quantity: '1',
+                  amount: '100.00',
+                },
+              ],
             },
           ],
         }}
@@ -106,7 +142,7 @@ describe('supplier return form', () => {
     )
     expect(screen.getByRole('link', { name: 'ПП-1' })).toHaveAttribute(
       'href',
-      '/receipts/receipt/returns/return-id'
+      '/supplier-returns/return-id'
     )
   })
 })

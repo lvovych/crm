@@ -79,7 +79,9 @@
     "tireSetDetails": "Komplet opon",
     "tireForecast": "Następny sezon",
     "whatsapp": "WhatsApp",
-    "inspectionReminders": "Przypomnienia o przeglądzie"
+    "inspectionReminders": "Przypomnienia o przeglądzie",
+    "documents": "Document journal",
+    "documentDetails": "Document connections"
   },
   "search": "Szukaj...",
   "shortcut": "Ctrl+K",
@@ -164,6 +166,7 @@
     "payroll": "Payroll",
     "staffSettlements": "Employee settlements",
     "employees": "Employees",
-    "mutualSettlements": "Settlements"
+    "mutualSettlements": "Settlements",
+    "documents": "Document journal"
   }
 }

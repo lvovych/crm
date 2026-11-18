@@ -25,6 +25,7 @@ model SupplierReceipt {
   @@unique([organizationId, supplierId, number, documentDate])
   @@unique([organizationId, source, sourceAccount, externalId])
   @@index([organizationId, receivedDate])
+  @@index([organizationId, supplierId, status, receivedDate(sort: Desc), id], map: "receipt_return_search_idx")
   @@map("supplier_receipts")
 }
 model SupplierReceiptLine {
@@ -98,10 +99,18 @@ model SubcontractWork {
 
 
 model SupplierReturn {
+  supplierDocumentNumber String?
+  status String @default("posted")
+  version Int @default(1)
+  postedById String?
+  postedAt DateTime?
+  supplierId String
+  supplier Counterparty @relation(fields:[organizationId,supplierId], references:[organizationId,id], onDelete:Restrict, map:"supplier_returns_supplier_fk")
+  /// Optional starting receipt; sources of a consolidated return are carried by its lines.
   id String @id
   organizationId String
-  receiptId String
-  receipt SupplierReceipt @relation(fields:[receiptId], references:[id], onDelete:Restrict)
+  receiptId String?
+  receipt SupplierReceipt? @relation(fields:[receiptId], references:[id], onDelete:Restrict)
   number String
   date DateTime @db.Date
   reason String
@@ -111,10 +120,15 @@ model SupplierReturn {
   lines SupplierReturnLine[]
   settlement SupplierEntry?
   @@index([organizationId, date])
+  @@index([organizationId, createdAt(sort: Desc), id], map: "return_list_page_idx")
+  @@index([organizationId, supplierId, createdAt(sort: Desc), id], map: "return_supplier_page_idx")
+  @@index([organizationId,supplierId],map:"supplier_returns_supplier_idx")
   @@map("supplier_returns")
 }
 
 model SupplierReturnLine {
+  brandSnapshot String?
+  articleSnapshot String?
   id String @id @default(cuid())
   returnId String
   document SupplierReturn @relation(fields:[returnId], references:[id], onDelete:Restrict)
@@ -123,5 +137,6 @@ model SupplierReturnLine {
   quantity Decimal @db.Decimal(14,3)
   amount Decimal @db.Decimal(18,2)
   @@unique([returnId,lineId])
+  @@index([lineId], map: "return_line_availability_idx")
   @@map("supplier_return_lines")
 }

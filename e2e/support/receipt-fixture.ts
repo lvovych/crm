@@ -5,7 +5,10 @@ import { Client } from 'pg'
 export async function receiptDb() {
   const connectionString = process.env.E2E_DATABASE_URL || ''
   const url = new URL(connectionString)
-  if (!['localhost', '127.0.0.1'].includes(url.hostname) || url.pathname !== '/torqvoice_e2e') {
+  if (
+    !['localhost', '127.0.0.1'].includes(url.hostname) ||
+    !['/torqvoice_e2e', '/crm_returns_e2e_test'].includes(url.pathname)
+  ) {
     throw new Error('Receipt browser fixtures require the disposable E2E database')
   }
   const db = new Client({ connectionString })
@@ -45,16 +48,14 @@ export async function receiptFixture() {
     const part = { id: randomUUID(), partNumber: prefix + '-KNOWN', name: prefix + ' filter' }
     const parts = [
       { ...part, brandId: brands[0].id, unitCost: 12.3456, quantity: 10 },
-      ...brands
-        .slice(0, 2)
-        .map((brand, i) => ({
-          id: randomUUID(),
-          partNumber: prefix + '-SHARED',
-          name: prefix + ' shared ' + i,
-          brandId: brand.id,
-          unitCost: 20 + i,
-          quantity: 0,
-        })),
+      ...brands.slice(0, 2).map((brand, i) => ({
+        id: randomUUID(),
+        partNumber: prefix + '-SHARED',
+        name: prefix + ' shared ' + i,
+        brandId: brand.id,
+        unitCost: 20 + i,
+        quantity: 0,
+      })),
     ]
     for (const item of parts)
       await db.query(

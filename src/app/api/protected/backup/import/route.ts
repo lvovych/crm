@@ -1,3 +1,4 @@
+import { restoreSupplierReturn } from '@/features/receipts/return-backup'
 import { isStage } from '@/features/work-order-statuses/Lib/stages'
 import { NextRequest, NextResponse } from 'next/server'
 import { assertContentLength, assertZipWithinLimits } from '@/lib/backup/zip-guard'
@@ -506,7 +507,10 @@ export async function POST(request: NextRequest) {
         LaborPreset: () => tx.laborPreset.deleteMany({ where: { organizationId } }),
         ConditionMarkType: () => tx.conditionMarkType.deleteMany({ where: { organizationId } }),
         PayAssignment: () => tx.payAssignment.deleteMany({ where: { order: { organizationId } } }),
-        SubcontractWork: () => tx.subcontractWork.deleteMany({ where: {labor: {serviceRecord: {organizationId}}} }),
+        SubcontractWork: () =>
+          tx.subcontractWork.deleteMany({
+            where: { labor: { serviceRecord: { organizationId } } },
+          }),
         Webhook: () => tx.webhook.deleteMany({ where: { organizationId } }),
         ReportSchedule: () => tx.reportSchedule.deleteMany({ where: { organizationId } }),
         WorkOrderStatus: () => tx.workOrderStatus.deleteMany({ where: { organizationId } }),
@@ -921,13 +925,7 @@ export async function POST(request: NextRequest) {
       }
       if (data.supplierReturns) {
         for (const raw of data.supplierReturns as Record<string, unknown>[]) {
-          const receipt = await tx.supplierReceipt.findFirstOrThrow({ where: { id: String(raw.receiptId), organizationId } })
-          const { lines, ...fields } = raw
-          await tx.supplierReturn.create({ data: columnsOf(fields, { organizationId, createdById: ctx.userId }) as never })
-          for (const line of (lines ?? []) as Record<string, unknown>[]) {
-            await tx.supplierReceiptLine.findFirstOrThrow({ where: { id: String(line.lineId), receiptId: receipt.id } })
-            await tx.supplierReturnLine.create({ data: columnsOf(line, { returnId: raw.id }) as never })
-          }
+          await restoreSupplierReturn(tx, organizationId, ctx.userId, raw)
         }
       }
       if (data.supplierEntries) {
@@ -942,7 +940,14 @@ export async function POST(request: NextRequest) {
         for (const raw of entries) {
           if (raw.receiptId && receipts.get(raw.receiptId) !== raw.supplierId)
             throw new Error('Invalid settlement receipt')
-          if (raw.returnId) await tx.supplierReturn.findFirstOrThrow({ where: { id: String(raw.returnId), organizationId, receipt: { supplierId: String(raw.supplierId) } } })
+          if (raw.returnId)
+            await tx.supplierReturn.findFirstOrThrow({
+              where: {
+                id: String(raw.returnId),
+                organizationId,
+                supplierId: String(raw.supplierId),
+              },
+            })
           const { credits, termChanges, ...fields } = raw
           await tx.supplierEntry.create({
             data: columnsOf(fields, {
@@ -1548,21 +1553,50 @@ export async function POST(request: NextRequest) {
       // Both were restored before the inspections existed, so the link is
       // written now, and only where the inspection came back with the backup.
       if (Array.isArray(data.payAssignments)) {
-        for (const row of data.payAssignments as {orderId: string; partsId: string | null; ownerId: string | null}[]) {
+        for (const row of data.payAssignments as {
+          orderId: string
+          partsId: string | null
+          ownerId: string | null
+        }[]) {
           await tx.serviceRecord.findFirstOrThrow({ where: { id: row.orderId, organizationId } })
-          await tx.payAssignment.create({ data: {
-            orderId: row.orderId,
-            partsId: keptReference(row.partsId, technicianIds),
-            ownerId: keptReference(row.ownerId, technicianIds),
-          } })
+          await tx.payAssignment.create({
+            data: {
+              orderId: row.orderId,
+              partsId: keptReference(row.partsId, technicianIds),
+              ownerId: keptReference(row.ownerId, technicianIds),
+            },
+          })
         }
       }
       if (data.subcontractWork) {
-        for (const row of data.subcontractWork as {laborId:string;supplierId:string;unitCost:string;returnedCost?:string;receiptLineId:string|null}[]) {
-          await tx.serviceLabor.findFirstOrThrow({where:{id:row.laborId,serviceRecord:{organizationId}}})
-          await tx.counterparty.findFirstOrThrow({where:{id:row.supplierId,organizationId}})
-          if (row.receiptLineId) await tx.supplierReceiptLine.findFirstOrThrow({where:{id:row.receiptLineId,kind:'service',receipt:{organizationId,supplierId:row.supplierId}}})
-          await tx.subcontractWork.create({data:{laborId:row.laborId,supplierId:row.supplierId,unitCost:row.unitCost,returnedCost:row.returnedCost ?? 0,receiptLineId:row.receiptLineId}})
+        for (const row of data.subcontractWork as {
+          laborId: string
+          supplierId: string
+          unitCost: string
+          returnedCost?: string
+          receiptLineId: string | null
+        }[]) {
+          await tx.serviceLabor.findFirstOrThrow({
+            where: { id: row.laborId, serviceRecord: { organizationId } },
+          })
+          await tx.counterparty.findFirstOrThrow({ where: { id: row.supplierId, organizationId } })
+          if (row.receiptLineId)
+            await tx.supplierReceiptLine.findFirstOrThrow({
+              where: {
+                id: row.receiptLineId,
+                kind: 'service',
+                receipt: { organizationId, supplierId: row.supplierId },
+              },
+            })
+          await tx.subcontractWork.create({
+            data: {
+              laborId: row.laborId,
+              supplierId: row.supplierId,
+              unitCost: row.unitCost,
+              returnedCost: row.returnedCost ?? 0,
+              receiptLineId: row.receiptLineId,
+            },
+          })
         }
       }
       if (data.inspections?.length) {

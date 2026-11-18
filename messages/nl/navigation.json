@@ -79,7 +79,9 @@
     "tireSetDetails": "Bandenset",
     "tireForecast": "Volgend seizoen",
     "whatsapp": "WhatsApp",
-    "inspectionReminders": "Keuringsherinneringen"
+    "inspectionReminders": "Keuringsherinneringen",
+    "documents": "Document journal",
+    "documentDetails": "Document connections"
   },
   "search": "Zoeken...",
   "shortcut": "Ctrl+K",
@@ -164,6 +166,7 @@
     "payroll": "Payroll",
     "staffSettlements": "Employee settlements",
     "employees": "Employees",
-    "mutualSettlements": "Settlements"
+    "mutualSettlements": "Settlements",
+    "documents": "Document journal"
   }
 }

@@ -109,7 +109,7 @@ function templateEnd(source: string, open: number): number {
 /** Names declared as CTEs (or windows) in this template: `name AS (`. */
 function localNames(sql: string): Set<string> {
   const names = new Set<string>()
-  for (const m of sql.matchAll(/("[^"]+"|[A-Za-z_][A-Za-z0-9_]*)\s*(?:\([^)]*\))?\s+AS\s*\(/gi)) {
+  for (const m of sql.matchAll(/("[^"]+"|[A-Za-z_][A-Za-z0-9_]*)\s*(?:\([^()]*\))?\s+AS\s*\(/gi)) {
     names.add(m[1].replace(/"/g, '').toLowerCase())
   }
   return names
@@ -154,6 +154,20 @@ describe('raw SQL', () => {
     }
 
     expect(failures).toEqual([])
+  })
+
+  it('recognizes nested recursive CTEs with column lists without hiding real tables', () => {
+    expect(
+      unqualifiedReferences(`
+      SELECT * FROM "public"."financial_documents" WHERE id NOT IN (
+        WITH RECURSIVE payroll_documents(id) AS (
+          SELECT id FROM "public"."StaffPayment"
+          UNION SELECT child.id FROM financial_documents child JOIN payroll_documents parent
+            ON child.id = parent.id
+        ) SELECT id FROM payroll_documents
+      )
+    `)
+    ).toEqual(['FROM financial_documents'])
   })
 
   it('catches an unqualified name and accepts a qualified one', () => {

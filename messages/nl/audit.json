@@ -205,7 +205,8 @@
     "finance_reverseMoneyDocument": "Finance: reverseMoneyDocument",
     "finance_assignUnlinkedPayment": "Finance: assignUnlinkedPayment",
     "finance_refundMoneyDocument": "Finance: refundMoneyDocument",
-    "receipts_return": "Retour aan leverancier"
+    "receipts_return": "Retour aan leverancier",
+    "receipts_return_post": "Leveranciersretour boeken"
   },
   "summary": {
     "customField_create": "Aangepast veld \"{name}\" aangemaakt",

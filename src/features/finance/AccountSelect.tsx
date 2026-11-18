@@ -35,12 +35,28 @@ export function AccountSelect({
   }, [state, value, onChange])
   if (failed)
     return <p role="alert">Не вдалося завантажити каси. Оновіть сторінку перед оплатою.</p>
-  if (!state) return null
+  if (!state)
+    return (
+      <label className="block space-y-1 text-sm">
+        <span>Каса / рахунок</span>
+        <select
+          name={name}
+          required
+          aria-label="Каса / рахунок"
+          aria-busy="true"
+          defaultValue=""
+          className="h-11 w-full rounded-md border bg-background px-3"
+        >
+          <option value="">Завантаження рахунків…</option>
+        </select>
+      </label>
+    )
   if (!state.active) return inactiveFallback ?? null
   return (
     <label className="block space-y-1">
       <span>Каса / рахунок</span>
       <select
+        key="loaded-accounts"
         name={name}
         aria-label="Каса / рахунок"
         required
@@ -51,7 +67,7 @@ export function AccountSelect({
         onChange={(e) => onChange?.(e.target.value)}
         className="h-11 w-full rounded-md border bg-background px-3"
       >
-        <option value="">Оберіть касу</option>
+        <option value="">Оберіть касу або рахунок</option>
         {state.accounts.map((a) => (
           <option key={a.id} value={a.id}>
             {a.name}

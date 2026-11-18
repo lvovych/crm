@@ -698,3 +698,81 @@ html body[data-scroll-locked] {
   -webkit-text-security: disc;
   text-security: disc;
 }
+
+/* Shared document surfaces. Scoped to warehouse/finance pages only. */
+.ops-workspace { min-width: 0; font-variant-numeric: tabular-nums; }
+.ops-workspace :where(table) { width: 100%; text-align: left; font-size: .875rem; }
+.ops-workspace :where(th) { padding: .875rem 1rem; background: var(--muted); color: var(--muted-foreground); font-size: .75rem; font-weight: 600; }
+.ops-workspace :where(td) { padding: .875rem 1rem; vertical-align: middle; }
+.ops-workspace :where(tbody tr) { border-bottom: 1px solid var(--border); }
+.ops-workspace :where(tbody tr:hover) { background: color-mix(in srgb, var(--muted) 45%, transparent); }
+.ops-workspace :where(summary) { cursor: pointer; min-height: 2.75rem; padding-block: .625rem; font-weight: 600; }
+.ops-workspace :where(summary:focus-visible, a:focus-visible) { outline: 2px solid var(--ring); outline-offset: 3px; border-radius: .25rem; }
+.ops-panel { min-width: 0; border: 1px solid var(--border); border-radius: .75rem; background: var(--card); padding: 1.25rem; }
+.ops-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; align-items: end; }
+.ops-form > label { display: grid; gap: .375rem; min-width: 0; font-size: .875rem; font-weight: 500; }
+.ops-form :where(input:not([type=hidden]):not([type=checkbox]):not([type=radio]), select, textarea) { width: 100%; min-width: 0; min-height: 2.75rem; padding: .625rem .75rem; border: 1px solid var(--border); border-radius: .5rem; background: var(--background); color: var(--foreground); font-size: .875rem; }
+.ops-form :where(input, select, textarea):focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.ops-form > button { min-height: 2.75rem; width: fit-content; }
+.ops-form > [role=status] { grid-column: 1 / -1; font-size: .875rem; }
+.ops-form > button:disabled { opacity: .5; cursor: not-allowed; }
+.ops-table-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: .75rem; }
+@media (max-width: 639px) {
+  .ops-form { grid-template-columns: minmax(0, 1fr); }
+  .ops-panel { padding: 1rem; }
+}
+
+/* Keep single-choice native menus in the page's coordinate system. This avoids
+   platform popup scaling/position differences while retaining native form,
+   keyboard and validation behavior. Unsupported browsers keep their picker.
+   Hidden Radix form controls and multi-row listboxes are intentionally excluded. */
+@supports (appearance: base-select) {
+  select:not([multiple]):not([size]):not([aria-hidden="true"]),
+  select[size="1"]:not([multiple]):not([aria-hidden="true"]) {
+    appearance: base-select;
+    align-items: center;
+  }
+
+  select:not([multiple]):not([size]):not([aria-hidden="true"])::picker(select),
+  select[size="1"]:not([multiple]):not([aria-hidden="true"])::picker(select) {
+    appearance: base-select;
+    position: fixed;
+    inset: auto;
+    top: anchor(bottom);
+    left: anchor(left);
+    position-try-fallbacks: flip-block, flip-inline;
+    margin: 0.25rem 0;
+    width: anchor-size(width);
+    min-width: 0;
+    max-width: calc(100vw - 1rem);
+    max-height: min(20rem, 50dvh);
+    overflow: auto;
+    overscroll-behavior: contain;
+    padding: 0.25rem;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    background: var(--popover);
+    color: var(--popover-foreground);
+    font: inherit;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 20%);
+  }
+
+  select:not([multiple]):not([size]):not([aria-hidden="true"]) option,
+  select[size="1"]:not([multiple]):not([aria-hidden="true"]) option {
+    min-height: 2.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.25rem;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  select:not([multiple]):not([size]):not([aria-hidden="true"]) option:is(:checked, :focus, :hover),
+  select[size="1"]:not([multiple]):not([aria-hidden="true"]) option:is(:checked, :focus, :hover) {
+    background: var(--accent);
+    color: var(--accent-foreground);
+  }
+
+  select option:disabled {
+    opacity: 0.5;
+  }
+}

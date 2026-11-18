@@ -175,6 +175,7 @@ for (const viewport of [
         ).toHaveValue(cash)
         await page.getByRole('button', { name: 'Скасувати', exact: true }).click()
         await page.getByRole('button', { name: /Операції: Test cash/ }).click()
+        await page.getByText('Фільтри та період', { exact: false }).first().click()
         await page.getByRole('button', { name: 'Сьогодні', exact: true }).click()
         await expect(page.getByLabel('Операції від', { exact: true })).toHaveValue(
           await page.getByLabel('Операції до', { exact: true }).inputValue()

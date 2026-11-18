@@ -4,12 +4,12 @@ import { availableQuantity } from '@/features/receipts/transfer-schema'
 const valid = {
   id: 'aef56586-425b-4a80-bd4c-b4c1518db6e7',
   receiptId: 'receipt',
-  reason: 'Return',
+  reason: 'Інше',
   lines: [{ id: 'line', quantity: '0.001' }],
 }
 describe('supplier return validation', () => {
   it('accepts fractional quantities and trims the reason', () => {
-    expect(returnSchema.parse({ ...valid, reason: ' Return ' }).reason).toBe('Return')
+    expect(returnSchema.parse({ ...valid, reason: ' Інше ' }).reason).toBe('Інше')
   })
   it.each([
     '0',
@@ -26,6 +26,10 @@ describe('supplier return validation', () => {
   })
   it.each([
     { ...valid, reason: ' ' },
+    { ...valid, reason: 'Arbitrary reason' },
+    { ...valid, supplierDocumentNumber: 'x'.repeat(121) },
+    { ...valid, supplierId: 'supplier' },
+    { ...valid, receiptId: undefined },
     { ...valid, reason: 'a'.repeat(1001) },
     { ...valid, lines: [] },
     { ...valid, lines: [...valid.lines, ...valid.lines] },

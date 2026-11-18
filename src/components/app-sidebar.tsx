@@ -63,7 +63,7 @@ import {
   Palette,
   Plus,
   Receipt,
-  WalletCards,
+  DollarSign,
   Scale,
   Settings,
   ShieldCheck,
@@ -244,7 +244,12 @@ export function AppSidebar({
   ].filter((item) => !item.subject || canAccess(item.subject))
 
   const businessItems: NavItem[] = [
-
+    {
+      titleKey: 'sidebar.finance' as const,
+      url: '/finance',
+      icon: DollarSign,
+      subject: 'finance',
+    },
     ...(mutualSettlementsEnabled
       ? [
           {
@@ -255,18 +260,6 @@ export function AppSidebar({
           },
         ]
       : []),
-    {
-      titleKey: 'sidebar.finance' as const,
-      url: '/finance',
-      icon: WalletCards,
-      subject: 'finance',
-    },
-    ...(['employees', 'customers', 'vehicles', 'labor_presets', 'inventory', 'brands'].some(canAccess) ||
-    (supplierDirectoryEnabled && canAccess('suppliers'))
-      ? [{ titleKey: 'sidebar.directories', url: '/directories', icon: Layers, subject: '' }]
-      : []),
-    { titleKey: 'sidebar.quotes' as const, url: '/quotes', icon: FileText, subject: 'quotes' },
-    { titleKey: 'sidebar.billing' as const, url: '/billing', icon: Receipt, subject: 'billing' },
     ...(receiptsEnabled
       ? [
           {
@@ -283,6 +276,26 @@ export function AppSidebar({
       icon: Package,
       subject: 'inventory',
     },
+    ...(['employees', 'customers', 'vehicles', 'labor_presets', 'inventory', 'brands'].some(
+      canAccess
+    ) ||
+    (supplierDirectoryEnabled && canAccess('suppliers'))
+      ? [{ titleKey: 'sidebar.directories', url: '/directories', icon: Layers, subject: '' }]
+      : []),
+    { titleKey: 'sidebar.billing' as const, url: '/billing', icon: Receipt, subject: 'billing' },
+    { titleKey: 'sidebar.quotes' as const, url: '/quotes', icon: FileText, subject: 'quotes' },
+    {
+      titleKey: 'sidebar.timesheets' as const,
+      url: '/timesheets',
+      icon: Timer,
+      subject: 'time_tracking',
+    },
+    ...((receiptsEnabled && canAccess('receipts')) ||
+    ['finance', 'services', 'payroll'].some(canAccess) ||
+    (supplierDirectoryEnabled && canAccess('supplier_settlements'))
+      ? [{ titleKey: 'sidebar.documents', url: '/documents', icon: FileText, subject: '' }]
+      : []),
+
     ...(features?.reports !== false && canAccess('reports')
       ? [
           {
@@ -293,12 +306,6 @@ export function AppSidebar({
           },
         ]
       : []),
-    {
-      titleKey: 'sidebar.timesheets' as const,
-      url: '/timesheets',
-      icon: Timer,
-      subject: 'time_tracking',
-    },
     // Only once a provider is connected: a link to a page that can only say
     // "not connected" is noise.
     ...(aiEnabled
@@ -372,7 +379,14 @@ export function AppSidebar({
     items.map((item) => {
       const isActive =
         (item.url === '/directories' &&
-          (['/employees', '/payroll', '/employee-settlements', '/customers', '/vehicles', '/labor-presets'].some((p) => pathname === p) ||
+          ([
+            '/employees',
+            '/payroll',
+            '/employee-settlements',
+            '/customers',
+            '/vehicles',
+            '/labor-presets',
+          ].some((p) => pathname === p) ||
             pathname === '/suppliers' ||
             pathname.startsWith('/suppliers/'))) ||
         pathname === item.url ||

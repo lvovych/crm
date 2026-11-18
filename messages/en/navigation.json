@@ -79,7 +79,9 @@
     "tireSetDetails": "Tire Set",
     "tireForecast": "Next season",
     "whatsapp": "WhatsApp",
-    "inspectionReminders": "Inspection reminders"
+    "inspectionReminders": "Inspection reminders",
+    "documents": "Document journal",
+    "documentDetails": "Document connections"
   },
   "search": "Search...",
   "shortcut": "Ctrl+K",
@@ -164,6 +166,7 @@
     "payroll": "Payroll",
     "staffSettlements": "Employee settlements",
     "employees": "Employees",
-    "mutualSettlements": "Settlements"
+    "mutualSettlements": "Settlements",
+    "documents": "Document journal"
   }
 }

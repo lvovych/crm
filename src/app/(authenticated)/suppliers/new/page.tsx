@@ -7,7 +7,7 @@ export default async function NewSupplierPage() {
   return (
     <>
       <PageHeader />
-      <main className="p-6">
+      <main className="ops-workspace mx-auto w-full max-w-5xl p-4 sm:p-6">
         <h1 className="mb-6 text-2xl font-semibold">{t('new')}</h1>
         {cap.data?.create ? <SupplierEditor /> : <p role="alert">{t('readOnly')}</p>}
       </main>

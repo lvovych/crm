@@ -67,14 +67,15 @@ function AccountAction({
         <Button
           type="button"
           variant="outline"
-          size="icon"
-          className="size-11 shrink-0 [&_svg]:size-5"
+          size="sm"
+          className="min-h-11 gap-2 px-3 [&_svg]:size-4"
           aria-label={label}
           title={label}
           disabled={disabled}
           onClick={onClick}
         >
           <Icon aria-hidden="true" />
+          <span>{label}</span>
         </Button>
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>
@@ -330,7 +331,7 @@ export function FinanceClient({
   }
   if (settingsOnly && !data.isAdmin) return <p role="alert">Немає доступу до налаштувань кас.</p>
   return (
-    <main className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6">
+    <main className="ops-workspace mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">
@@ -468,7 +469,7 @@ export function FinanceClient({
                 <article
                   key={a.id}
                   aria-label={a.name}
-                  className="grid gap-4 rounded-xl border p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-center"
+                  className="grid gap-4 rounded-xl border p-4 sm:p-5 xl:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-center"
                 >
                   <div className="min-w-0">
                     <h2 className="break-words text-lg font-semibold">
@@ -732,7 +733,7 @@ export function FinanceClient({
           <section className="rounded-xl border p-4">
             <h2 className="text-lg font-semibold">Журнал руху коштів</h2>
             <p className="text-sm text-muted-foreground">Рухи до {dayLabel(data.asOf)} включно</p>
-            <details className="my-4 rounded-lg border p-3" open>
+            <details className="my-4 rounded-lg border p-3">
               <summary className="min-h-11 cursor-pointer font-medium">
                 Фільтри та період
                 {filter || category || query || from || partyType || partyId
@@ -894,7 +895,12 @@ export function FinanceClient({
                   >
                     <div className="text-sm">
                       <p>{dayLabel(e.date)}</p>
-                      <p className="font-medium">{labels[e.kind] || e.kind}</p>
+                      <Link
+                        className="font-medium underline-offset-4 hover:underline"
+                        href={'/documents/finance/' + e.documentId}
+                      >
+                        {labels[e.kind] || e.kind} ↗
+                      </Link>
                       <span
                         className={`mt-1 inline-block rounded border px-2 py-1 text-xs ${e.reversed ? 'border-amber-500' : ''}`}
                       >

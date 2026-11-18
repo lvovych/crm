@@ -1,3 +1,4 @@
+import { DocumentHeader } from '@/components/operations/document-ui'
 import { randomUUID } from 'node:crypto'
 import { receiptOptions, receiptAccess } from '@/features/receipts/actions'
 import ReceiptForm from '@/features/receipts/ReceiptForm'
@@ -12,7 +13,11 @@ export default async function Page() {
   }).format(new Date())
   return (
     <>
-      <h1 className="text-2xl font-semibold">Нова накладна</h1>
+      <DocumentHeader
+        title="Нова накладна"
+        back={{ href: '/receipts', label: 'Надходження' }}
+        description="Оберіть постачальника, додайте позиції та перевірте суму перед проведенням."
+      />
       <ReceiptForm
         options={r.data}
         canPost={access.post}

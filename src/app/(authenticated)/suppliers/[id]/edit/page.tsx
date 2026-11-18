@@ -15,7 +15,7 @@ export default async function EditSupplierPage({ params }: { params: Promise<{ i
     return (
       <>
         <PageHeader />
-        <p role="alert" className="p-6">
+        <p role="alert" className="ops-workspace mx-auto w-full max-w-5xl p-4 sm:p-6">
           {r.error ?? t('readOnly')}
         </p>
       </>
@@ -32,7 +32,7 @@ export default async function EditSupplierPage({ params }: { params: Promise<{ i
   return (
     <>
       <PageHeader />
-      <main className="p-6">
+      <main className="ops-workspace mx-auto w-full max-w-5xl p-4 sm:p-6">
         <h1 className="mb-6 text-2xl font-semibold">{t('edit')}</h1>
         <SupplierEditor id={id} initial={initial} updatedAt={s.updatedAt.toISOString()} />
       </main>

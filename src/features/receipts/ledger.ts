@@ -15,7 +15,7 @@ const date = z
   .transform((v) => new Date(v + 'T00:00:00Z'))
 const mixedReceiptMessage = 'Оформіть товари та послуги окремими накладними.'
 function sameKind(lines: { kind: string }[]) {
-  return lines.every(line => line.kind === lines[0]?.kind)
+  return lines.every((line) => line.kind === lines[0]?.kind)
 }
 
 export const draftSchema = z.object({
@@ -43,7 +43,8 @@ export const draftSchema = z.object({
       })
     )
     .min(1)
-    .max(200).refine(sameKind, mixedReceiptMessage),
+    .max(200)
+    .refine(sameKind, mixedReceiptMessage),
 })
 
 export async function transitionReceipt(
@@ -62,7 +63,16 @@ export async function transitionReceipt(
   if (receipt.status === target) return
   const posting = target === 'posted'
   if (posting && !sameKind(receipt.lines)) throw new Error(mixedReceiptMessage)
-  if (!posting && await tx.supplierReturn.count({ where: { receiptId: id } }))
+  if (
+    !posting &&
+    (await tx.supplierReturn.count({
+      where: {
+        organizationId,
+        status: 'posted',
+        OR: [{ receiptId: id }, { lines: { some: { line: { receiptId: id } } } }],
+      },
+    }))
+  )
     throw new Error('Накладна має повернення. Скасування недоступне.')
   if (!posting && !reason.trim()) throw new Error('Вкажіть причину скасування.')
   if (
@@ -89,7 +99,11 @@ export async function transitionReceipt(
     throw new Error(
       'Накладна має передавання в наряди. Скасування потребує окремої звірки руху товарів.'
     )
-  if (!posting) await tx.subcontractWork.updateMany({ where: { receiptLine: { receiptId: id } }, data: { receiptLineId: null } })
+  if (!posting)
+    await tx.subcontractWork.updateMany({
+      where: { receiptLine: { receiptId: id } },
+      data: { receiptLineId: null },
+    })
   for (const line of receipt.lines) {
     if (line.kind === 'service') continue
     if (posting && !line.article?.trim()) throw new Error('Додайте артикул товару в чернетці.')

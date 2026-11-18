@@ -13,6 +13,7 @@ export async function saveReceiptDraft(
   canCreatePart: boolean
 ) {
   const d = draftSchema.parse(input)
+  const retained = new Set<string>()
 
   // Serialize receipt-driven catalogue creation across suppliers in this workshop.
   await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${organizationId}, 8812))::text`
@@ -51,17 +52,37 @@ export async function saveReceiptDraft(
       data: { ...fields, version: { increment: 1 } },
     })
     if (!changed.count) throw new Error('Документ змінився. Оновіть сторінку.')
-    const oldLines = await tx.supplierReceiptLine.findMany({ where: { receiptId: d.id }, include: { subcontract: true } })
+    const oldLines = await tx.supplierReceiptLine.findMany({
+      where: { receiptId: d.id },
+      include: { subcontract: true },
+    })
     for (const requested of d.lines) {
-      if (requested.id && !oldLines.some(l => l.id === requested.id)) throw new Error('Рядок не належить накладній.')
+      if (requested.id && !oldLines.some((l) => l.id === requested.id))
+        throw new Error('Рядок не належить накладній.')
     }
     for (const old of oldLines) {
       if (!old.subcontract) continue
-      const next = d.lines.find(l => l.id === old.id)
-      if (!next || next.kind !== 'service' || old.subcontract.supplierId !== d.supplierId || !old.quantity.equals(next.quantity)) throw new Error('Зміна суперечить пов’язаній роботі наряду.')
-      await tx.subcontractWork.update({ where: { laborId: old.subcontract.laborId }, data: { unitCost: next.unitPrice } })
+      const next = d.lines.find((l) => l.id === old.id)
+      if (
+        !next ||
+        next.kind !== 'service' ||
+        old.subcontract.supplierId !== d.supplierId ||
+        !old.quantity.equals(next.quantity)
+      )
+        throw new Error('Зміна суперечить пов’язаній роботі наряду.')
+      retained.add(old.id)
+      await tx.supplierReceiptLine.update({
+        where: { id: old.id },
+        data: { position: -old.position - 1 },
+      })
+      await tx.subcontractWork.update({
+        where: { laborId: old.subcontract.laborId },
+        data: { unitCost: next.unitPrice },
+      })
     }
-    await tx.supplierReceiptLine.deleteMany({ where: { receiptId: d.id } })
+    await tx.supplierReceiptLine.deleteMany({
+      where: { receiptId: d.id, id: { notIn: [...retained] } },
+    })
   }
   const parts = await tx.inventoryPart.findMany({
     where: {
@@ -135,7 +156,14 @@ export async function saveReceiptDraft(
       amount: storedLineAmount(line),
     })
   }
-  await tx.supplierReceiptLine.createMany({ data: lines })
+  for (const line of lines) {
+    if (line.id && retained.has(line.id)) {
+      const { id, ...data } = line
+      await tx.supplierReceiptLine.update({ where: { id }, data })
+    }
+  }
+  const newLines = lines.filter((line) => !line.id || !retained.has(line.id))
+  if (newLines.length) await tx.supplierReceiptLine.createMany({ data: newLines })
   if (post) await transitionReceipt(tx, organizationId, userId, d.id, d.version + 1, 'posted', '')
   return { id: d.id, duplicate: false }
 }
