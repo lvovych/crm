@@ -69,8 +69,11 @@ for (const viewport of [
         const documents = page.locator('#settlement-documents')
         await expect(documents).toContainText('НОВИЙ-12000')
         await expect(documents).toContainText('СТАРИЙ-12000')
+        await documents.locator('summary').filter({ hasText: 'НОВИЙ-12000' }).click()
         await documents.getByText('Історія зобов’язань і оплат (4)').click()
-        await expect(documents.getByRole('list', { name: 'Історія документа' }).getByRole('listitem')).toHaveCount(4)
+        await expect(
+          documents.getByRole('list', { name: 'Історія документа' }).getByRole('listitem')
+        ).toHaveCount(4)
         for (const table of [
           'finance_settings',
           'money_accounts',
