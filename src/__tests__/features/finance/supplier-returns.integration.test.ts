@@ -258,6 +258,42 @@ describe.skipIf(!url)('supplier returns on PostgreSQL', () => {
     await db.supplierEntry.delete({ where: { id: unknown.receipt.settlement!.id } })
     await expect(unknown.post(unknown.request('1'))).rejects.toThrow('звірте')
   })
+  it('returns a unit restored by reducing the original order line, without reusing it twice', async () => {
+    const f = await setup('part', '2', '565')
+    const order = await db.serviceRecord.create({
+      data: { organizationId: f.org.id, title: 'Order' },
+    })
+    const part = await db.servicePart.create({
+      data: { serviceRecordId: order.id, inventoryPartId: f.part.id, name: 'Part', quantity: 1 },
+    })
+    await db.inventoryPart.update({ where: { id: f.part.id }, data: { quantity: 1 } })
+    await db.receiptTransfer.create({
+      data: {
+        lineId: f.receipt.lines[0].id,
+        requestId: randomUUID(),
+        requestHash: 'test',
+        serviceRecordId: order.id,
+        serviceRecordLabel: 'Order',
+        servicePartId: part.id,
+        quantity: 2,
+        unitPrice: 565,
+        createdById: 'test',
+      },
+    })
+    await expect(f.post(f.request('2'))).rejects.toThrow('перевищує')
+    const input = f.request('1')
+    await f.post(input)
+    await f.post(input)
+    expect((await db.inventoryPart.findUniqueOrThrow({ where: { id: f.part.id } })).quantity).toBe(
+      0
+    )
+    expect(
+      (
+        await db.supplierReturnLine.findFirstOrThrow({ where: { lineId: f.receipt.lines[0].id } })
+      ).amount.toFixed(2)
+    ).toBe('565.00')
+    await expect(f.post(f.request('1'))).rejects.toThrow('перевищує')
+  })
   it('preserves a credit for paid receipts and keeps returns out of cash advances', async () => {
     const f = await setup()
     const credit = await db.supplierEntry.create({

@@ -3,6 +3,7 @@ import { lockFinance } from '@/features/finance/ledger'
 import { db } from '@/lib/db'
 import { withAuth } from '@/lib/with-auth'
 import { PermissionAction as A, PermissionSubject as S } from '@/lib/permissions'
+import { currentTransferred } from './return-availability'
 import { availableQuantity } from './transfer-schema'
 import { receiptsEnabled } from './enabled'
 import { postSupplierReturn } from './return-ledger'
@@ -61,6 +62,7 @@ export async function supplierReturnData(receiptId: string) {
           },
         },
       })
+      const transferred = await currentTransferred(db, organizationId, r.lines)
       return {
         supplier: r.supplier.name,
         enabled: r.status === 'posted' && !!r.settlement && !r.settlement.reversedAt,
@@ -69,10 +71,10 @@ export async function supplierReturnData(receiptId: string) {
           name: l.name,
           unit: l.unit,
           unitPrice: l.unitPrice.toString(),
-          available: availableQuantity(
-            l.quantity.toString(),
-            [...l.returns, ...l.transfers].map((item) => item.quantity.toString())
-          ),
+          available: availableQuantity(l.quantity.toString(), [
+            ...l.returns.map((item) => item.quantity.toString()),
+            transferred.get(l.id)!.toString(),
+          ]),
         })),
         documents: r.returns.map((d) => ({
           id: d.id,

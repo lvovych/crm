@@ -1,3 +1,4 @@
+import { currentTransferred } from './return-availability'
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import { Prisma } from '@/generated/prisma/client'
@@ -73,15 +74,13 @@ export async function postSupplierReturn(
     current.settlement.date.toISOString().slice(0, 10) > today
   )
     throw new Error('Дата повернення не може передувати приходу та його обліку.')
+  const currentTransfers = await currentTransferred(tx, org, current.lines)
   const prepared = input.lines
     .map((request) => {
       const line = current.lines.find((l) => l.id === request.id)
       if (!line) throw new Error('Оберіть позиції цієї накладної.')
       const returned = line.returns.reduce((sum, r) => sum.plus(r.quantity), new Prisma.Decimal(0))
-      const transferred = line.transfers.reduce(
-        (sum, r) => sum.plus(r.quantity),
-        new Prisma.Decimal(0)
-      )
+      const transferred = currentTransfers.get(line.id)!
       const quantity = new Prisma.Decimal(request.quantity)
       if (quantity.gt(line.quantity.minus(returned).minus(transferred)))
         throw new Error('«' + line.name + '»: кількість перевищує доступну для повернення.')
