@@ -9,7 +9,6 @@ const gates = {
   'src/features/receipts/return-money.ts': [92, 88, 100, 100],
   'src/features/settlements/amounts.ts': [100, 94, 100, 100],
   'src/features/payroll/calculator.ts': [97, 91, 100, 100],
-  'src/features/billing/Lib/recurringTotals.ts': [100, 90, 100, 100],
 }
 let failed = false
 for (const [file, minimum] of Object.entries(gates)) {

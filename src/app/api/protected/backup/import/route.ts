@@ -1119,29 +1119,6 @@ export async function POST(request: NextRequest) {
             (rows) => tx.aiGeneratedMessage.createMany({ data: rows as never }),
             v.aiMessages
           )
-
-          const recurring = v.recurringInvoices as Record<string, unknown>[] | undefined
-          if (recurring?.length) {
-            // No organizationId on the row: a recurring invoice is the
-            // vehicle's, and the vehicle is this workshop's.
-            await restoreRows(
-              'recurring invoices',
-              (rows) => tx.recurringInvoice.createMany({ data: rows as never }),
-              recurring
-            )
-            for (const invoice of recurring) {
-              await restoreRows(
-                'recurring invoice parts',
-                (rows) => tx.recurringPart.createMany({ data: rows as never }),
-                invoice.templateParts
-              )
-              await restoreRows(
-                'recurring invoice labour',
-                (rows) => tx.recurringLabor.createMany({ data: rows as never }),
-                invoice.templateLabor
-              )
-            }
-          }
         }
       }
 

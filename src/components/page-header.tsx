@@ -86,13 +86,11 @@ const docsMap: Record<string, string> = {
   // No anchor: heading slugs are translated, so an English one would not match
   // on a localized page.
   '/observations': '/docs/features/work-orders',
-  '/billing/recurring': '/docs/features/recurring-invoices',
   '/settings/templates': '/docs/configuration/templates',
   '/calendar': '/docs/features/calendar',
   '/customers': '/docs/features/customers',
   '/vehicles': '/docs/features/vehicles',
   '/quotes': '/docs/features/quotes',
-  '/billing': '/docs/features/invoices',
   '/inspections': '/docs/features/inspections',
   '/reports': '/docs/features/reports',
   '/work-board': '/docs/configuration/work-orders/work-board',
@@ -137,7 +135,6 @@ const breadcrumbMap: Record<string, BreadcrumbSegment[]> = {
   '/customers': [{ key: 'customers', href: '/customers' }, { key: 'allCustomers' }],
   '/work-orders': [{ key: 'workOrders', href: '/work-orders' }, { key: 'allWorkOrders' }],
   '/quotes': [{ key: 'quotes', href: '/quotes' }, { key: 'allQuotes' }],
-  '/billing': [{ key: 'billing', href: '/billing' }, { key: 'billingHistory' }],
   '/inventory': [{ key: 'inventory', href: '/inventory' }, { key: 'allParts' }],
   '/reports': [{ key: 'reports', href: '/reports' }, { key: 'reports' }],
   '/timesheets': [{ key: 'timesheets' }],

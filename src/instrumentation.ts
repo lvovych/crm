@@ -19,7 +19,6 @@ export async function register() {
     const {
       checkLicenses,
       syncSubscriptions,
-      processRecurringInvoices,
       cleanupPortalSessions,
       sweepOrphanFilesDaily,
       cleanupAuditLogs,
@@ -37,7 +36,6 @@ export async function register() {
     warnAboutAppUrl()
     checkLicenses()
     syncSubscriptions()
-    processRecurringInvoices()
     cleanupPortalSessions()
     sweepOrphanFilesDaily()
     cleanupAuditLogs()

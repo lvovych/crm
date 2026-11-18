@@ -72,7 +72,13 @@ describe('audit summaries', () => {
     // A key nothing writes is either a typo at the call site or wording left
     // behind by a rename. Both are worth knowing about.
     const used = new Set(keysInUse().map((k) => k.key))
-    const unused = Object.keys(summary('en')).filter((k) => !used.has(k))
+    // Retired writers still need readable historical audit records.
+    const retired = new Set([
+      'recurringInvoice_create',
+      'recurringInvoice_update',
+      'recurringInvoice_delete',
+    ])
+    const unused = Object.keys(summary('en')).filter((k) => !used.has(k) && !retired.has(k))
     expect(unused, `defined but never written:\n${unused.join('\n')}`).toEqual([])
   })
 

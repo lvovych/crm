@@ -524,7 +524,7 @@ export async function createWorkOrderFromTireSet(input: unknown) {
       })
 
       if (set.vehicleId) revalidatePath(`/vehicles/${set.vehicleId}`)
-      revalidatePath('/billing')
+      revalidatePath('/mutual-settlements')
       revalidatePath(`/tire-hotel/${set.id}`)
       return {
         id: record.id,

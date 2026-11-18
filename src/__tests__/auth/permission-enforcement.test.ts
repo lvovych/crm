@@ -196,7 +196,7 @@ import {
 import { getCustomers } from '@/features/customers/Actions/customerActions'
 import { getWorkOrders, getServiceRecords } from '@/features/vehicles/Actions/serviceActions'
 import { getQuotesPaginated } from '@/features/quotes/Actions/quoteActions'
-import { getBillingHistory } from '@/features/billing/Actions/billingActions'
+import { documentHistory } from '@/features/customer-ledger/history'
 import { getInventoryPartsPaginated } from '@/features/inventory/Actions/inventoryActions'
 import { getInspectionsPaginated } from '@/features/inspections/Actions/inspectionActions'
 import { getRevenueReport } from '@/features/reports/Actions/reportActions'
@@ -302,7 +302,7 @@ describe('Permission denial — restricted custom role with no permissions', () 
     ['WORK_ORDERS', 'READ', () => getWorkOrders({})],
     ['QUOTES', 'READ', () => getQuotesPaginated({})],
     ['SERVICES', 'READ', () => getServiceRecords('any-vehicle-id')],
-    ['BILLING', 'READ', () => getBillingHistory({})],
+    ['BILLING', 'READ', () => documentHistory('document-id', '2026-11-18')],
     ['INVENTORY', 'READ', () => getInventoryPartsPaginated({})],
     ['INSPECTIONS', 'READ', () => getInspectionsPaginated({})],
     ['REPORTS', 'READ', () => getRevenueReport({})],
@@ -342,7 +342,11 @@ describe('Permission grant — correct permission allows access past the gate', 
     ['WORK_ORDERS (READ)', { action: 'read', subject: 'work_orders' }, () => getWorkOrders({})],
     ['QUOTES (READ)', { action: 'read', subject: 'quotes' }, () => getQuotesPaginated({})],
     ['SERVICES (READ)', { action: 'read', subject: 'services' }, () => getServiceRecords('any-id')],
-    ['BILLING (READ)', { action: 'read', subject: 'billing' }, () => getBillingHistory({})],
+    [
+      'BILLING (READ)',
+      { action: 'read', subject: 'billing' },
+      () => documentHistory('document-id', '2026-11-18'),
+    ],
     [
       'INVENTORY (READ)',
       { action: 'read', subject: 'inventory' },
@@ -504,7 +508,7 @@ describe('Permission specificity — wrong action or subject is denied', () => {
 
   it('READ+REPORTS does not grant access to READ+BILLING (wrong subject)', async () => {
     setupRestrictedUser([{ action: 'read', subject: 'reports' }])
-    const result = await getBillingHistory({})
+    const result = await documentHistory('document-id', '2026-11-18')
     expect(result).toEqual(
       expect.objectContaining({ success: false, error: 'Insufficient permissions' })
     )
@@ -537,7 +541,7 @@ describe('Multiple permissions — user can hold permissions for multiple subjec
       { action: 'read', subject: 'customers' },
     ])
 
-    const result = await getBillingHistory({})
+    const result = await documentHistory('document-id', '2026-11-18')
     expect(result).toEqual(
       expect.objectContaining({ success: false, error: 'Insufficient permissions' })
     )
@@ -579,7 +583,7 @@ describe('Unauthenticated access — all actions require authentication', () => 
     ['getWorkOrders', () => getWorkOrders({})],
     ['getQuotesPaginated', () => getQuotesPaginated({})],
     ['getServiceRecords', () => getServiceRecords('any-id')],
-    ['getBillingHistory', () => getBillingHistory({})],
+    ['documentHistory', () => documentHistory('document-id', '2026-11-18')],
     ['getInventoryPartsPaginated', () => getInventoryPartsPaginated({})],
     ['getInspectionsPaginated', () => getInspectionsPaginated({})],
     ['getRevenueReport', () => getRevenueReport({})],

@@ -183,7 +183,7 @@ export const permissionGroups: PermissionGroup[] = [
     ],
   },
   {
-    name: 'Billing',
+    name: 'Customer payments',
     subject: PermissionSubject.BILLING,
     permissions: [
       { action: PermissionAction.CREATE, label: 'Create' },

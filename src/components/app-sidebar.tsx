@@ -62,7 +62,6 @@ import {
   PackageOpen,
   Palette,
   Plus,
-  Receipt,
   DollarSign,
   Scale,
   Settings,
@@ -282,7 +281,6 @@ export function AppSidebar({
     (supplierDirectoryEnabled && canAccess('suppliers'))
       ? [{ titleKey: 'sidebar.directories', url: '/directories', icon: Layers, subject: '' }]
       : []),
-    { titleKey: 'sidebar.billing' as const, url: '/billing', icon: Receipt, subject: 'billing' },
     { titleKey: 'sidebar.quotes' as const, url: '/quotes', icon: FileText, subject: 'quotes' },
     {
       titleKey: 'sidebar.timesheets' as const,

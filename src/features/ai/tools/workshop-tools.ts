@@ -113,9 +113,6 @@ export const ALLOWED_TABLES = [
   'technicians',
   'inspections',
   'inspection_items',
-  'recurring_invoices',
-  'recurring_parts',
-  'recurring_labor',
   'notifications',
   'sms_messages',
   'inspection_quote_requests',
@@ -522,10 +519,10 @@ export const ORG_DIRECT_TABLES = [
 ]
 
 // Tables without an organizationId, scoped by joining their already-scoped
-// parent view. Order matters: recurring_invoices must exist before its children.
+// parent view.
 export const CHILD_TABLES: { tables: string[]; parent: string; key: string }[] = [
   {
-    tables: ['notes', 'fuel_logs', 'reminders', 'recurring_invoices'],
+    tables: ['notes', 'fuel_logs', 'reminders'],
     parent: 'vehicles',
     key: 'vehicleId',
   },
@@ -535,11 +532,6 @@ export const CHILD_TABLES: { tables: string[]; parent: string; key: string }[] =
     key: 'serviceRecordId',
   },
   { tables: ['quote_parts', 'quote_labor', 'quote_attachments'], parent: 'quotes', key: 'quoteId' },
-  {
-    tables: ['recurring_parts', 'recurring_labor'],
-    parent: 'recurring_invoices',
-    key: 'recurringInvoiceId',
-  },
   { tables: ['inspection_items'], parent: 'inspections', key: 'inspectionId' },
 ]
 
@@ -702,7 +694,6 @@ inspections (id, status, mileage, notes, "startDateTime", "endDateTime", "comple
 
 inspection_items (id, name, section, "sortOrder", condition, notes, "imageUrls", "inspectionId")
 
-recurring_invoices (id, title, description, frequency, "nextRunDate", "endDate", "isActive", "lastRunAt", "runCount", type, cost, "taxRate", "invoiceNotes", "vehicleId", "createdAt", "updatedAt")
 
 notifications (id, type, title, message, "entityType", "entityId", read, "createdAt")
 
