@@ -155,7 +155,10 @@ describe('account selection in existing payment forms', () => {
     })
     const onChange = vi.fn()
     render(<AccountSelect onChange={onChange} />)
+    expect(screen.getByRole('combobox')).toBeDisabled()
+    expect(screen.getByRole('combobox')).toHaveAttribute('aria-busy', 'true')
     await waitFor(() => expect(screen.getByRole('combobox')).toHaveValue('cash'))
+    expect(screen.getByRole('combobox')).toBeEnabled()
     await waitFor(() => expect(onChange).toHaveBeenCalledWith('cash'))
   })
   it('requires a choice when multiple accounts are available', async () => {

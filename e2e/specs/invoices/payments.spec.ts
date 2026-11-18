@@ -75,8 +75,9 @@ async function recordPayment(page: Page, amount: number, method: Method): Promis
 
   // The field offers the whole balance; each of these tests pays its own figure.
   await amountField.fill(String(amount))
-  // The only select in the panel is the method.
-  await panel.getByRole('combobox').click()
+  // AccountSelect first shows a loading select, then the inactive-ledger
+  // fallback. Wait for the actual method button instead of clicking the placeholder.
+  await panel.locator('button[role="combobox"]').click()
   await page.getByRole('option', { name: method, exact: true }).click()
 
   await panel.getByRole('button', { name: 'Save Payment', exact: true }).click()

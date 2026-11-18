@@ -47,6 +47,7 @@ export function AccountSelect({
           required
           aria-label={ot('Каса / рахунок')}
           aria-busy="true"
+          disabled
           defaultValue=""
           className="h-11 w-full rounded-md border bg-background px-3"
         >
