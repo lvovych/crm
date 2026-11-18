@@ -1,7 +1,7 @@
 import { supportedLocale } from '@/i18n/config'
 import { resolveCurrencyCode, resolveCurrencyFormat } from '@/lib/currencies'
 import { NextResponse } from 'next/server'
-import { renderToBuffer } from '@react-pdf/renderer'
+import { renderToBuffer } from '@/lib/render-pdf'
 import '@/features/vehicles/Components/invoice-pdf/fonts'
 import { cookies } from 'next/headers'
 import { getAuthContext } from '@/lib/get-auth-context'

@@ -1,7 +1,7 @@
 import { supportedLocale } from '@/i18n/config'
 import { NextResponse } from 'next/server'
 import React from 'react'
-import { renderToBuffer } from '@react-pdf/renderer'
+import { renderToBuffer } from '@/lib/render-pdf'
 import '@/features/vehicles/Components/invoice-pdf/fonts'
 import { cookies } from 'next/headers'
 import { createTranslator } from 'next-intl'

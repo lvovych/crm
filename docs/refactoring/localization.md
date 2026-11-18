@@ -52,3 +52,11 @@ c803a421efcee838fd6dbabe6a11d45e2abadad64e5381cda77e8f74e55b70e7  localization-b
 110736109efd11f6043d2a0e15aab03f66ba89a2ae7acfdc5f0ea6cc64494191  localization-lint.log
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  localization-types.log
 ```
+
+## Release verification follow-up: PDF text encoding
+
+The full browser suite exposed empty `ToUnicode` entries for Latin B/H after a prior Cyrillic PDF. Fontkit caches composite glyph components without code points; a later Latin document reused those cached glyphs. The page looked correct, but copying/searching its text could lose letters (including UAH).
+
+All server PDF writers now use a shared renderer which loads and primes the embedded Unicode fonts once before rendering. Presentation-form ligatures remain owned by the shaper so ordinary `fi`/`ffi` text remains searchable. A regression test prints Cyrillic first, then checks exact Latin text and currency codes in a second PDF, for both bold-font registration styles. No server or database is needed for this test.
+
+Browser monetary expectations now use UAH; the Stripe/PayPal contract scenario explicitly sets USD and restores the prior setting. The settlement double-submit scenario uses the Ukrainian controls selected by its fixture. The pre-release CI remains the final gate.

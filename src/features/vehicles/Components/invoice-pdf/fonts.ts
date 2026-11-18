@@ -38,3 +38,39 @@ for (const { family, regular, bold } of FAMILIES) {
 
 // Disable word hyphenation so Cyrillic text is not broken mid-word
 Font.registerHyphenationCallback((word) => [word])
+
+let preparation: Promise<void> | undefined
+
+/**
+ * Fontkit caches composite-glyph components without Unicode code points. If a
+ * Cyrillic document is printed first, its components can poison later Latin
+ * text (for example В/B and Н/H), leaving empty ToUnicode entries in the PDF.
+ * Populate the character mapping before any subset is built. This runs once
+ * per server process and covers each separately registered bold alias too.
+ */
+export function preparePdfFonts(): Promise<void> {
+  preparation ??= Promise.all(
+    FAMILIES.flatMap(({ family }) => [
+      { fontFamily: family, fontWeight: 400 },
+      { fontFamily: family, fontWeight: 700 },
+      { fontFamily: `${family}-Bold`, fontWeight: 400 },
+    ]).map(async (descriptor) => {
+      await Font.load(descriptor)
+      const font = Font.getFont(descriptor).data
+      if (!font) throw new Error(`PDF font did not load: ${descriptor.fontFamily}`)
+      for (const codePoint of font.characterSet) {
+        // Leave presentation-form ligatures to the shaper: preloading ﬁ as a
+        // single character would turn later "fi" text into U+FB01 on extraction.
+        if (codePoint >= 0xfb00 && codePoint <= 0xfb06) continue
+        const glyph = font.glyphForCodePoint(codePoint)
+        if (glyph.codePoints.length === 0) glyph.codePoints = [codePoint]
+      }
+    })
+  )
+    .then(() => undefined)
+    .catch((error) => {
+      preparation = undefined
+      throw error
+    })
+  return preparation
+}
