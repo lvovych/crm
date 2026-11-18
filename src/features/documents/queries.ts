@@ -134,20 +134,44 @@ export async function readDocument(db: Reader, scope: DocumentScope, key: string
     Prisma.sql`SELECT * FROM (${visible}) v WHERE key=${key}`
   )
   if (!rows[0]) return null
-  // Both endpoints must be visible. Hidden accounts/salary cannot act as bridges.
-  const edges = await db.$queryRaw<DocumentEdge[]>(Prisma.sql`
-    WITH RECURSIVE visible AS (${visible}), links AS (${documentEdges(scope.organizationId)}),
-    allowed AS (SELECT e.* FROM links e JOIN visible a ON a.key=e.source JOIN visible b ON b.key=e.target),
-    walk(key,depth) AS (SELECT ${key}::text,0 UNION SELECT CASE WHEN e.source=w.key THEN e.target ELSE e.source END,w.depth+1
-      FROM walk w JOIN allowed e ON e.source=w.key OR e.target=w.key WHERE w.depth<2)
-    SELECT DISTINCT e.* FROM allowed e JOIN walk w ON (e.source=w.key OR e.target=w.key) AND w.depth<2 ORDER BY source,target,relation LIMIT 101`)
-  const truncated = edges.length > 100,
-    shown = edges.slice(0, 100)
-  const keys = [...new Set(shown.flatMap((e) => [e.source, e.target]))]
-  const related = keys.length
-    ? await db.$queryRaw<JournalRow[]>(
-        Prisma.sql`SELECT * FROM (${visible}) v WHERE key IN (${Prisma.join(keys)}) ORDER BY date,key`
-      )
-    : []
+  // Traverse only the current document's neighbourhood. Joining the entire
+  // journal twice inside a recursive CTE made real-world archives very slow.
+  // Check visibility at every hop: inaccessible documents must never be bridges.
+  const documents = new Map(rows.map((row) => [row.key, row]))
+  const edges = new Map<string, DocumentEdge>()
+  const visited = new Set<string>()
+  let frontier = [key]
+  let truncated = false
+  for (let depth = 0; depth < 2 && frontier.length; depth++) {
+    const candidates = await db.$queryRaw<DocumentEdge[]>(Prisma.sql`
+      SELECT * FROM (${documentEdges(scope.organizationId)}) links
+      WHERE source IN (${Prisma.join(frontier)}) OR target IN (${Prisma.join(frontier)})
+      ORDER BY source,target,relation LIMIT 1001`)
+    if (candidates.length > 1000) truncated = true
+    const batch = candidates.slice(0, 1000)
+    const keys = [...new Set(batch.flatMap((edge) => [edge.source, edge.target]))].filter(
+      (id) => !documents.has(id)
+    )
+    if (keys.length) {
+      const permitted = await db.$queryRaw<JournalRow[]>(Prisma.sql`
+        SELECT * FROM (${visible}) v WHERE key IN (${Prisma.join(keys)})`)
+      for (const row of permitted) documents.set(row.key, row)
+    }
+    for (const id of frontier) visited.add(id)
+    const next = new Set<string>()
+    for (const edge of batch) {
+      if (!documents.has(edge.source) || !documents.has(edge.target)) continue
+      edges.set(JSON.stringify(edge), edge)
+      for (const id of [edge.source, edge.target]) if (!visited.has(id)) next.add(id)
+    }
+    if (edges.size > 100) {
+      truncated = true
+      break
+    }
+    frontier = [...next]
+  }
+  const shown = [...edges.values()].slice(0, 100)
+  const used = new Set(shown.flatMap((edge) => [edge.source, edge.target]))
+  const related = [...documents.values()].filter((row) => used.has(row.key))
   return { document: rows[0], related, edges: shown, truncated }
 }

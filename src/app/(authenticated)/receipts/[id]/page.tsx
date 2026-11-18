@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { RelatedDocuments } from '@/features/documents/RelatedDocuments'
 import { DocumentHeader, DocumentStatus, MoneySummary } from '@/components/operations/document-ui'
 import { DocumentTabs } from '@/components/operations/document-tabs'
@@ -222,7 +223,17 @@ export default async function Page({
           {
             id: 'connections',
             label: 'Пов’язані документи',
-            content: <RelatedDocuments type="receipt" id={id} />,
+            content: (
+              <Suspense
+                fallback={
+                  <p role="status" className="ops-panel">
+                    Завантаження пов’язаних документів…
+                  </p>
+                }
+              >
+                <RelatedDocuments type="receipt" id={id} />
+              </Suspense>
+            ),
           },
         ]}
       />

@@ -338,6 +338,31 @@ describe.skipIf(!url)('document journal on PostgreSQL', () => {
     expect(graph?.edges.map((e) => e.relation)).toContain('Зараховано 100.00 грн')
     expect(graph?.edges.map((e) => e.relation)).toContain('Скасовано зарахування 25.00 грн')
   })
+  it('opens a small document chain without traversing a large unrelated archive', async () => {
+    const f = await setup()
+    const ids = Array.from({ length: 2000 }, () => randomUUID())
+    await db.serviceRecord.createMany({
+      data: ids.map((id) => ({
+        id,
+        organizationId: f.org.id,
+        title: 'Archive',
+        serviceDate: date,
+      })),
+    })
+    await db.payment.createMany({
+      data: ids.map((id) => ({ serviceRecordId: id, amount: 100, date })),
+    })
+    const graph = await db.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SET LOCAL statement_timeout = '5000ms'`
+        return readDocument(tx, f.scope, 'receipt:' + f.receipt.id)
+      },
+      { timeout: 15000 }
+    )
+    expect(graph?.related.map((row) => row.id).sort()).toEqual(
+      [f.receipt.id, f.order.id, f.financial.id, f.credit.id].sort()
+    )
+  }, 20000)
   it('paginates deterministically without duplicate rows', async () => {
     const f = await setup()
     await db.supplierEntry.createMany({
