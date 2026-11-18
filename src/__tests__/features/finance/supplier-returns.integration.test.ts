@@ -78,7 +78,7 @@ describe.skipIf(!url)('supplier returns on PostgreSQL', () => {
     const request = (q: string) => ({
       id: randomUUID(),
       receiptId: receipt.id,
-      reason: 'Повернення',
+      reason: 'Інше',
       lines: [{ id: receipt.lines[0].id, quantity: q }],
     })
     const post = (input: unknown, organizationId = org.id) =>
@@ -107,7 +107,9 @@ describe.skipIf(!url)('supplier returns on PostgreSQL', () => {
       3
     )
     await save({ ...input, version: 1, lines: [{ id: f.receipt.lines[0].id, quantity: '2' }] })
-    await expect(save({ ...input, version: 1, reason: 'Stale' })).rejects.toThrow('уже змінено')
+    await expect(save({ ...input, version: 1, reason: 'Відмова клієнта' })).rejects.toThrow(
+      'уже змінено'
+    )
     const edited = { ...input, version: 2, lines: [{ id: f.receipt.lines[0].id, quantity: '2' }] }
     await Promise.all([f.post(edited), f.post(edited)])
     expect((await db.supplierReturn.findUniqueOrThrow({ where: { id: input.id } })).status).toBe(
@@ -125,6 +127,92 @@ describe.skipIf(!url)('supplier returns on PostgreSQL', () => {
         .supplierDocumentNumber
     ).toBe('ПВ-001/26')
   })
+  it.each([
+    'part',
+    'service',
+  ])('only one competing %s draft can consume the last quantity', async (kind) => {
+    const f = await setup(kind, '1')
+    const inputs = [f.request('1'), f.request('1')]
+    for (const input of inputs) {
+      await db.$transaction((tx) =>
+        postSupplierReturn(tx as TxClient, f.org.id, 'manager', input, workshopDay(), 'draft')
+      )
+    }
+    const results = await Promise.allSettled(
+      inputs.map((input) => f.post({ ...input, version: 1 }))
+    )
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1)
+    const docs = await db.supplierReturn.findMany({ where: { organizationId: f.org.id } })
+    expect(docs.map((doc) => doc.status).sort()).toEqual(['draft', 'posted'])
+    const credits = await db.supplierEntry.findMany({
+      where: { organizationId: f.org.id, kind: 'return_credit' },
+    })
+    expect(credits).toHaveLength(1)
+    expect(credits[0].amount.toFixed(2)).toBe('100.00')
+    expect(await db.moneyEntry.count({ where: { organizationId: f.org.id } })).toBe(0)
+    expect(await db.stockMovement.count({ where: { receiptLineId: f.receipt.lines[0].id } })).toBe(
+      kind === 'part' ? 1 : 0
+    )
+  })
+
+  it.each([
+    'closed',
+    'cancelled',
+    'reversed',
+    'unit',
+  ])('rechecks %s after a draft was saved and leaves no partial posting', async (change) => {
+    const f = await setup()
+    const input = f.request('1')
+    await db.$transaction((tx) =>
+      postSupplierReturn(tx as TxClient, f.org.id, 'manager', input, workshopDay(), 'draft')
+    )
+    if (change === 'closed')
+      await db.financeSettings.create({
+        data: { organizationId: f.org.id, closedThrough: f.receipt.receivedDate },
+      })
+    if (change === 'cancelled')
+      await db.supplierReceipt.update({
+        where: { id: f.receipt.id },
+        data: { status: 'cancelled' },
+      })
+    if (change === 'reversed')
+      await db.supplierEntry.update({
+        where: { id: f.receipt.settlement!.id },
+        data: { reversedAt: new Date() },
+      })
+    if (change === 'unit')
+      await db.inventoryPart.update({ where: { id: f.part.id }, data: { unit: 'л' } })
+    await expect(f.post({ ...input, version: 1 })).rejects.toThrow()
+    const draft = await db.supplierReturn.findUniqueOrThrow({
+      where: { id: input.id },
+      include: { lines: true },
+    })
+    expect(draft.status).toBe('draft')
+    expect(draft.version).toBe(1)
+    expect(draft.lines[0].quantity.toString()).toBe('1')
+    expect(await db.supplierEntry.count({ where: { returnId: input.id } })).toBe(0)
+    expect(await db.stockMovement.count({ where: { receiptLineId: f.receipt.lines[0].id } })).toBe(
+      0
+    )
+    expect((await db.inventoryPart.findUniqueOrThrow({ where: { id: f.part.id } })).quantity).toBe(
+      3
+    )
+  })
+
+  it('does not rewrite supplier reference on a posted retry', async () => {
+    const f = await setup()
+    const input = { ...f.request('1'), supplierDocumentNumber: 'RETURN-123' }
+    await f.post(input)
+    await expect(f.post({ ...input, supplierDocumentNumber: 'RETURN-456' })).rejects.toThrow(
+      'іншого'
+    )
+    expect(
+      (await db.supplierReturn.findUniqueOrThrow({ where: { id: input.id } }))
+        .supplierDocumentNumber
+    ).toBe('RETURN-123')
+    expect(await db.supplierEntry.count({ where: { returnId: input.id } })).toBe(1)
+  })
+
   it('revalidates stock when posting and preserves the draft on failure', async () => {
     const f = await setup()
     const input = f.request('3')
@@ -167,7 +255,7 @@ describe.skipIf(!url)('supplier returns on PostgreSQL', () => {
       0
     )
     await expect(f.post(f.request('1'))).rejects.toThrow('перевищує')
-    await expect(f.post({ ...input, reason: 'Different' })).rejects.toThrow('іншого')
+    await expect(f.post({ ...input, reason: 'Відмова клієнта' })).rejects.toThrow('іншого')
   })
   it('returns all lines of one receipt together to its supplier', async () => {
     const f = await setup()
@@ -441,7 +529,7 @@ describe.skipIf(!url)('supplier returns on PostgreSQL', () => {
     const input = {
       id: randomUUID(),
       supplierId: f.supplier.id,
-      reason: 'Weekly return',
+      reason: 'Інше',
       lines: [
         { id: f.receipt.lines[0].id, quantity: '1' },
         { id: second.lines[0].id, quantity: '1' },
@@ -507,7 +595,7 @@ describe.skipIf(!url)('supplier returns on PostgreSQL', () => {
     expect(
       frozen.every((l) => l.articleSnapshot === '38MR0600' && l.brandSnapshot === brand.name)
     ).toBe(true)
-    await expect(f.post({ ...input, reason: 'Different' })).rejects.toThrow('іншого')
+    await expect(f.post({ ...input, reason: 'Відмова клієнта' })).rejects.toThrow('іншого')
   })
   it('rejects lines from another supplier or tenant in a consolidated return without partial writes', async () => {
     const f = await setup(),
@@ -515,7 +603,7 @@ describe.skipIf(!url)('supplier returns on PostgreSQL', () => {
     const input = {
       id: randomUUID(),
       supplierId: f.supplier.id,
-      reason: 'Weekly',
+      reason: 'Інше',
       lines: [
         { id: f.receipt.lines[0].id, quantity: '1' },
         { id: other.receipt.lines[0].id, quantity: '1' },
@@ -576,7 +664,7 @@ describe.skipIf(!url)('supplier returns on PostgreSQL', () => {
     const input = {
       id: randomUUID(),
       supplierId: f.supplier.id,
-      reason: 'Weekly',
+      reason: 'Інше',
       lines: [
         { id: f.receipt.lines[0].id, quantity: '2' },
         { id: second.lines[0].id, quantity: '2' },
@@ -596,7 +684,7 @@ describe.skipIf(!url)('supplier returns on PostgreSQL', () => {
       organizationId: f.org.id,
       number: 'BACKUP',
       date: f.receipt.documentDate.toISOString(),
-      reason: 'Backup',
+      reason: 'Legacy free-text reason',
       fingerprint: 'backup',
       createdById: 'test',
       lines: [
@@ -613,16 +701,21 @@ describe.skipIf(!url)('supplier returns on PostgreSQL', () => {
     await db.$transaction((tx) => restoreSupplierReturn(tx as TxClient, f.org.id, 'test', base))
     const restored = await db.supplierReturn.findUniqueOrThrow({ where: { id: base.id } })
     expect(restored.supplierId).toBe(f.supplier.id)
+    expect(restored.reason).toBe('Інше')
     const independent = {
       ...base,
       id: randomUUID(),
       receiptId: null,
       supplierId: f.supplier.id,
+      reason: 'Брак/рекламація',
       lines: [{ ...base.lines[0], id: randomUUID() }],
     }
     await db.$transaction((tx) =>
       restoreSupplierReturn(tx as TxClient, f.org.id, 'test', independent)
     )
+    expect(
+      (await db.supplierReturn.findUniqueOrThrow({ where: { id: independent.id } })).reason
+    ).toBe('Брак/рекламація')
     expect(
       (await db.supplierReturnLine.findFirstOrThrow({ where: { returnId: independent.id } }))
         .brandSnapshot

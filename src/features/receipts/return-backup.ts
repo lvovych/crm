@@ -1,3 +1,4 @@
+import { returnReasons } from './return-reasons'
 import type { TxClient } from '@/lib/db'
 import { columnsOf } from '@/lib/backup/rows'
 
@@ -29,6 +30,7 @@ export async function restoreSupplierReturn(
       supplierId,
       receiptId: receipt?.id ?? null,
       createdById: userId,
+      reason: returnReasons.find((reason) => reason === fields.reason) ?? 'Інше',
     }) as never,
   })
   for (const line of lines as Record<string, unknown>[])

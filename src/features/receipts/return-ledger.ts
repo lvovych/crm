@@ -1,3 +1,4 @@
+import { returnReasons } from './return-reasons'
 import { currentTransferred } from './return-availability'
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
@@ -14,7 +15,7 @@ export const returnSchema = z
     receiptId: z.string().min(1).optional(),
     supplierId: z.string().min(1).optional(),
     supplierDocumentNumber: z.string().trim().max(120).optional(),
-    reason: z.string().trim().min(1).max(1000),
+    reason: z.string().trim().pipe(z.enum(returnReasons)),
     lines: z
       .array(
         z.object({
@@ -100,8 +101,9 @@ export async function postSupplierReturn(
     where: { organizationId: org, supplierId, id: { in: sourceIds.map((r) => r.id) } },
     orderBy: { id: 'asc' },
     include: {
-      settlement: { include: { debits: true } },
+      settlement: true,
       lines: {
+        where: { id: { in: input.lines.map((line) => line.id) } },
         include: {
           returns: { where: { document: { status: 'posted' } } },
           transfers: true,

@@ -1,10 +1,5 @@
 'use client'
-export const returnReasons = [
-  'Відмова клієнта',
-  'Неправильно підібраний товар',
-  'Брак/рекламація',
-  'Інше',
-] as const
+import { returnReasons } from './return-reasons'
 
 export function ReturnReasonSelect({
   value,

@@ -10,21 +10,17 @@ on:
         type: string
     outputs:
       image:
-        description: Immutable multi-architecture image reference
-        value: ${{ jobs.manifest.outputs.image }}
+        description: Immutable ARM64 image reference for Hetzner CAX21
+        value: ${{ jobs.build.outputs.image }}
 permissions:
   contents: read
   packages: write
 jobs:
   build:
-    strategy:
-      matrix:
-        include:
-          - arch: amd64
-            runner: ubuntu-latest
-          - arch: arm64
-            runner: ubuntu-24.04-arm
-    runs-on: ${{ matrix.runner }}
+    # Production runs on Hetzner CAX21 (Ampere / ARM64).
+    runs-on: ubuntu-24.04-arm
+    outputs:
+      image: ${{ steps.reference.outputs.image }}
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
@@ -40,57 +36,21 @@ jobs:
         id: image
         with:
           context: .
-          platforms: linux/${{ matrix.arch }}
+          platforms: linux/arm64
           push: true
-          tags: ghcr.io/lvovych/crm:build-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.arch }}
+          tags: |
+            ghcr.io/lvovych/crm:build-${{ github.run_id }}-${{ github.run_attempt }}-arm64
+            ghcr.io/lvovych/crm:${{ inputs.version }}
           build-args: APP_VERSION=${{ inputs.version }}
-          cache-from: type=gha,scope=crm-${{ matrix.arch }}
-          cache-to: type=gha,mode=max,scope=crm-${{ matrix.arch }}
-      - name: Save architecture digest
+          cache-from: type=gha,scope=crm-arm64
+          cache-to: type=gha,mode=max,scope=crm-arm64
+      - name: Export immutable image reference
+        id: reference
         env:
           DIGEST: ${{ steps.image.outputs.digest }}
-        run: |
-          mkdir -p "$RUNNER_TEMP/digests"
-          printf '%s\n' "$DIGEST" > "$RUNNER_TEMP/digests/${{ matrix.arch }}"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: release-digest-${{ matrix.arch }}
-          path: ${{ runner.temp }}/digests/*
-          retention-days: 7
-          overwrite: true
-
-  manifest:
-    needs: build
-    runs-on: ubuntu-latest
-    outputs:
-      image: ${{ steps.manifest.outputs.image }}
-    steps:
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: release-digest-*
-          path: ${{ runner.temp }}/digests
-          merge-multiple: true
-      - name: Publish multi architecture image
-        id: manifest
-        env:
-          IMAGE: ghcr.io/lvovych/crm
           VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
-          amd64=$(cat "$RUNNER_TEMP/digests/amd64")
-          arm64=$(cat "$RUNNER_TEMP/digests/arm64")
-          [[ "$amd64" =~ ^sha256:[a-f0-9]{64}$ && "$arm64" =~ ^sha256:[a-f0-9]{64}$ ]]
-          # Run-specific tag prevents reading another build's manifest on retries.
-          ref="$IMAGE:release-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
-          docker buildx imagetools create --tag "$ref" "$IMAGE@$amd64" "$IMAGE@$arm64"
-          digest=$(docker buildx imagetools inspect "$ref" --format '{{json .Manifest}}' | jq -er '.digest')
-          [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]
-          docker buildx imagetools create --tag "$IMAGE:$VERSION" "$IMAGE@$digest"
-          echo "image=$IMAGE@$digest" >> "$GITHUB_OUTPUT"
-          echo "$VERSION: $IMAGE@$digest" >> "$GITHUB_STEP_SUMMARY"
+          [[ "$DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]
+          echo "image=ghcr.io/lvovych/crm@$DIGEST" >> "$GITHUB_OUTPUT"
+          echo "$VERSION: ghcr.io/lvovych/crm@$DIGEST (linux/arm64)" >> "$GITHUB_STEP_SUMMARY"
