@@ -1,3 +1,4 @@
+import { getOperationText } from '@/i18n/operation-text.server'
 import { getSettings } from '@/features/settings/Actions/settingsActions'
 import { readWorkshopTax, WORKSHOP_TAX_SETTING_KEYS } from '@/features/settings/Lib/workshopTax'
 import { SETTING_KEYS } from '@/features/settings/Schema/settingsSchema'
@@ -17,6 +18,8 @@ import {
 import type { SavedDesign } from '@/features/invoice-designer/Components/types'
 import { listDocumentDesigns } from '@/features/invoice-designer/Actions/documentDesignActions'
 export default async function TemplatePage() {
+  const ot = await getOperationText()
+
   const data = await getLayoutData()
 
   if (data.status === 'unauthenticated') redirect('/auth/sign-in')
@@ -189,7 +192,9 @@ export default async function TemplatePage() {
   return locked ? (
     <FeatureLocked
       feature="Templates"
-      description="Choose from pre-built templates and customize colors, fonts, and header layouts for your PDF invoices and quotes."
+      description={ot(
+        'Choose from pre-built templates and customize colors, fonts, and header layouts for your PDF invoices and quotes.'
+      )}
       isCloud={isCloudMode()}
     >
       {content}

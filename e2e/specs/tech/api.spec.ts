@@ -1,3 +1,4 @@
+import { languageState } from '../../support/language'
 import { expect, type APIRequestContext, type Page, test } from '@playwright/test'
 import {
   foreignServiceRecordId,
@@ -90,7 +91,7 @@ test.beforeAll(async ({ browser, playwright, baseURL }) => {
   // the wrong person.
   device = await playwright.request.newContext({
     baseURL,
-    storageState: { cookies: [], origins: [] },
+    storageState: languageState('en'),
   })
   const seeded = await seededTenantFixtures()
 
@@ -140,9 +141,9 @@ test.describe('the technician app', () => {
 
   test('the desk adds a technician and reads them a code', async ({ page }) => {
     await page.goto('/employees')
-    await page.getByText('Додати працівника', { exact: true }).click()
-    await page.getByPlaceholder('Ім’я та прізвище').fill(TECHNICIAN)
-    await page.getByRole('button', { name: 'Створити' }).click()
+    await page.getByText('Add employee', { exact: true }).click()
+    await page.getByPlaceholder('Full name').fill(TECHNICIAN)
+    await page.getByRole('button', { name: 'Create' }).click()
     await expect(page.getByRole('link', { name: TECHNICIAN })).toBeVisible()
     await openTeamSettings(page)
     const employee = page.getByText(TECHNICIAN, { exact: true })

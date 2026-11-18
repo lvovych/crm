@@ -1,11 +1,7 @@
 import { getRequestConfig } from 'next-intl/server'
 import { cookies, headers } from 'next/headers'
 import { type Locale, defaultLocale, locales } from './config'
-import {
-  extractCustomerOrgParam,
-  getBestLocaleFromHeader,
-  resolveCustomerLocale,
-} from './locale-from-request'
+import { extractCustomerOrgParam, resolveCustomerLocale } from './locale-from-request'
 import { resolvePortalOrg } from '@/lib/portal-slug'
 
 export default getRequestConfig(async () => {
@@ -30,7 +26,7 @@ export default getRequestConfig(async () => {
     if (locales.includes(cookieLocale as Locale)) {
       locale = cookieLocale as Locale
     } else {
-      locale = getBestLocaleFromHeader(acceptLanguage) ?? defaultLocale
+      locale = defaultLocale
     }
   }
 
@@ -58,7 +54,6 @@ export default getRequestConfig(async () => {
   const admin = (await import(`../../messages/${locale}/admin.json`)).default
   const notifications = (await import(`../../messages/${locale}/notifications.json`)).default
   const quotes = (await import(`../../messages/${locale}/quotes.json`)).default
-  const billing = (await import(`../../messages/${locale}/billing.json`)).default
   const reminders = (await import(`../../messages/${locale}/reminders.json`)).default
   const audit = (await import(`../../messages/${locale}/audit.json`)).default
   const aiChat = (await import(`../../messages/${locale}/aiChat.json`)).default
@@ -108,7 +103,6 @@ export default getRequestConfig(async () => {
       admin,
       notifications,
       quotes,
-      billing,
       reminders,
       audit,
       aiChat,

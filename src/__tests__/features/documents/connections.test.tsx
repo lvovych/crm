@@ -1,3 +1,5 @@
+import { beforeEach as beforeLocale, vi as localeMock } from 'vitest'
+import { useLocale as testLocale } from 'next-intl'
 import { render, screen, cleanup } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 vi.mock('@/features/documents/actions', () => ({ documentDetail: vi.fn() }))
@@ -68,3 +70,5 @@ it('groups multiple relations between the same documents without duplicate cards
   expect(screen.getAllByRole('link', { name: 'Return' })).toHaveLength(1)
   expect(screen.getByText('Зараховано 100,00 грн')).toBeVisible()
 })
+
+beforeLocale(() => localeMock.mocked(testLocale).mockReturnValue('uk'))

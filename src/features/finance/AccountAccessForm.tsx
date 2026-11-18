@@ -1,4 +1,5 @@
 'use client'
+import { useOperationText } from '@/i18n/use-operation-text'
 import { useState } from 'react'
 
 type Props = {
@@ -7,6 +8,8 @@ type Props = {
   access: { accountId: string; roleId: string; canRead: boolean; canPost: boolean }[]
 }
 export function AccountAccessForm({ accounts, roles, access }: Props) {
+  const ot = useOperationText()
+
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? '')
   const [roleId, setRoleId] = useState(roles[0]?.id ?? '')
   const current = access.find((a) => a.accountId === accountId && a.roleId === roleId)
@@ -14,7 +17,7 @@ export function AccountAccessForm({ accounts, roles, access }: Props) {
   return (
     <>
       <label className="block">
-        Рахунок
+        {ot('Рахунок')}
         <select
           required
           name="accountId"
@@ -30,7 +33,7 @@ export function AccountAccessForm({ accounts, roles, access }: Props) {
         </select>
       </label>
       <label className="block">
-        Роль
+        {ot('Роль')}
         <select
           required
           name="roleId"
@@ -48,16 +51,17 @@ export function AccountAccessForm({ accounts, roles, access }: Props) {
       <div key={`${accountId}:${roleId}`} className="space-y-3 rounded-lg border p-3">
         <label className="flex min-h-11 items-center gap-3">
           <input type="checkbox" name="canRead" defaultChecked={current?.canRead ?? false} />
-          Перегляд залишків і рухів
+          {ot('Перегляд залишків і рухів')}
         </label>
         <label className="flex min-h-11 items-center gap-3">
           <input type="checkbox" name="canPost" defaultChecked={current?.canPost ?? false} />
-          Проведення операцій
+          {ot('Проведення операцій')}
         </label>
       </div>
       <p className="text-sm text-muted-foreground">
-        Показано збережені права для цієї каси. Додатково роль повинна мати відповідні права в
-        налаштуваннях ролей.
+        {ot(
+          'Показано збережені права для цієї каси. Додатково роль повинна мати відповідні права в налаштуваннях ролей.'
+        )}
       </p>
     </>
   )

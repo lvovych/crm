@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { useMemo, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { formatTypeKey } from '@/features/vehicles/Lib/typeKey'
@@ -140,6 +141,8 @@ export function InspectionView({
    */
   spec?: DocumentSpec
 }) {
+  const ot = useOperationText()
+
   const t = useTranslations('share.inspection')
   const locale = useLocale()
   const tc = useTranslations('share.common')
@@ -395,7 +398,7 @@ export function InspectionView({
                 )}
                 {(inspection.vehicle.hsn || inspection.vehicle.tsn) && (
                   <div>
-                    <dt className="text-xs text-gray-500">HSN/TSN</dt>
+                    <dt className="text-xs text-gray-500">{ot('HSN/TSN')}</dt>
                     <dd className="font-mono text-sm">
                       {formatTypeKey(inspection.vehicle.hsn, inspection.vehicle.tsn)}
                     </dd>
@@ -720,7 +723,7 @@ export function InspectionView({
               rel="noopener noreferrer"
               className="text-xs font-semibold text-gray-500 hover:text-gray-700"
             >
-              Torqvoice
+              {ot('Torqvoice')}
             </a>
           </p>
         )}

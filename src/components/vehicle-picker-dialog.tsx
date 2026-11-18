@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { useState, useEffect, type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -56,6 +57,8 @@ export function VehiclePickerDialog({
   redirectQuery,
   onVehicleSelected,
 }: VehiclePickerDialogProps) {
+  const ot = useOperationText()
+
   const router = useRouter()
   const t = useTranslations('workOrders.vehiclePicker')
   const tc = useTranslations('common.buttons')
@@ -443,7 +446,7 @@ export function VehiclePickerDialog({
                     <Input
                       id="new-plate"
                       className="min-h-11 text-base"
-                      placeholder="e.g. ABC-1234"
+                      placeholder={ot('e.g. ABC-1234')}
                       value={newPlate}
                       onChange={(e) => setNewPlate(e.target.value)}
                     />

@@ -108,10 +108,33 @@ export const BACKUP_ENTITIES: readonly BackupEntity[] = [
     restore: 'replace',
     clearOrder: 59,
   },
-  { model: 'PayAssignment', key: 'payAssignments', option: 'vehicles', restore: 'replace', clearOrder: 1 },
-  { model: 'SupplierReturn', key: 'supplierReturns', option: 'inventory', restore: 'replace', clearOrder: 58.5 },
-  { model: 'SupplierReturnLine', nestedUnder: 'SupplierReturn', option: 'inventory', restore: 'replace' },
-  { model: 'SubcontractWork', key: 'subcontractWork', option: 'inventory', restore: 'replace', clearOrder: 1 },
+  {
+    model: 'PayAssignment',
+    key: 'payAssignments',
+    option: 'vehicles',
+    restore: 'replace',
+    clearOrder: 1,
+  },
+  {
+    model: 'SupplierReturn',
+    key: 'supplierReturns',
+    option: 'inventory',
+    restore: 'replace',
+    clearOrder: 58.5,
+  },
+  {
+    model: 'SupplierReturnLine',
+    nestedUnder: 'SupplierReturn',
+    option: 'inventory',
+    restore: 'replace',
+  },
+  {
+    model: 'SubcontractWork',
+    key: 'subcontractWork',
+    option: 'inventory',
+    restore: 'replace',
+    clearOrder: 1,
+  },
   {
     model: 'ReceiptTransfer',
     nestedUnder: 'SupplierReceiptLine',
@@ -381,19 +404,6 @@ export const BACKUP_ENTITIES: readonly BackupEntity[] = [
   { model: 'FuelLog', option: 'vehicles', nestedUnder: 'Vehicle', restore: 'replace' },
   { model: 'VehicleFinding', option: 'vehicles', nestedUnder: 'Vehicle', restore: 'replace' },
   { model: 'ConditionMark', option: 'vehicles', nestedUnder: 'Vehicle', restore: 'replace' },
-  { model: 'RecurringInvoice', option: 'vehicles', nestedUnder: 'Vehicle', restore: 'replace' },
-  {
-    model: 'RecurringPart',
-    option: 'vehicles',
-    nestedUnder: 'RecurringInvoice',
-    restore: 'replace',
-  },
-  {
-    model: 'RecurringLabor',
-    option: 'vehicles',
-    nestedUnder: 'RecurringInvoice',
-    restore: 'replace',
-  },
   { model: 'AiGeneratedMessage', option: 'vehicles', nestedUnder: 'Vehicle', restore: 'replace' },
   { model: 'ServicePart', option: 'vehicles', nestedUnder: 'ServiceRecord', restore: 'replace' },
   { model: 'ServiceLabor', option: 'vehicles', nestedUnder: 'ServiceRecord', restore: 'replace' },
@@ -447,6 +457,8 @@ export const BACKUP_ENTITIES: readonly BackupEntity[] = [
  * oversight, and the next person reading this needs to tell them apart.
  */
 export const EXCLUDED_MODELS: Readonly<Record<string, string>> = {
+  InvoiceCounter:
+    'Operational number allocation state. Retained on application restore; bootstrapped from restored invoices on a new installation. Full PostgreSQL backups preserve it.',
   SalaryRule: 'Retired shared salary catalog. Employee plans store the active rates.',
   CustomerLedgerDocument:
     'Exported with the immutable finance envelope; restore only through a consistent PostgreSQL snapshot.',

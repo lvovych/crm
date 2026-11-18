@@ -14,7 +14,10 @@ export function resolveWorkshopTimeZone(
   explicit: string | null | undefined,
   detected: string | null | undefined
 ): string {
-  return safeTimeZone(explicit?.trim() || detected?.trim() || null)
+  return safeTimeZone(
+    explicit?.trim() || detected?.trim() || 'Europe/Bucharest',
+    'Europe/Bucharest'
+  )
 }
 
 export async function workshopTimeZone(organizationId: string): Promise<string> {

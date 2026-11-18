@@ -1,4 +1,5 @@
 'use client'
+import { useOperationText } from '@/i18n/use-operation-text'
 import { ReturnReasonSelect } from './ReturnReasonSelect'
 import { moneyLabel, dayLabel, unitPriceLabel } from '@/features/finance/presentation'
 import { DocumentStatus } from '@/components/operations/document-ui'
@@ -18,6 +19,8 @@ export function Returns({
   data: Data
   canCreate: boolean
 }) {
+  const ot = useOperationText()
+
   const router = useRouter()
   const [quantities, setQuantities] = useState<Record<string, string>>({})
   const [supplierDocumentNumber, setSupplierDocumentNumber] = useState('')
@@ -28,27 +31,29 @@ export function Returns({
   const [error, setError] = useState('')
   return (
     <section className="ops-panel space-y-5">
-      <h2 className="text-xl font-semibold">Повернення постачальнику</h2>
+      <h2 className="text-xl font-semibold">{ot('Повернення постачальнику')}</h2>
       <p className="text-sm text-muted-foreground">
-        {data.supplier} · Повернення зменшує борг постачальнику та залишок товарів на складі.
+        {data.supplier}{' '}
+        {ot(" · Повернення зменшує борг постачальнику та залишок товарів на складі.")}
       </p>
       {!data.lines.some((l) => Number(l.available) > 0) && data.enabled && (
         <p className="rounded-lg bg-muted p-4 text-sm" role="status">
-          Немає доступних позицій для повернення: товари вже передані в наряди або повернуті
-          постачальнику.
+          {ot(
+            'Немає доступних позицій для повернення: товари вже передані в наряди або повернуті постачальнику.'
+          )}
         </p>
       )}
       {canCreate && (
         <Button asChild variant="outline">
           <Link href={'/supplier-returns/new?supplier=' + data.supplierId}>
-            Повернення з кількох накладних
+            {ot('Повернення з кількох накладних')}
           </Link>
         </Button>
       )}
       {canCreate && data.enabled && (
         <details>
           <summary className="cursor-pointer py-3 font-semibold">
-            Створити повернення з накладної
+            {ot('Створити повернення з накладної')}
           </summary>
           <form
             className="space-y-4"
@@ -71,7 +76,7 @@ export function Returns({
                     .map((l) => ({ id: l.id, quantity: quantities[l.id] })),
                 })
                 if (!result.success) {
-                  setError(result.error ?? 'Не вдалося провести повернення.')
+                  setError(result.error ?? ot('Не вдалося провести повернення.'))
                   return
                 }
                 setQuantities({})
@@ -82,7 +87,7 @@ export function Returns({
                 router.refresh()
               } catch {
                 setError(
-                  'Не вдалося отримати відповідь. Повторіть проведення з тими самими даними.'
+                  ot('Не вдалося отримати відповідь. Повторіть проведення з тими самими даними.')
                 )
               } finally {
                 submitting.current = false
@@ -99,18 +104,18 @@ export function Returns({
                 setQuantities(Object.fromEntries(data.lines.map((l) => [l.id, l.available])))
               }}
             >
-              Повернути все доступне з накладної
+              {ot('Повернути все доступне з накладної')}
             </Button>
             <div className="ops-table-scroll">
               <table className="w-full text-left">
                 <thead className="bg-muted">
                   <tr>
-                    <th className="p-3">Позиція</th>
-                    <th>Бренд</th>
-                    <th>Артикул</th>
-                    <th>Ціна закупівлі</th>
-                    <th>Доступно</th>
-                    <th>Повернути</th>
+                    <th className="p-3">{ot('Позиція')}</th>
+                    <th>{ot('Бренд')}</th>
+                    <th>{ot('Артикул')}</th>
+                    <th>{ot('Ціна закупівлі')}</th>
+                    <th>{ot('Доступно')}</th>
+                    <th>{ot("Повернути ")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -125,7 +130,7 @@ export function Returns({
                       </td>
                       <td>
                         <input
-                          aria-label={'Повернути ' + l.name}
+                          aria-label={ot('Повернути ') + l.name}
                           type="number"
                           min="0"
                           max={l.available}
@@ -145,7 +150,7 @@ export function Returns({
               </table>
             </div>
             <label className="grid gap-2">
-              Номер документа постачальника
+              {ot('Номер документа постачальника')}
               <input
                 type="text"
                 maxLength={120}
@@ -155,7 +160,7 @@ export function Returns({
                   setSupplierDocumentNumber(e.target.value)
                 }}
                 className="h-11 rounded-md border bg-background px-3"
-                placeholder="Необов’язково"
+                placeholder={ot('Необов’язково')}
               />
             </label>
             <ReturnReasonSelect
@@ -167,7 +172,7 @@ export function Returns({
               }}
             />
             <Button disabled={busy || !data.lines.some((l) => Number(quantities[l.id]) > 0)}>
-              {busy ? 'Збереження…' : 'Зберегти чернетку'}
+              {busy ? ot('Збереження…') : ot('Зберегти чернетку')}
             </Button>
             {error && (
               <p role="alert" className="text-destructive">
@@ -184,18 +189,20 @@ export function Returns({
               {d.number}
             </Link>{' '}
             · {dayLabel(d.date)}{' '}
-            <DocumentStatus>{d.status === 'posted' ? 'Проведено' : 'Чернетка'}</DocumentStatus>
+            <DocumentStatus>
+              {d.status === 'posted' ? ot('Проведено') : ot('Чернетка')}
+            </DocumentStatus>
           </h3>
           <p>{d.reason}</p>
           <table className="w-full text-left">
             <thead className="bg-muted">
               <tr>
-                <th className="p-2">Позиція</th>
-                <th>Бренд</th>
-                <th>Артикул</th>
-                <th>Надходження</th>
-                <th>Кількість</th>
-                <th>Сума</th>
+                <th className="p-2">{ot('Позиція')}</th>
+                <th>{ot('Бренд')}</th>
+                <th>{ot('Артикул')}</th>
+                <th>{ot('Надходження')}</th>
+                <th>{ot('Кількість')}</th>
+                <th>{ot('Сума')}</th>
               </tr>
             </thead>
             <tbody>
@@ -212,18 +219,19 @@ export function Returns({
                   <td>
                     {l.quantity} {l.unit}
                   </td>
-                  <td className="text-right">{moneyLabel(l.amount)}</td>
+                  <td className="text-right">{moneyLabel(l.amount, ot('грн'))}</td>
                 </tr>
               ))}
             </tbody>
           </table>
           <p className="text-lg font-semibold">
-            Разом {d.lines.reduce((n, l) => n + Math.round(Number(l.amount) * 100), 0) / 100} грн
+            {ot("Разом ")}
+            {d.lines.reduce((n, l) => n + Math.round(Number(l.amount) * 100), 0) / 100} {ot(" грн")}
           </p>
         </article>
       ))}
       {!data.enabled && !data.documents.length && (
-        <p>Повернення доступне після проведення та звірки накладної у взаєморозрахунках.</p>
+        <p>{ot('Повернення доступне після проведення та звірки накладної у взаєморозрахунках.')}</p>
       )}
     </section>
   )

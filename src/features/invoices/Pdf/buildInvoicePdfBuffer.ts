@@ -22,7 +22,7 @@ import { documentFilename } from '@/lib/document-filename'
  * should see.
  */
 
-import { renderToBuffer } from '@react-pdf/renderer'
+import { renderToBuffer } from '@/lib/render-pdf'
 import '@/features/vehicles/Components/invoice-pdf/fonts'
 import React from 'react'
 import { InvoicePDF } from '@/features/vehicles/Components/InvoicePDF'

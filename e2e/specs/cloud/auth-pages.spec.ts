@@ -1,3 +1,4 @@
+import { languageState } from '../../support/language'
 import { expect, test } from '@playwright/test'
 import { signUpWithPassword } from '../../support/cloud'
 import { settle } from '../../support/hydration'
@@ -13,7 +14,7 @@ import { settle } from '../../support/hydration'
  * break: a language picked on sign-up has to survive the sign-up itself.
  */
 
-test.use({ storageState: { cookies: [], origins: [] } })
+test.use({ storageState: languageState('en') })
 
 const stamp = Date.now()
 
@@ -40,25 +41,25 @@ test.describe('the sign-up page', () => {
 
     await expect(async () => {
       await page.getByRole('combobox', { name: 'Language' }).click()
-      await expect(page.getByRole('option', { name: 'Norsk Bokmål' })).toBeVisible({
+      await expect(page.getByRole('option', { name: 'Русский' })).toBeVisible({
         timeout: 2_000,
       })
     }).toPass({ timeout: 30_000 })
-    await page.getByRole('option', { name: 'Norsk Bokmål' }).click()
+    await page.getByRole('option', { name: 'Русский' }).click()
 
-    await expect(page.getByRole('heading', { name: 'Start ditt gratis verksted' })).toBeVisible({
+    await expect(page.getByRole('heading', { name: 'Запустите свою мастерскую бесплатно' })).toBeVisible({
       timeout: 30_000,
     })
     const cookie = (await context.cookies()).find((c) => c.name === 'locale')
-    expect(cookie?.value, 'kept for the visits after this one').toBe('nb')
+    expect(cookie?.value, 'kept for the visits after this one').toBe('ru')
 
-    // Signed up in Norwegian, and onboarding speaks it too.
+    // Signed up in Russian, and onboarding speaks it too.
     await signUpWithPassword(page, {
-      name: 'E2E Norsk',
-      email: `e2e-norsk-${stamp}@example.com`,
+      name: 'E2E Russian',
+      email: `e2e-russian-${stamp}@example.com`,
       password: `E2e-pass-${stamp}`,
     })
-    await expect(page.getByRole('heading', { name: 'Sett opp verkstedet ditt' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Настройте свою мастерскую' })).toBeVisible()
   })
 })
 

@@ -1,3 +1,4 @@
+import { languageState } from '../../support/language'
 import { expect, test } from '@playwright/test'
 import { settle } from '../../support/hydration'
 for (const viewport of [
@@ -36,6 +37,7 @@ for (const viewport of [
     test('creates an account without activating balances or changing payment workflow', async ({
       page,
     }) => {
+      await page.context().addCookies(languageState('uk').cookies)
       await page.goto('/finance')
       await settle(page)
       await expect(page.getByRole('heading', { name: 'Підготовка касового обліку' })).toBeVisible()

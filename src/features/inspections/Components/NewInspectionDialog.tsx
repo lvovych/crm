@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
@@ -62,6 +63,8 @@ export function NewInspectionDialog({
   /** The booked job this inspection is started from; it is linked to the inspection. */
   serviceRecordId?: string
 }) {
+  const ot = useOperationText()
+
   const t = useTranslations('inspections.new')
   const router = useRouter()
   const serviceType = useServiceType()
@@ -241,7 +244,9 @@ export function NewInspectionDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>{serviceType === 'marine' ? 'Engine Hours' : 'Mileage'} (optional)</Label>
+            <Label>
+              {serviceType === 'marine' ? 'Engine Hours' : 'Mileage'} {ot(" (optional)")}
+            </Label>
             <Input
               type="number"
               value={mileage}
@@ -261,7 +266,7 @@ export function NewInspectionDialog({
               disabled={isPending || !vehicleId || !templateId}
             >
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Start Inspection
+              {ot('Start Inspection')}
             </Button>
           </div>
         </form>

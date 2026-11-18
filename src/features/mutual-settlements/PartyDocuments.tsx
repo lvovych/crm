@@ -1,3 +1,4 @@
+import { getOperationText } from '@/i18n/operation-text.server'
 import { mutualSettlementsReport } from './actions'
 import { SettlementDocument } from './OverviewClient'
 import { dayLabel, moneyLabel } from '@/features/finance/presentation'
@@ -11,6 +12,8 @@ export async function PartyDocuments({
   id: string
   date?: string
 }) {
+  const ot = await getOperationText()
+
   const result = await mutualSettlementsReport(date, { kind, id })
   if (!result.data) return null
   const { parties, trackedParties, asOf, supplierError } = result.data
@@ -19,8 +22,11 @@ export async function PartyDocuments({
     .flatMap((p) => p.documents)
   return (
     <section id="settlement-documents" className="ops-workspace space-y-3">
-      <h2 className="text-lg font-semibold">Документи взаєморозрахунків</h2>
-      <p className="text-sm text-muted-foreground">Станом на {dayLabel(asOf)}</p>
+      <h2 className="text-lg font-semibold">{ot('Документи взаєморозрахунків')}</h2>
+      <p className="text-sm text-muted-foreground">
+        {ot("Станом на ")}
+        {dayLabel(asOf)}
+      </p>
       {supplierError ? (
         <p role="alert">{supplierError}</p>
       ) : documents.length ? (
@@ -32,13 +38,15 @@ export async function PartyDocuments({
                   <span className="min-w-0 break-words">
                     {d.label}
                     <span className="mt-1 block text-xs font-normal text-muted-foreground">
-                      {d.date ? dayLabel(d.date) : 'Дата уточнюється'}
-                      {d.reason ? ' · Не включено до підсумків' : ''}
+                      {d.date ? dayLabel(d.date) : ot('Дата уточнюється')}
+                      {d.reason ? ot(" · Не включено до підсумків") : ''}
                     </span>
                   </span>
                   <span className="text-right tabular-nums">
-                    <span className="block text-xs font-normal text-muted-foreground">Сума</span>
-                    {d.amount === null ? 'Не визначено' : moneyLabel(d.amount)}
+                    <span className="block text-xs font-normal text-muted-foreground">
+                      {ot('Сума')}
+                    </span>
+                    {d.amount === null ? ot('Не визначено') : moneyLabel(d.amount, ot('грн'))}
                   </span>
                 </span>
               </summary>
@@ -49,7 +57,7 @@ export async function PartyDocuments({
           ))}
         </div>
       ) : (
-        <p>Документів на цю дату немає.</p>
+        <p>{ot('Документів на цю дату немає.')}</p>
       )}
     </section>
   )

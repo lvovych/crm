@@ -34,7 +34,7 @@ const LABOR = 'Replace the clutch\nand bleed the system'
 const CUSTOMER = `e2e-quote-${stamp}@example.com`
 
 /** What every copy of this quote has to say. */
-const FACTS = ['$1,800.00', '$2,400.00', '$4,200.00', '$5,250.00']
+const FACTS = ['1 800,00 UAH', '2 400,00 UAH', '4 200,00 UAH', '5 250,00 UAH']
 
 let quoteUrl = ''
 let shareUrl = ''

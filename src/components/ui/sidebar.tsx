@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import * as React from 'react'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { PanelLeftIcon } from 'lucide-react'
@@ -155,6 +156,8 @@ function Sidebar({
   variant?: 'sidebar' | 'floating' | 'inset'
   collapsible?: 'offcanvas' | 'icon' | 'none'
 }) {
+  const ot = useOperationText()
+
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
 
   if (collapsible === 'none') {
@@ -188,8 +191,8 @@ function Sidebar({
           side={side}
         >
           <SheetHeader className="sr-only">
-            <SheetTitle>Sidebar</SheetTitle>
-            <SheetDescription>Displays the mobile sidebar.</SheetDescription>
+            <SheetTitle>{ot('Sidebar')}</SheetTitle>
+            <SheetDescription>{ot('Displays the mobile sidebar.')}</SheetDescription>
           </SheetHeader>
           <div className="flex h-full w-full flex-col">{children}</div>
         </SheetContent>
@@ -246,6 +249,8 @@ function Sidebar({
 }
 
 function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<typeof Button>) {
+  const ot = useOperationText()
+
   const { toggleSidebar } = useSidebar()
 
   return (
@@ -262,22 +267,24 @@ function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<t
       {...props}
     >
       <PanelLeftIcon />
-      <span className="sr-only">Toggle Sidebar</span>
+      <span className="sr-only">{ot('Toggle Sidebar')}</span>
     </Button>
   )
 }
 
 function SidebarRail({ className, ...props }: React.ComponentProps<'button'>) {
+  const ot = useOperationText()
+
   const { toggleSidebar } = useSidebar()
 
   return (
     <button
       data-sidebar="rail"
       data-slot="sidebar-rail"
-      aria-label="Toggle Sidebar"
+      aria-label={ot('Toggle Sidebar')}
       tabIndex={-1}
       onClick={toggleSidebar}
-      title="Toggle Sidebar"
+      title={ot('Toggle Sidebar')}
       className={cn(
         'hover:after:bg-sidebar-border absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] sm:flex',
         'in-data-[side=left]:cursor-w-resize in-data-[side=right]:cursor-e-resize',

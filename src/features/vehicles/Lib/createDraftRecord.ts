@@ -1,3 +1,4 @@
+import { nextInvoiceNumber } from '@/lib/invoice-number.server'
 import { db, type TxClient } from '@/lib/db'
 import {
   documentTotals,
@@ -60,8 +61,7 @@ export async function createDraftRecord(
      */
     tx?: TxClient
   }
-) {
-  const writer = opts.tx ?? db
+): Promise<import('@/generated/prisma/client').ServiceRecord> {
   const [settings, org, currentUser, timeZone] = await Promise.all([
     db.appSetting.findMany({
       where: {
@@ -143,35 +143,8 @@ export async function createDraftRecord(
     }
   }
 
-  const rawPrefix = settingsMap['workshop.invoicePrefix'] ?? '{year}-'
   const now = new Date()
   const today = zonedParts(now, timeZone)
-  const prefix = rawPrefix
-    .replace('{year}', String(today.year))
-    .replace('{month}', String(today.month).padStart(2, '0'))
-
-  const startNumber = parseInt(settingsMap['workshop.invoiceStartNumber'] || '0', 10)
-  const lastRecord = await db.serviceRecord.findFirst({
-    where: { organizationId },
-    orderBy: { createdAt: 'desc' },
-    select: { invoiceNumber: true },
-  })
-  let nextNum = startNumber || 1001
-  if (lastRecord?.invoiceNumber) {
-    const match = lastRecord.invoiceNumber.match(/(\d+)$/)
-    if (match) {
-      const lastNum = parseInt(match[1], 10) + 1
-      nextNum = Math.max(nextNum, lastNum)
-    }
-  }
-  const invoiceNumber = `${prefix}${nextNum}`
-
-  if (startNumber && nextNum === startNumber) {
-    await writer.appSetting.updateMany({
-      where: { organizationId, key: 'workshop.invoiceStartNumber' },
-      data: { value: '' },
-    })
-  }
 
   // The workshop's default tax, components included when it splits its tax.
   // Tax-exempt customers always get a 0% rate regardless of org default.
@@ -221,19 +194,10 @@ export async function createDraftRecord(
   // serviceDate should be date-only (start of the workshop's day)
   const serviceDate = startOfZonedDay(defaultStart, timeZone)
 
-  // Named from the template once everything it can mention is known: the
-  // number just allocated, the car, its owner, the technician and the day.
-  const title =
-    opts.title ??
-    resolveWorkOrderTitle(
-      workOrderTitleTemplateFrom(settingsMap, SETTING_KEYS.WORK_ORDER_TITLE_TEMPLATE),
-      workOrderTitleValues({
-        orderNumber: invoiceNumber,
-        ...(await titleSubject(organizationId, opts.vehicleId, opts.customerId)),
-        technicianName: techName,
-        date: `${today.year}-${String(today.month).padStart(2, '0')}-${String(today.day).padStart(2, '0')}`,
-      })
-    )
+  const subject =
+    opts.title === null
+      ? await titleSubject(organizationId, opts.vehicleId, opts.customerId)
+      : undefined
 
   // The workshop's standing warranty, for work on a vehicle. A sale over the
   // counter is not a repair, and terms written for one would misdescribe it;
@@ -260,33 +224,53 @@ export async function createDraftRecord(
         }
       : null
 
-  return writer.serviceRecord.create({
-    data: {
-      customerLedgerTracked: true,
-      ...(opts.id ? { id: opts.id } : {}),
-      organizationId,
-      createdById: userId,
-      title,
-      type: 'maintenance',
-      status: 'pending',
-      vehicleId: opts.vehicleId,
-      customerId: opts.customerId,
-      shopName,
-      techName,
-      technicianId: resolvedTechId || undefined,
-      workBayId: opts.workBayId || undefined,
-      invoiceNumber,
-      ...taxFields,
-      ...(feeTotals ?? {}),
-      ...(feeLine ? { laborItems: { create: [feeLine] } } : {}),
-      ...warranty,
-      warrantyExpiresAt: warrantyExpiryFor(warranty, serviceDate, timeZone),
-      serviceDate,
-      invoiceDate: serviceDate,
-      startDateTime: defaultStart,
-      endDateTime: defaultEnd ?? new Date(defaultStart.getTime() + 3600000),
-    },
-  })
+  // Keep pool-backed preparation outside the transaction so concurrent drafts
+  // do not hold every connection while waiting for another pooled read.
+  const persist = async (writer: TxClient) => {
+    const invoiceNumber = await nextInvoiceNumber(writer, organizationId, timeZone, now)
+    // Named from the template once everything it can mention is known: the
+    // number just allocated, the car, its owner, the technician and the day.
+    const title =
+      opts.title ??
+      resolveWorkOrderTitle(
+        workOrderTitleTemplateFrom(settingsMap, SETTING_KEYS.WORK_ORDER_TITLE_TEMPLATE),
+        workOrderTitleValues({
+          orderNumber: invoiceNumber,
+          ...subject,
+          technicianName: techName,
+          date: `${today.year}-${String(today.month).padStart(2, '0')}-${String(today.day).padStart(2, '0')}`,
+        })
+      )
+
+    return writer.serviceRecord.create({
+      data: {
+        customerLedgerTracked: true,
+        ...(opts.id ? { id: opts.id } : {}),
+        organizationId,
+        createdById: userId,
+        title,
+        type: 'maintenance',
+        status: 'pending',
+        vehicleId: opts.vehicleId,
+        customerId: opts.customerId,
+        shopName,
+        techName,
+        technicianId: resolvedTechId || undefined,
+        workBayId: opts.workBayId || undefined,
+        invoiceNumber,
+        ...taxFields,
+        ...(feeTotals ?? {}),
+        ...(feeLine ? { laborItems: { create: [feeLine] } } : {}),
+        ...warranty,
+        warrantyExpiresAt: warrantyExpiryFor(warranty, serviceDate, timeZone),
+        serviceDate,
+        invoiceDate: serviceDate,
+        startDateTime: defaultStart,
+        endDateTime: defaultEnd ?? new Date(defaultStart.getTime() + 3600000),
+      },
+    })
+  }
+  return opts.tx ? persist(opts.tx) : db.$transaction(persist, { timeout: 15000 })
 }
 
 /** The car and the customer a job is for, as far as the title template cares. */

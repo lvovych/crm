@@ -1,6 +1,12 @@
 import { expect, type Page, test } from '@playwright/test'
 import Stripe from 'stripe'
-import { forgetConnections, ownerOrganizationId, paymentsFor } from '../../support/db'
+import {
+  forgetConnections,
+  forgetWorkshopSetting,
+  ownerOrganizationId,
+  paymentsFor,
+  setWorkshopSetting,
+} from '../../support/db'
 import { settle } from '../../support/hydration'
 import {
   clearPaymentSink,
@@ -45,6 +51,7 @@ let jobUrl = ''
 let jobId = ''
 let invoiceUrl = ''
 let organizationId = ''
+let currencyBefore: string | null = null
 
 /** The shared invoice, hydrated, as the customer opens it. */
 async function openInvoice(page: Page, url = invoiceUrl): Promise<void> {
@@ -98,6 +105,8 @@ test.beforeAll(async ({ browser }) => {
   // one must start from none.
   await forgetConnections(['stripe', 'paypal'])
   organizationId = await ownerOrganizationId()
+  // This vendor-contract scenario explicitly uses USD; the default workshop uses UAH.
+  currencyBefore = await setWorkshopSetting(organizationId, 'workshop.currencyCode', 'USD')
 
   const page = await browser.newPage({ storageState: 'e2e/.auth/owner.json' })
   const vehicleUrl = await seededVehicleUrl(page)
@@ -109,6 +118,8 @@ test.beforeAll(async ({ browser }) => {
 })
 
 test.afterAll(async () => {
+  if (currencyBefore === null) await forgetWorkshopSetting(organizationId, 'workshop.currencyCode')
+  else await setWorkshopSetting(organizationId, 'workshop.currencyCode', currencyBefore)
   // Every other spec shares invoices, and a connected vendor would put a pay
   // button on all of them.
   await forgetConnections(['stripe', 'paypal'])

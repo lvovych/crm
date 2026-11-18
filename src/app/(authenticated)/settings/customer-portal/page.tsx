@@ -1,3 +1,4 @@
+import { getOperationText } from '@/i18n/operation-text.server'
 import { getLayoutData } from '@/lib/get-layout-data'
 import { getFeatures, isCloudMode } from '@/lib/features'
 import { FeatureLocked } from '../feature-locked-message'
@@ -12,6 +13,8 @@ import {
 import { getAppBaseUrl } from '@/lib/app-url'
 
 export default async function CustomerPortalSettingsPage() {
+  const ot = await getOperationText()
+
   const data = await getLayoutData()
 
   if (data.status === 'unauthenticated') redirect('/auth/sign-in')
@@ -70,7 +73,9 @@ export default async function CustomerPortalSettingsPage() {
   return locked ? (
     <FeatureLocked
       feature="Customer Portal"
-      description="Give your customers a self-service portal to view invoices, quotes, inspections, and request service."
+      description={ot(
+        'Give your customers a self-service portal to view invoices, quotes, inspections, and request service.'
+      )}
       isCloud={isCloudMode()}
     >
       {content}

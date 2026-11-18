@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { useEffect, useRef } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
@@ -38,6 +39,8 @@ export function RichTextEditor({
   placeholder,
   editable = true,
 }: RichTextEditorProps) {
+  const ot = useOperationText()
+
   const lastContentRef = useRef(content)
 
   const editor = useEditor({
@@ -127,25 +130,29 @@ export function RichTextEditor({
           <ToolbarButton
             active={editor.isActive('bold')}
             onClick={() => editor.chain().focus().toggleBold().run()}
-            title="Bold"
+            title={ot('Bold')}
           >
             <Bold className="h-3.5 w-3.5" />
           </ToolbarButton>
           <ToolbarButton
             active={editor.isActive('italic')}
             onClick={() => editor.chain().focus().toggleItalic().run()}
-            title="Italic"
+            title={ot('Italic')}
           >
             <Italic className="h-3.5 w-3.5" />
           </ToolbarButton>
           <ToolbarButton
             active={editor.isActive('underline')}
             onClick={() => editor.chain().focus().toggleUnderline().run()}
-            title="Underline"
+            title={ot('Underline')}
           >
             <UnderlineIcon className="h-3.5 w-3.5" />
           </ToolbarButton>
-          <ToolbarButton active={editor.isActive('link')} onClick={handleSetLink} title="Link">
+          <ToolbarButton
+            active={editor.isActive('link')}
+            onClick={handleSetLink}
+            title={ot('Link')}
+          >
             <LinkIcon className="h-3.5 w-3.5" />
           </ToolbarButton>
 
@@ -154,14 +161,14 @@ export function RichTextEditor({
           <ToolbarButton
             active={editor.isActive('heading', { level: 2 })}
             onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-            title="Heading"
+            title={ot('Heading')}
           >
             <Heading2 className="h-3.5 w-3.5" />
           </ToolbarButton>
           <ToolbarButton
             active={editor.isActive('heading', { level: 3 })}
             onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-            title="Subheading"
+            title={ot('Subheading')}
           >
             <Heading3 className="h-3.5 w-3.5" />
           </ToolbarButton>
@@ -171,21 +178,21 @@ export function RichTextEditor({
           <ToolbarButton
             active={editor.isActive('bulletList')}
             onClick={() => editor.chain().focus().toggleBulletList().run()}
-            title="Bullet List"
+            title={ot('Bullet List')}
           >
             <List className="h-3.5 w-3.5" />
           </ToolbarButton>
           <ToolbarButton
             active={editor.isActive('orderedList')}
             onClick={() => editor.chain().focus().toggleOrderedList().run()}
-            title="Numbered List"
+            title={ot('Numbered List')}
           >
             <ListOrdered className="h-3.5 w-3.5" />
           </ToolbarButton>
           <ToolbarButton
             active={editor.isActive('blockquote')}
             onClick={() => editor.chain().focus().toggleBlockquote().run()}
-            title="Quote"
+            title={ot('Quote')}
           >
             <Quote className="h-3.5 w-3.5" />
           </ToolbarButton>
@@ -195,14 +202,14 @@ export function RichTextEditor({
           <ToolbarButton
             onClick={() => editor.chain().focus().undo().run()}
             disabled={!editor.can().undo()}
-            title="Undo"
+            title={ot('Undo')}
           >
             <Undo className="h-3.5 w-3.5" />
           </ToolbarButton>
           <ToolbarButton
             onClick={() => editor.chain().focus().redo().run()}
             disabled={!editor.can().redo()}
-            title="Redo"
+            title={ot('Redo')}
           >
             <Redo className="h-3.5 w-3.5" />
           </ToolbarButton>

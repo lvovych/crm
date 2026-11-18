@@ -150,8 +150,8 @@ export default defineConfig({
 
   use: {
     baseURL,
-    // Pinned, because selectors read visible text and the app speaks twelve
-    // languages. The locale cookie is set alongside this in auth.setup.ts.
+    // Pinned, because selectors read visible text and the app supports three
+    // languages. Signed-out fixtures explicitly choose a locale cookie.
     locale: 'en-US',
     extraHTTPHeaders: { 'accept-language': 'en' },
     // Pinned for the same reason invoice dates are: a floating timezone turns

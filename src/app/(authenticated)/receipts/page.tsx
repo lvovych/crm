@@ -1,3 +1,4 @@
+import { getOperationText } from '@/i18n/operation-text.server'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { settlementAccess } from '@/features/settlements/actions'
@@ -12,14 +13,16 @@ export default async function Page({
 }: {
   searchParams: Promise<Record<string, string>>
 }) {
+  const ot = await getOperationText()
+
   const p = await searchParams,
     page = Math.max(1, Math.floor(Number(p.page) || 1))
   const labels: Record<string, string> = {
-    unverified: 'Розрахунки не звірено',
-    paid: 'Оплачено',
-    partial: 'Частково оплачено',
-    unpaid: 'Не оплачено',
-    late: 'Прострочено',
+    unverified: ot('Розрахунки не звірено'),
+    paid: ot('Оплачено'),
+    partial: ot('Частково оплачено'),
+    unpaid: ot('Не оплачено'),
+    late: ot('Прострочено'),
   }
   const [list, access, finance] = await Promise.all([
     receiptList(p.q || '', p.status || '', p.supplierId || '', p.date || '', page, p.payment),
@@ -31,20 +34,20 @@ export default async function Page({
   return (
     <>
       <DocumentHeader
-        title="Надходження"
-        description="Накладні постачальників · товари та послуги"
+        title={ot('Надходження')}
+        description={ot('Накладні постачальників · товари та послуги')}
         actions={
           <>
             {finance.read && (
               <Button asChild variant="outline">
-                <Link href="/mutual-settlements?view=supplier">Взаєморозрахунки</Link>
+                <Link href="/mutual-settlements?view=supplier">{ot('Взаєморозрахунки')}</Link>
               </Button>
             )}
             {access.create && (
               <Button asChild>
                 <Link href="/receipts/new">
                   <Plus className="size-4" />
-                  Нова накладна
+                  {ot('Нова накладна')}
                 </Link>
               </Button>
             )}
@@ -53,51 +56,51 @@ export default async function Page({
       />
       <form className="ops-panel grid items-end gap-3 sm:grid-cols-2 xl:grid-cols-[2fr_1fr_1fr_1fr_auto] [&_label]:grid [&_label]:gap-2 [&_label]:text-sm">
         <label>
-          Номер або постачальник
-          <Input name="q" placeholder="Знайти накладну…" defaultValue={p.q} />
+          {ot('Номер або постачальник')}
+          <Input name="q" placeholder={ot('Знайти накладну…')} defaultValue={p.q} />
         </label>
         <label>
-          Дата приймання
+          {ot('Дата приймання')}
           <Input type="date" name="date" defaultValue={p.date} />
         </label>
         {p.supplierId && <input type="hidden" name="supplierId" value={p.supplierId} />}
         <label>
-          Статус
+          {ot('Статус')}
           <select
             className="h-10 rounded-md border bg-background px-3"
             name="status"
             defaultValue={p.status}
           >
-            <option value="">Усі</option>
+            <option value="">{ot('Усі')}</option>
             {Object.entries(statuses).map(([k, v]) => (
               <option key={k} value={k}>
-                {v}
+                {ot(v)}
               </option>
             ))}
           </select>
         </label>
         {finance.read && (
           <label>
-            Оплата
+            {ot('Оплата')}
             <select
               className="h-10 rounded-md border bg-background px-3"
               name="payment"
               defaultValue={p.payment}
             >
-              <option value="">Усі</option>
+              <option value="">{ot('Усі')}</option>
               {Object.entries(labels).map(([k, v]) => (
                 <option key={k} value={k}>
-                  {v}
+                  {ot(v)}
                 </option>
               ))}
             </select>
           </label>
         )}
         <div className="flex items-center gap-2">
-          <Button>Знайти</Button>
+          <Button>{ot('Знайти')}</Button>
           {Object.values(p).some(Boolean) && (
             <Button asChild variant="ghost">
-              <Link href="/receipts">Скинути</Link>
+              <Link href="/receipts">{ot('Скинути')}</Link>
             </Button>
           )}
         </div>
@@ -106,17 +109,17 @@ export default async function Page({
         <table>
           <thead>
             <tr>
-              <th>Накладна / дата</th>
-              <th>Постачальник</th>
-              <th>Статус</th>
-              <th className="text-right">Сума</th>
+              <th>{ot('Накладна / дата')}</th>
+              <th>{ot('Постачальник')}</th>
+              <th>{ot('Статус')}</th>
+              <th className="text-right">{ot('Сума')}</th>
               {finance.read && (
                 <>
-                  <th className="text-right">До сплати</th>
-                  <th>Оплата / строк</th>
+                  <th className="text-right">{ot('До сплати')}</th>
+                  <th>{ot('Оплата / строк')}</th>
                 </>
               )}
-              <th>Дії</th>
+              <th>{ot('Дії')}</th>
             </tr>
           </thead>
           <tbody>
@@ -131,7 +134,8 @@ export default async function Page({
                   </Link>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {dayLabel(r.documentDate)}
-                    {r.receivedDate !== r.documentDate && ' · Прийнято ' + dayLabel(r.receivedDate)}
+                    {r.receivedDate !== r.documentDate &&
+                      ot(" · Прийнято ") + dayLabel(r.receivedDate)}
                   </p>
                 </td>
                 <td>
@@ -149,22 +153,25 @@ export default async function Page({
                           : 'neutral'
                     }
                   >
-                    {statuses[r.status]}
+                    {ot(statuses[r.status])}
                   </DocumentStatus>
                 </td>
-                <td className="whitespace-nowrap text-right font-medium">{moneyLabel(r.total)}</td>
+                <td className="whitespace-nowrap text-right font-medium">{moneyLabel(r.total, ot('грн'))}</td>
                 {finance.read && (
                   <>
                     <td className="whitespace-nowrap text-right font-semibold">
-                      {r.status === 'posted' && r.open != null ? moneyLabel(r.open) : '—'}
+                      {r.status === 'posted' && r.open != null ? moneyLabel(r.open, ot('грн')) : '—'}
                     </td>
                     <td>
                       <span className={r.late ? 'text-destructive' : 'text-muted-foreground'}>
-                        {labels[r.state]}
-                        {r.late && r.state !== 'late' && ' · Прострочено'}
+                        {ot(labels[r.state])}
+                        {r.late && r.state !== 'late' && ot(" · Прострочено")}
                       </span>
                       {r.due && (
-                        <p className="mt-1 text-xs text-muted-foreground">До {dayLabel(r.due)}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {ot("До ")}
+                          {dayLabel(r.due)}
+                        </p>
                       )}
                     </td>
                   </>
@@ -178,7 +185,7 @@ export default async function Page({
                         (r.status === 'draft' && access.create ? '?edit=1' : '')
                       }
                     >
-                      {r.status === 'draft' && access.create ? 'Редагувати' : 'Переглянути'}
+                      {r.status === 'draft' && access.create ? ot('Редагувати') : ot('Переглянути')}
                     </Link>
                   </Button>
                 </td>
@@ -188,23 +195,28 @@ export default async function Page({
         </table>
         {!list.data.length && (
           <p className="p-12 text-center text-muted-foreground">
-            Накладних за цими умовами немає. Змініть пошук або створіть нову накладну.
+            {ot('Накладних за цими умовами немає. Змініть пошук або створіть нову накладну.')}
           </p>
         )}
       </div>
-      <nav aria-label="Сторінки накладних" className="flex items-center justify-between gap-4">
+      <nav
+        aria-label={ot('Сторінки накладних')}
+        className="flex items-center justify-between gap-4"
+      >
         <span className="text-sm text-muted-foreground">
-          Сторінка {page} · Показано {Math.min(list.data.length, 50)}
+          {ot("Сторінка ")}
+          {page} {ot(" · Показано ")}
+          {Math.min(list.data.length, 50)}
         </span>
         <div className="flex gap-2">
           {page > 1 && (
             <Button asChild variant="outline">
-              <Link href={pageUrl(page - 1)}>Назад</Link>
+              <Link href={pageUrl(page - 1)}>{ot('Назад')}</Link>
             </Button>
           )}
           {list.data.length > 50 && (
             <Button asChild variant="outline">
-              <Link href={pageUrl(page + 1)}>Далі</Link>
+              <Link href={pageUrl(page + 1)}>{ot('Далі')}</Link>
             </Button>
           )}
         </div>

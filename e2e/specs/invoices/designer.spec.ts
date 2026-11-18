@@ -178,7 +178,7 @@ test.describe('the invoice designer', () => {
     }
     // And nothing else went with it.
     expect(pdf.flat).toContain('Mitchell')
-    expect(pdf.flat).toContain('$3,400.00')
+    expect(pdf.flat).toContain('3 400,00 UAH')
   })
 
   test('the switch is remembered when the designer is opened again', async ({ page }) => {

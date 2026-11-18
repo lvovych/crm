@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { useTranslations } from 'next-intl'
 import { BANNER_PRIORITY, useBannerSlot } from './banner-slot'
 
@@ -11,6 +12,8 @@ import { BANNER_PRIORITY, useBannerSlot } from './banner-slot'
  * in order to queue behind a platform notice rather than stack under one.
  */
 export function DemoBanner({ isDemo }: { isDemo: boolean }) {
+  const ot = useOperationText()
+
   const t = useTranslations('common.shared')
   const mine = useBannerSlot('demo', BANNER_PRIORITY.demo, isDemo)
 
@@ -18,8 +21,9 @@ export function DemoBanner({ isDemo }: { isDemo: boolean }) {
 
   return (
     <div className="bg-amber-500 text-center text-xs font-medium text-amber-950 py-1.5 px-4">
-      Demo instance — data resets every few hours. Outgoing email, SMS, Telegram and team invites
-      are disabled.{' '}
+      {ot(
+        'Demo instance — data resets every few hours. Outgoing email, SMS, Telegram and team invites are disabled.'
+      )}{' '}
       <a
         href="https://torqvoice.com/docs/installation"
         className="underline underline-offset-2 hover:text-amber-900"

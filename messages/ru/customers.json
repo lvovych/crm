@@ -82,7 +82,7 @@
     "nameRequired": "Имя *",
     "namePlaceholder": "Иван Иванов",
     "emailPlaceholder": "ivan@example.com",
-    "phonePlaceholder": "+7 (999) 123-45-67",
+    "phonePlaceholder": "+380 (67) 123-45-67",
     "companyPlaceholder": "Название компании",
     "addressPlaceholder": "ул. Главная, 123, Москва",
     "taxId": "ИНН / КПП",

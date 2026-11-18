@@ -1,4 +1,5 @@
 'use client'
+import { useOperationText } from '@/i18n/use-operation-text'
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { changeReceipt } from './actions'
@@ -13,6 +14,8 @@ export function Transition({
   version: number
   posting: boolean
 }) {
+  const ot = useOperationText()
+
   const router = useRouter(),
     [busy, start] = useTransition(),
     [reason, setReason] = useState(''),
@@ -25,21 +28,21 @@ export function Transition({
         start(async () => {
           const r = await changeReceipt(id, version, posting ? 'posted' : 'cancelled', reason)
           if (r.success) router.refresh()
-          else setError(r.error || 'Помилка')
+          else setError(r.error || ot('Помилка'))
         })
       }}
     >
       {!posting && (
         <label>
-          Причина скасування
+          {ot('Причина скасування')}
           <small className="block">
-            Зараховані на накладну оплати повернуться у вільний аванс.
+            {ot('Зараховані на накладну оплати повернуться у вільний аванс.')}
           </small>
           <Input required value={reason} onChange={(e) => setReason(e.target.value)} />
         </label>
       )}
       <Button disabled={busy} variant={posting ? 'default' : 'destructive'}>
-        {posting ? 'Провести' : 'Скасувати проведення'}
+        {posting ? ot('Провести') : ot('Скасувати проведення')}
       </Button>
       {error && <p role="alert">{error}</p>}
     </form>

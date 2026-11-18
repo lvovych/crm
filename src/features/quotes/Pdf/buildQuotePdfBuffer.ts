@@ -17,7 +17,7 @@
 
 import { resolveCurrencyCode, resolveCurrencyFormat } from '@/lib/currencies'
 import { readFile } from 'node:fs/promises'
-import { renderToBuffer } from '@react-pdf/renderer'
+import { renderToBuffer } from '@/lib/render-pdf'
 import '@/features/vehicles/Components/invoice-pdf/fonts'
 import { PDFDocument } from 'pdf-lib'
 import React from 'react'

@@ -1,3 +1,4 @@
+import { getOperationText } from '@/i18n/operation-text.server'
 import { getFieldDefinitions } from '@/features/custom-fields/Actions/customFieldActions'
 import {
   getInvoiceLayoutConfig,
@@ -10,6 +11,8 @@ import { FeatureLocked } from '../feature-locked-message'
 import { redirect } from 'next/navigation'
 
 export default async function CustomFieldsPage() {
+  const ot = await getOperationText()
+
   const data = await getLayoutData()
 
   if (data.status === 'unauthenticated') redirect('/auth/sign-in')
@@ -37,7 +40,9 @@ export default async function CustomFieldsPage() {
   return locked ? (
     <FeatureLocked
       feature="Custom Fields"
-      description="Define custom data fields for vehicles, customers, and service records to track the information that matters to your shop."
+      description={ot(
+        'Define custom data fields for vehicles, customers, and service records to track the information that matters to your shop.'
+      )}
       isCloud={isCloudMode()}
     >
       {content}

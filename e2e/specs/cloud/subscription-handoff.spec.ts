@@ -1,3 +1,4 @@
+import { languageState } from '../../support/language'
 import { expect, test } from '@playwright/test'
 import { completeOnboarding, signUpWithPassword } from '../../support/cloud'
 import { giveProPlan, organizationIdFor, removePlan, setCancelAtPeriodEnd } from '../../support/db'
@@ -38,7 +39,7 @@ let planId = ''
 test.use({ storageState: STATE })
 
 test.beforeAll(async ({ browser }) => {
-  const context = await browser.newContext({ storageState: { cookies: [], origins: [] } })
+  const context = await browser.newContext({ storageState: languageState('en') })
   const page = await context.newPage()
   await signUpWithPassword(page, { name: 'E2E Billing Owner', email: EMAIL, password: PASSWORD })
   await completeOnboarding(page, WORKSHOP, { sampleData: false })

@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import {
@@ -38,6 +39,8 @@ export function CustomerCombobox({
   placeholder = 'Select customer...',
   noneLabel = 'None',
 }: CustomerComboboxProps) {
+  const ot = useOperationText()
+
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [options, setOptions] = useState<CustomerOption[]>([])
@@ -133,7 +136,7 @@ export function CustomerCombobox({
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
               </div>
             )}
-            <CommandEmpty>No customers found.</CommandEmpty>
+            <CommandEmpty>{ot('No customers found.')}</CommandEmpty>
             <CommandGroup>
               <CommandItem
                 onSelect={() => {

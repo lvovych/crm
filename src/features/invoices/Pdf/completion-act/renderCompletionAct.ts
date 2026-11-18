@@ -1,4 +1,4 @@
-import { renderToBuffer } from '@react-pdf/renderer'
+import { renderToBuffer } from '@/lib/render-pdf'
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 import { CompletionActPDF, type CompletionActProps } from './CompletionActPDF'
 

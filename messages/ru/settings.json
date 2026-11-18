@@ -179,7 +179,7 @@
     "orgNumberLabelPlaceholder": "Номер организации",
     "orgNumberLabelHint": "Печатается рядом с номером в счетах и предложениях. Оставьте пустым, чтобы использовать стандартное название на вашем языке, или укажите, как он называется у вас, например ИНН, ОГРН или УНП.",
     "phone": "Телефон",
-    "phonePlaceholder": "+7 (999) 123-45-67",
+    "phonePlaceholder": "+380 (67) 123-45-67",
     "email": "Эл. почта",
     "emailPlaceholder": "service@example.com",
     "address": "Адрес",
@@ -981,7 +981,7 @@
     "detailsTitle": "Платёжные реквизиты",
     "detailsDescription": "Банковский счёт и условия оплаты, отображаемые на счетах.",
     "bankAccount": "Банковский счёт (IBAN)",
-    "bankAccountPlaceholder": "RU12 3456 7890 1234 5678 9012 3456",
+    "bankAccountPlaceholder": "UA12 3456 7890 1234 5678 9012 3456 7",
     "bankAccountHint": "Номер вашего банковского счёта или IBAN для получения платежей",
     "paymentTerms": "Условия оплаты",
     "paymentTermsPlaceholder": "14 дней",
@@ -1091,8 +1091,8 @@
     "forceCustomerLocale": "Применять этот язык на страницах для клиентов",
     "forceCustomerLocaleHint": "Когда включено, портал клиента и общие счета, предложения и инспекции отображаются на языке вашей мастерской, независимо от настроек браузера посетителя. Когда отключено, клиентские страницы используют язык браузера посетителя.",
     "defaultCountryCode": "Код страны по умолчанию",
-    "defaultCountryCodeHint": "Используется, когда клиенты входят в портал через SMS — добавляется к номерам телефонов без кода страны (вашего или клиента). Формат: + и цифры, например +7.",
-    "defaultCountryCodeInvalid": "Введите корректный код страны, например +7, 7 или 007.",
+    "defaultCountryCodeHint": "Используется, когда клиенты входят в портал через SMS — добавляется к номерам телефонов без кода страны (вашего или клиента). Формат: + и цифры, например +380.",
+    "defaultCountryCodeInvalid": "Введите корректный код страны, например +380, 380 или 00380.",
     "saved": "Настройки локализации сохранены",
     "saveSettings": "Сохранить настройки"
   },
@@ -2707,12 +2707,12 @@
     }
   },
   "completionAct": {
-    "title": "Service acceptance act: provider details",
-    "hint": "Used when generating a service acceptance PDF. Changes apply to newly generated PDFs; downloaded files stay unchanged.",
-    "name": "Legal entity / sole proprietor name",
-    "code": "Tax / registration number",
-    "address": "Legal address",
-    "phone": "Provider phone",
-    "bank": "Bank details (IBAN and bank)"
+    "title": "Акт оказанных услуг: реквизиты исполнителя",
+    "hint": "Используется при формировании PDF акта оказанных услуг. Изменения применяются к новым PDF; скачанные файлы не изменяются.",
+    "name": "Название юридического лица / ФИО предпринимателя",
+    "code": "Налоговый / регистрационный номер",
+    "address": "Юридический адрес",
+    "phone": "Телефон исполнителя",
+    "bank": "Банковские реквизиты (IBAN и банк)"
   }
 }

@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
@@ -108,6 +109,8 @@ function Lockable({
  * done, with everything about money and the booking in the column beside it.
  */
 export function ModernDetails(props: ModernDetailsProps) {
+  const ot = useOperationText()
+
   const {
     formState,
     actions,
@@ -165,7 +168,8 @@ export function ModernDetails(props: ModernDetailsProps) {
     try {
       const result = await updateServiceStatus(record.id, next, custom?.id ?? null)
       if (!result.success) throw new Error(result.error || t('page.failedUpdate'))
-      if (next === 'completed' && formState.laborItems.some(l => l.supplierId && !l.receiptId)) toast.info('У наряді залишилися роботи підрядників без приходу.')
+      if (next === 'completed' && formState.laborItems.some((l) => l.supplierId && !l.receiptId))
+        toast.info(ot('У наряді залишилися роботи підрядників без приходу.'))
       formState.setStatus(next)
       setCustomStatus(custom)
       setStatusMessage(t('assignment.statusSaved'))
@@ -344,7 +348,8 @@ export function ModernDetails(props: ModernDetailsProps) {
                   )}
 
                   <LaborEditor
-                    recordId={record.id} unsaved={formState.hasUnsavedChanges}
+                    recordId={record.id}
+                    unsaved={formState.hasUnsavedChanges}
                     quickAdd={props.quickLabor}
                     technicians={props.boardTechnicians}
                     primaryTechnicianId={record.technicianId}

@@ -1,9 +1,9 @@
 import { cents, decimal } from './money'
 
 /** Format decimal strings without losing cents on large balances. */
-export function moneyLabel(value: string) {
+export function moneyLabel(value: string, unit = 'грн') {
   const [whole, fraction] = decimal(cents(value)).split('.')
-  return `${whole.replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0')},${fraction} грн`
+  return `${whole.replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0')},${fraction} ${unit}`
 }
 export function dayLabel(value: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value.split('-').reverse().join('.') : value

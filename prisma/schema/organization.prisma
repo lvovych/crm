@@ -32,6 +32,7 @@ model DashboardWidget {
 }
 
 model Organization {
+  invoiceCounter InvoiceCounter?
   financeSettings FinanceSettings?
   ownLegalEntities OwnLegalEntity[]
   cashFlowCategories CashFlowCategory[]
@@ -194,4 +195,12 @@ model TeamInvitation {
   @@unique([email, organizationId])
   @@index([token])
   @@map("team_invitations")
+}
+
+/// Operational allocation state; initialized from existing invoice numbers.
+model InvoiceCounter {
+  organizationId String @id
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lastNumber String
+  @@map("invoice_counters")
 }

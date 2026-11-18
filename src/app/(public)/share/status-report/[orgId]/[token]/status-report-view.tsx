@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Card, CardContent } from '@/components/ui/card'
@@ -44,6 +45,8 @@ export function StatusReportView({
   token,
   showBranding,
 }: StatusReportViewProps) {
+  const ot = useOperationText()
+
   const t = useTranslations('statusReport.view')
   const [feedback, setFeedback] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -188,7 +191,9 @@ export function StatusReportView({
 
         {/* Footer */}
         {showBranding && (
-          <p className="text-center text-xs text-gray-400 py-4">{t('poweredBy')} Torqvoice</p>
+          <p className="text-center text-xs text-gray-400 py-4">
+            {t('poweredBy')} {ot(" Torqvoice")}
+          </p>
         )}
       </div>
     </div>

@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { useTableKeyboardNav } from '@/hooks/use-table-keyboard-nav'
 import { interactiveRow } from '@/lib/interactive-row'
 import { useDebouncedSearch } from '@/hooks/use-debounced-search'
@@ -55,11 +56,13 @@ type UserRow = {
 }
 
 function OnlineDot({ lastSeen }: { lastSeen: string | null }) {
+  const ot = useOperationText()
+
   if (!lastSeen) return null
   const isOnline = Date.now() - new Date(lastSeen).getTime() < 5 * 60 * 1000
   if (!isOnline) return null
   return (
-    <span className="relative flex h-2 w-2" title="Online">
+    <span className="relative flex h-2 w-2" title={ot('Online')}>
       <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
       <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
     </span>

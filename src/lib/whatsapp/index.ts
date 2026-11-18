@@ -262,7 +262,7 @@ async function defaultCountryCode(organizationId: string): Promise<string | null
     },
     select: { value: true },
   })
-  return setting?.value ?? null
+  return setting?.value ?? '+380'
 }
 
 /**

@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { formatQuantity } from '@/lib/format-quantity'
 import { useTranslations } from 'next-intl'
@@ -34,6 +35,8 @@ export function InventoryPickerDialog({
   defaultMarkupPercent = 0,
   markupAppliesToInventory = false,
 }: InventoryPickerDialogProps) {
+  const ot = useOperationText()
+
   const formatCurrency = useFormatCurrency()
   const t = useTranslations('service.parts')
   const [search, setSearch] = useState('')
@@ -109,7 +112,7 @@ export function InventoryPickerDialog({
                   brand: ip.brand?.name ?? '---',
                   name: ip.name,
                   quantity: 1,
-                  unit: ip.unit?.trim() || 'шт.',
+                  unit: ip.unit?.trim() || ot('шт.'),
                   unitPrice: price,
                   total: price,
                   unitCost: ip.unitCost,

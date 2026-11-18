@@ -1,3 +1,4 @@
+import { languageState } from '../../support/language'
 import { expect, test } from '@playwright/test'
 import { settle } from '../../support/hydration'
 import { receiptDb, receiptFixture } from '../../support/receipt-fixture'
@@ -61,6 +62,7 @@ test('brand create, rename, deactivate and restore preserve the product referenc
 })
 
 test('role editor exposes each independent brand permission', async ({ page }) => {
+  await page.context().addCookies(languageState('en').cookies)
   await page.goto('/settings/team')
   await settle(page)
   await page.getByRole('button', { name: 'New Role', exact: true }).click()
@@ -73,3 +75,6 @@ test('role editor exposes each independent brand permission', async ({ page }) =
   await expect(page.locator('[id="update:brands"]')).not.toBeChecked()
   await expect(page.locator('[id="delete:brands"]')).not.toBeChecked()
 })
+
+// These operational assertions intentionally exercise the Ukrainian interface.
+test.beforeEach(async ({ context }) => { await context.addCookies(languageState('uk').cookies) })

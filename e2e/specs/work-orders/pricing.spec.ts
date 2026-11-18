@@ -89,19 +89,19 @@ test.describe('tax added on top', () => {
     exclusiveJob = await priceTheJob(page, vehicleUrl, `E2E exclusive ${stamp}`)
 
     await expectTotals(page, {
-      Parts: '$300.00',
-      Labor: '$600.00',
-      Subtotal: '$900.00',
-      Tax: '$225.00',
-      Total: '$1,125.00',
+      Parts: '300,00 UAH',
+      Labor: '600,00 UAH',
+      Subtotal: '900,00 UAH',
+      Tax: '225,00 UAH',
+      Total: '1 125,00 UAH',
     })
     await expect(page.getByLabel('Invoice Number')).not.toHaveValue('')
 
     await expectOnSharedInvoice(page, exclusiveJob, [
-      '$900.00',
+      '900,00 UAH',
       /Tax \(25%\)/,
-      '$225.00',
-      '$1,125.00',
+      '225,00 UAH',
+      '1 125,00 UAH',
     ])
     await expectPdf(page, exclusiveJob)
   })
@@ -112,12 +112,12 @@ test.describe('tax added on top', () => {
     await saveWorkOrder(page)
 
     await expectTotals(page, {
-      Subtotal: '$900.00',
-      Discount: '-$90.00',
-      Tax: '$202.50',
-      Total: '$1,012.50',
+      Subtotal: '900,00 UAH',
+      Discount: '-90,00 UAH',
+      Tax: '202,50 UAH',
+      Total: '1 012,50 UAH',
     })
-    await expectOnSharedInvoice(page, exclusiveJob, ['$202.50', '$1,012.50'])
+    await expectOnSharedInvoice(page, exclusiveJob, ['202,50 UAH', '1 012,50 UAH'])
   })
 
   test('a fixed discount does the same', async ({ page }) => {
@@ -126,11 +126,11 @@ test.describe('tax added on top', () => {
     await saveWorkOrder(page)
 
     await expectTotals(page, {
-      Discount: '-$100.00',
-      Tax: '$200.00',
-      Total: '$1,000.00',
+      Discount: '-100,00 UAH',
+      Tax: '200,00 UAH',
+      Total: '1 000,00 UAH',
     })
-    await expectOnSharedInvoice(page, exclusiveJob, ['$200.00', '$1,000.00'])
+    await expectOnSharedInvoice(page, exclusiveJob, ['200,00 UAH', '1 000,00 UAH'])
   })
 })
 
@@ -143,11 +143,11 @@ test.describe('tax included in the prices', () => {
 
     // The editor shows the net figures; the customer pays what was typed.
     await expectTotals(page, {
-      Subtotal: '$720.00',
-      Tax: '$180.00',
-      Total: '$900.00',
+      Subtotal: '720,00 UAH',
+      Tax: '180,00 UAH',
+      Total: '900,00 UAH',
     })
-    await expectOnSharedInvoice(page, job, [/MVA/, /25%/, '$180.00', '$900.00'])
+    await expectOnSharedInvoice(page, job, [/MVA/, /25%/, '180,00 UAH', '900,00 UAH'])
     await expectPdf(page, job)
   })
 })
@@ -157,9 +157,9 @@ test.describe('no tax at all', () => {
     await setTax(page, { enabled: false })
     const job = await priceTheJob(page, vehicleUrl, `E2E untaxed ${stamp}`)
 
-    await expectTotals(page, { Subtotal: '$900.00', Total: '$900.00' })
+    await expectTotals(page, { Subtotal: '900,00 UAH', Total: '900,00 UAH' })
     await expect(totalsRow(page, 'Tax')).toHaveCount(0)
-    await expectOnSharedInvoice(page, job, ['$900.00'])
+    await expectOnSharedInvoice(page, job, ['900,00 UAH'])
     await expect(page.getByText(/^Tax/).filter({ visible: true })).toHaveCount(0)
   })
 

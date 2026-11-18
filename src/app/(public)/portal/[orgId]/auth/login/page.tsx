@@ -68,7 +68,9 @@ export default async function PortalLoginPage({
   })
   const get = (key: string) => settings.find((s) => s.key === key)?.value ?? null
 
-  const countryCode = normalizeCountryCode(get(SETTING_KEYS.WORKSHOP_DEFAULT_COUNTRY_CODE))
+  const countryCode = normalizeCountryCode(
+    get(SETTING_KEYS.WORKSHOP_DEFAULT_COUNTRY_CODE) ?? '+380'
+  )
 
   const rawBgType = get(SETTING_KEYS.PORTAL_BACKGROUND_TYPE)
   const backgroundType: PortalBackgroundType = isValidPortalBackgroundType(rawBgType)

@@ -43,3 +43,18 @@ describe('partial supplier return rounding', () => {
     )
   })
 })
+
+it('rejects an invalid original price for a partial return', () => {
+  expect(() =>
+    returnLineAmount(
+      {
+        originalQuantity: '1',
+        originalAmount: '10.00',
+        returnedQuantity: '0',
+        returnedAmount: '0',
+        unitPrice: 'invalid',
+      },
+      '0.5'
+    )
+  ).toThrow('кількість і ціну')
+})

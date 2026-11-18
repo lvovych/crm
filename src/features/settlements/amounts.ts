@@ -1,15 +1,21 @@
-import { decimalAmount } from '@/features/receipts/money'
+import { parseFixed, formatFixed } from '@/lib/exact-money'
 export function kopecks(input: string): bigint {
-  if (!/^\d{1,20}(\.\d{1,2})?$/.test(input))
+  try {
+    return parseFixed(input, 2, { signed: false })
+  } catch {
     throw new Error('Вкажіть суму у гривнях з точністю до копійки.')
-  const [whole, fraction = ''] = input.split('.')
-  return BigInt(whole) * BigInt(100) + BigInt(fraction.padEnd(2, '0'))
+  }
 }
-export function hryvnia(n: bigint) {
-  return n < BigInt(0) ? '-' + decimalAmount(-n) : decimalAmount(n)
+export function hryvnia(value: bigint) {
+  return formatFixed(value)
 }
 export function isCredit(kind: string) {
-  return kind === 'payment' || kind === 'opening_credit' || kind === 'adjustment_credit' || kind === 'return_credit'
+  return (
+    kind === 'payment' ||
+    kind === 'opening_credit' ||
+    kind === 'adjustment_credit' ||
+    kind === 'return_credit'
+  )
 }
 export function supplierTotals(rows: { kind: string; open: string; overdue: boolean }[]) {
   let obligations = BigInt(0)

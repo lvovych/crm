@@ -1,3 +1,4 @@
+import { languageState } from '../../support/language'
 import { expect, type Page, test } from '@playwright/test'
 import { linkIn, waitForMail } from '../../support/mail'
 import { settle } from '../../support/hydration'
@@ -19,7 +20,7 @@ import { settle } from '../../support/hydration'
 test.describe.configure({ mode: 'serial' })
 
 // The colleague starts as a stranger with no session.
-test.use({ storageState: { cookies: [], origins: [] } })
+test.use({ storageState: languageState('en') })
 
 const stamp = Date.now()
 const COLLEAGUE = `e2e-roleless-${stamp}@example.com`
@@ -78,7 +79,13 @@ test.describe('a member with no role', () => {
   test('reaches none of the workshop’s screens by their addresses', async ({ page }) => {
     await signInAsColleague(page)
 
-    for (const url of ['/work-orders', '/customers', '/billing', '/settings/team', '/inventory']) {
+    for (const url of [
+      '/work-orders',
+      '/customers',
+      '/mutual-settlements',
+      '/settings/team',
+      '/inventory',
+    ]) {
       await page.goto(url)
       // The same one screen, wherever they point the browser.
       await expect(
@@ -101,7 +108,7 @@ test.describe('a member with no role', () => {
     // of the role, not because they are broken.
     const owner = await browser.newContext({ storageState: 'e2e/.auth/owner.json' })
     const ownerPage = await owner.newPage()
-    for (const url of ['/work-orders', '/billing', '/settings/team']) {
+    for (const url of ['/work-orders', '/mutual-settlements', '/settings/team']) {
       await ownerPage.goto(url)
       await expect(
         ownerPage.getByRole('heading', { name: 'No access yet' }),

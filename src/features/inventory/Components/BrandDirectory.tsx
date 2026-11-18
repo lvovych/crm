@@ -1,4 +1,5 @@
 'use client'
+import { useOperationText } from '@/i18n/use-operation-text'
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -16,6 +17,8 @@ export function BrandDirectory({
   canEdit: boolean
   canDelete: boolean
 }) {
+  const ot = useOperationText()
+
   const [query, setQuery] = useState(''),
     [editing, setEditing] = useState<Brand | null>(null),
     [message, setMessage] = useState(''),
@@ -24,20 +27,20 @@ export function BrandDirectory({
   return (
     <div className="space-y-4">
       <p className="text-muted-foreground">
-        Спільний довідник виробників для карток товарів. Зміни застосовуються до всіх організацій.
-        Видалення деактивує бренд для нових товарів; існуючі картки та історія зберігаються. Доступ
-        визначається правами ролі.
+        {ot(
+          'Спільний довідник виробників для карток товарів. Зміни застосовуються до всіх організацій. Видалення деактивує бренд для нових товарів; існуючі картки та історія зберігаються. Доступ визначається правами ролі.'
+        )}
       </p>
       <div className="flex gap-3">
         <Input
-          aria-label="Пошук бренду"
-          placeholder="Знайти бренд"
+          aria-label={ot('Пошук бренду')}
+          placeholder={ot('Знайти бренд')}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
         {canCreate && (
           <Button onClick={() => setEditing({ id: '', name: '', isActive: true })}>
-            Додати бренд
+            {ot('Додати бренд')}
           </Button>
         )}
       </div>
@@ -48,7 +51,7 @@ export function BrandDirectory({
             e.preventDefault()
             start(async () => {
               const r = await saveBrand({ ...editing, id: editing.id || undefined })
-              setMessage(r.success ? 'Бренд збережено' : r.error || 'Помилка')
+              setMessage(r.success ? ot('Бренд збережено') : r.error || ot('Помилка'))
               if (r.success) {
                 setEditing(null)
                 router.refresh()
@@ -56,9 +59,11 @@ export function BrandDirectory({
             })
           }}
         >
-          <h2 className="font-semibold">{editing.id ? 'Редагування бренду' : 'Новий бренд'}</h2>
+          <h2 className="font-semibold">
+            {editing.id ? ot('Редагування бренду') : ot('Новий бренд')}
+          </h2>
           <label className="block">
-            Назва
+            {ot('Назва')}
             <Input
               required
               maxLength={120}
@@ -67,9 +72,9 @@ export function BrandDirectory({
             />
           </label>
           <div className="flex gap-2">
-            <Button disabled={pending}>Зберегти</Button>
+            <Button disabled={pending}>{ot('Зберегти')}</Button>
             <Button type="button" variant="outline" onClick={() => setEditing(null)}>
-              Скасувати
+              {ot('Скасувати')}
             </Button>
           </div>
         </form>
@@ -79,9 +84,9 @@ export function BrandDirectory({
         <table className="w-full text-left">
           <thead className="bg-muted">
             <tr>
-              <th className="p-3">Бренд</th>
-              <th className="p-3">Статус</th>
-              {(canEdit || canDelete) && <th className="p-3">Дія</th>}
+              <th className="p-3">{ot('Бренд')}</th>
+              <th className="p-3">{ot('Статус')}</th>
+              {(canEdit || canDelete) && <th className="p-3">{ot('Дія')}</th>}
             </tr>
           </thead>
           <tbody>
@@ -90,7 +95,7 @@ export function BrandDirectory({
               .map((b) => (
                 <tr key={b.id} className="border-t">
                   <td className="p-3">{b.name}</td>
-                  <td className="p-3">{b.isActive ? 'Активний' : 'Неактивний'}</td>
+                  <td className="p-3">{b.isActive ? ot('Активний') : ot('Неактивний')}</td>
                   {(canEdit || canDelete) && (
                     <td className="p-3">
                       {canEdit && (
@@ -99,7 +104,7 @@ export function BrandDirectory({
                           disabled={b.id === 'brand_unknown'}
                           onClick={() => setEditing(b)}
                         >
-                          Редагувати
+                          {ot('Редагувати')}
                         </Button>
                       )}
                       {b.id !== 'brand_unknown' &&
@@ -115,15 +120,15 @@ export function BrandDirectory({
                                 setMessage(
                                   r.success
                                     ? b.isActive
-                                      ? 'Бренд деактивовано'
-                                      : 'Бренд відновлено'
-                                    : r.error || 'Помилка'
+                                      ? ot('Бренд деактивовано')
+                                      : ot('Бренд відновлено')
+                                    : r.error || ot('Помилка')
                                 )
                                 if (r.success) router.refresh()
                               })
                             }
                           >
-                            {b.isActive ? 'Видалити (деактивувати)' : 'Відновити'}
+                            {b.isActive ? ot('Видалити (деактивувати)') : ot('Відновити')}
                           </Button>
                         )}
                     </td>

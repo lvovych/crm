@@ -1,3 +1,4 @@
+import { parseFixed, formatFixed } from '@/lib/exact-money'
 import { z } from 'zod'
 export const transferSchema = z
   .object({
@@ -24,12 +25,14 @@ export const transferSchema = z
   )
 export type TransferInput = z.infer<typeof transferSchema>
 export function quantityUnits(value: string): bigint {
-  if (!/^\d{1,11}(\.\d{1,3})?$/.test(value)) throw new Error('Некоректна кількість.')
-  const [whole, fraction = ''] = value.split('.')
-  return BigInt(whole) * BigInt(1000) + BigInt(fraction.padEnd(3, '0'))
+  try {
+    return parseFixed(value, 3, { signed: false, wholeDigits: 11 })
+  } catch {
+    throw new Error('Некоректна кількість.')
+  }
 }
 export function availableQuantity(received: string, sent: string[]): string {
   const remaining = sent.reduce((n, q) => n - quantityUnits(q), quantityUnits(received))
   if (remaining < BigInt(0)) throw new Error('Передано більше, ніж отримано.')
-  return `${remaining / BigInt(1000)}.${String(remaining % BigInt(1000)).padStart(3, '0')}`
+  return formatFixed(remaining, 3)
 }

@@ -1,3 +1,4 @@
+import { languageState } from '../../support/language'
 import { type BrowserContext, expect, type Page, test } from '@playwright/test'
 import { deviceCountFor, sessionCountFor } from '../../support/db'
 import { fillSettled } from '../../support/hydration'
@@ -43,7 +44,7 @@ let phone: BrowserContext
 
 test.beforeAll(async ({ browser }) => {
   phone = await browser.newContext({
-    storageState: { cookies: [], origins: [] },
+    storageState: languageState('en'),
     userAgent: PHONE_UA,
   })
 })
@@ -108,7 +109,7 @@ test('signing in again on the same phone is not a new device', async () => {
 })
 
 test('changing the password ends every other device', async ({ page, browser }) => {
-  const other = await browser.newContext({ storageState: { cookies: [], origins: [] } })
+  const other = await browser.newContext({ storageState: languageState('en') })
   await signIn(await other.newPage())
   expect(await stillSignedIn(other)).toBe(true)
 

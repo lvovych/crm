@@ -1,4 +1,5 @@
 'use client'
+import { useOperationText } from '@/i18n/use-operation-text'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -16,6 +17,8 @@ export function AssignService({
     works: { id: string; description: string }[]
   }[]
 }) {
+  const ot = useOperationText()
+
   const [open, setOpen] = useState(false)
   const [order, setOrder] = useState('')
   const [labor, setLabor] = useState('')
@@ -26,13 +29,13 @@ export function AssignService({
   if (!open)
     return (
       <Button variant="outline" onClick={() => setOpen(true)}>
-        Віднести на наряд
+        {ot('Віднести на наряд')}
       </Button>
     )
   return (
     <div className="grid gap-2">
       <select
-        aria-label="Наряд"
+        aria-label={ot('Наряд')}
         value={order}
         onChange={(e) => {
           setOrder(e.target.value)
@@ -40,15 +43,17 @@ export function AssignService({
           setLabor(target?.open ? '' : (target?.works[0]?.id ?? ''))
         }}
       >
-        <option value="">Оберіть наряд</option>
+        <option value="">{ot('Оберіть наряд')}</option>
         {orders.map((o) => (
           <option key={o.id} value={o.id}>
             {o.label}
           </option>
         ))}
       </select>
-      <select aria-label="Робота" value={labor} onChange={(e) => setLabor(e.target.value)}>
-        {orders.find((o) => o.id === order)?.open && <option value="">Додати нову роботу</option>}
+      <select aria-label={ot('Робота')} value={labor} onChange={(e) => setLabor(e.target.value)}>
+        {orders.find((o) => o.id === order)?.open && (
+          <option value="">{ot('Додати нову роботу')}</option>
+        )}
         {orders
           .find((o) => o.id === order)
           ?.works.map((l) => (
@@ -59,7 +64,7 @@ export function AssignService({
       </select>
       {!labor && (
         <label>
-          Ціна продажу{' '}
+          {ot('Ціна продажу')}{' '}
           <input
             type="number"
             min="0"
@@ -76,13 +81,13 @@ export function AssignService({
           try {
             const result = await linkServiceReceipt(order, lineId, labor || null, sale)
             if (result.success) router.refresh()
-            else setError(result.error || 'Помилка збереження.')
+            else setError(result.error || ot('Помилка збереження.'))
           } finally {
             setBusy(false)
           }
         }}
       >
-        Підтвердити
+        {ot('Підтвердити')}
       </Button>
       {error && <p role="alert">{error}</p>}
     </div>

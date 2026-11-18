@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { AppCard } from '@/components/app-card'
 import { useRef, useState } from 'react'
 import { useFormatter, useNow, useTranslations } from 'next-intl'
@@ -131,6 +132,8 @@ export function DataSettings({
   isOwner?: boolean
   hasSampleData?: boolean
 }) {
+  const ot = useOperationText()
+
   const t = useTranslations('settings')
   const format = useFormatter()
   // Keeps the "Last backup: x ago" label ticking without a reload.
@@ -1046,7 +1049,7 @@ export function DataSettings({
               onClick={() => setContentDialogOpen(false)}
               disabled={deletingContent}
             >
-              Cancel
+              {ot('Cancel')}
             </Button>
             <Button
               variant="destructive"

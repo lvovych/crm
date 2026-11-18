@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { AppCard } from '@/components/app-card'
 import { useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
@@ -43,6 +44,8 @@ export function CustomerPortalSettings({
   backgroundTemplate: string
   backgroundImage: string
 }) {
+  const ot = useOperationText()
+
   const router = useRouter()
   const t = useTranslations('settings')
   const [isPending, startTransition] = useTransition()
@@ -232,7 +235,7 @@ export function CustomerPortalSettings({
                   id="portal-slug"
                   value={slug}
                   onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/\s/g, ''))}
-                  placeholder="e.g. my_shop"
+                  placeholder={ot('e.g. my_shop')}
                   className="font-mono text-sm"
                 />
                 <p className="text-xs text-muted-foreground">{t('portal.slugHint')}</p>

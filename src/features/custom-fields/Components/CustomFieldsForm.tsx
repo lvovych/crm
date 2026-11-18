@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { useEffect, useState, useCallback } from 'react'
 import { Input } from '@/components/ui/input'
 import { DateInput } from '@/components/ui/date-input'
@@ -44,6 +45,8 @@ export function CustomFieldsForm({
   onValuesReady?: (save: () => Promise<{ valid: boolean }>) => void
   onChange?: () => void
 }) {
+  const ot = useOperationText()
+
   const [fields, setFields] = useState<FieldWithValue[]>([])
   const [values, setValues] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
@@ -131,7 +134,7 @@ export function CustomFieldsForm({
   if (fields.length === 0) return null
 
   return (
-    <AppCard title="Custom Fields" contentClassName="space-y-4">
+    <AppCard title={ot('Custom Fields')} contentClassName="space-y-4">
       {fields.map((field) => {
         const val = values[field.id] ?? field.value ?? ''
         const hasError = !!errors[field.id]
@@ -196,10 +199,10 @@ export function CustomFieldsForm({
                 <SelectTrigger
                   className={cn(hasError && 'border-destructive focus-visible:ring-destructive')}
                 >
-                  <SelectValue placeholder="Select..." />
+                  <SelectValue placeholder={ot('Select...')} />
                 </SelectTrigger>
                 <SelectContent>
-                  {!field.required && <SelectItem value="none">None</SelectItem>}
+                  {!field.required && <SelectItem value="none">{ot('None')}</SelectItem>}
                   {(field.options || '')
                     .split(',')
                     .map((o) => o.trim())

@@ -1,3 +1,4 @@
+import { getOperationText } from '@/i18n/operation-text.server'
 import { redirect } from 'next/navigation'
 import { DocumentHeader } from '@/components/operations/document-ui'
 import { Button } from '@/components/ui/button'
@@ -11,6 +12,8 @@ export default async function Page({
 }: {
   searchParams: Promise<Record<string, string>>
 }) {
+  const ot = await getOperationText()
+
   const p = await searchParams,
     date = p.date || workshopDay()
   if (!p.supplier)
@@ -23,17 +26,17 @@ export default async function Page({
       <PageHeader />
       <main className="ops-workspace mx-auto w-full max-w-7xl space-y-6 overflow-auto p-4 sm:p-6">
         <DocumentHeader
-          title={'Розрахунки · ' + (account?.name ?? 'Постачальник')}
-          back={{ href: '/suppliers/' + p.supplier, label: 'Картка постачальника' }}
+          title={ot("Розрахунки · ") + (account?.name ?? ot('Постачальник'))}
+          back={{ href: '/suppliers/' + p.supplier, label: ot('Картка постачальника') }}
         />
         <form className="ops-form ops-panel max-w-xl">
           <input type="hidden" name="supplier" value={p.supplier} />
           {p.receipt && <input type="hidden" name="receipt" value={p.receipt} />}
           <label>
-            Станом на
+            {ot('Станом на')}
             <input type="date" name="date" defaultValue={date} max={workshopDay()} required />
           </label>
-          <Button variant="outline">Показати</Button>
+          <Button variant="outline">{ot('Показати')}</Button>
         </form>
         {account ? (
           <Account
@@ -44,7 +47,7 @@ export default async function Page({
           />
         ) : (
           <p className="ops-panel" role="status">
-            Немає даних для цього постачальника.
+            {ot('Немає даних для цього постачальника.')}
           </p>
         )}
       </main>

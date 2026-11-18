@@ -1,51 +1,5 @@
-import { resolveCurrencyCode } from '@/lib/currencies'
-import { getRecurringInvoices } from '@/features/billing/Actions/recurringInvoiceActions'
-import { getDisplaySettings } from '@/features/settings/Actions/settingsActions'
-import { SETTING_KEYS } from '@/features/settings/Schema/settingsSchema'
-import { PageHeader } from '@/components/page-header'
-import { ListPage } from '@/components/list-page'
-import RecurringInvoicesClient from '@/features/billing/Components/RecurringInvoicesClient'
-import { db } from '@/lib/db'
-import { getCachedSession, getCachedMembership } from '@/lib/cached-session'
 import { redirect } from 'next/navigation'
 
-export default async function RecurringInvoicesPage() {
-  const session = await getCachedSession()
-  if (!session?.user?.id) redirect('/auth/sign-in')
-
-  const membership = await getCachedMembership(session.user.id)
-  if (!membership?.organizationId) redirect('/onboarding')
-
-  const [result, settingsResult, vehicles] = await Promise.all([
-    getRecurringInvoices(),
-    getDisplaySettings([SETTING_KEYS.CURRENCY_CODE]),
-    db.vehicle.findMany({
-      where: { organizationId: membership.organizationId, isArchived: false },
-      select: {
-        id: true,
-        make: true,
-        model: true,
-        year: true,
-        customer: { select: { id: true, name: true } },
-      },
-      orderBy: [{ make: 'asc' }, { model: 'asc' }],
-    }),
-  ])
-
-  const settings = settingsResult.success && settingsResult.data ? settingsResult.data : {}
-  const currencyCode = resolveCurrencyCode(settings[SETTING_KEYS.CURRENCY_CODE])
-  const invoices = result.success && result.data ? result.data : []
-
-  return (
-    <>
-      <PageHeader />
-      <ListPage>
-        <RecurringInvoicesClient
-          invoices={invoices}
-          vehicles={vehicles}
-          currencyCode={currencyCode}
-        />
-      </ListPage>
-    </>
-  )
+export default function RetiredRecurringInvoicesPage() {
+  redirect('/mutual-settlements')
 }

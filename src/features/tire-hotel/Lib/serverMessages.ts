@@ -1,3 +1,4 @@
+import { supportedLocale } from '@/i18n/config'
 import { cookies } from 'next/headers'
 
 type Messages = Record<string, unknown>
@@ -16,7 +17,7 @@ type Messages = Record<string, unknown>
  * still bills correctly, an exception does not.
  */
 export async function tireHotelMessages(): Promise<Messages> {
-  const locale = (await cookies()).get('locale')?.value || 'en'
+  const locale = supportedLocale((await cookies()).get('locale')?.value)
   try {
     return (await import(`../../../../messages/${locale}/tireHotel.json`)).default as Messages
   } catch {

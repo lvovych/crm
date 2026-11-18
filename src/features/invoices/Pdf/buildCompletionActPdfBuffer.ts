@@ -1,3 +1,4 @@
+import { getLocale } from 'next-intl/server'
 import 'server-only'
 import { documentFilename } from '@/lib/document-filename'
 import { readFile } from 'node:fs/promises'
@@ -12,6 +13,7 @@ export async function buildCompletionActPdfBuffer(recordId: string) {
   if (!a) return null
   const settings = a.settingsMap
   const buffer = await renderCompletionAct({
+    locale: await getLocale(),
     data: a.data,
     provider: {
       name: settings['completionAct.providerName'] || a.workshop.name,
@@ -24,7 +26,7 @@ export async function buildCompletionActPdfBuffer(recordId: string) {
       a.logoDataUri ||
       `data:image/png;base64,${(await readFile(path.join(process.cwd(), 'public/lauto-act-logo.png'))).toString('base64')}`,
     currency: a.invoiceSettings.currencyCode || 'UAH',
-    timezone: a.invoiceSettings.timezone || 'Europe/Kyiv',
+    timezone: a.invoiceSettings.timezone || 'Europe/Bucharest',
   })
   return { buffer, filename: documentFilename('complete_work', a.data) }
 }

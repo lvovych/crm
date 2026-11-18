@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -26,6 +27,8 @@ interface ServiceFormProps {
 }
 
 export function ServiceForm({ vehicleId, open, onOpenChange }: ServiceFormProps) {
+  const ot = useOperationText()
+
   const router = useRouter()
   const modal = useGlassModal()
   const [loading, setLoading] = useState(false)
@@ -65,32 +68,32 @@ export function ServiceForm({ vehicleId, open, onOpenChange }: ServiceFormProps)
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Add Service Record</DialogTitle>
+          <DialogTitle>{ot('Add Service Record')}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="title">Title *</Label>
-            <Input id="title" name="title" placeholder="Oil Change" required />
+            <Label htmlFor="title">{ot('Title *')}</Label>
+            <Input id="title" name="title" placeholder={ot('Oil Change')} required />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Type</Label>
+              <Label>{ot('Type')}</Label>
               <Select value={type} onValueChange={setType}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="maintenance">Maintenance</SelectItem>
-                  <SelectItem value="repair">Repair</SelectItem>
-                  <SelectItem value="upgrade">Upgrade</SelectItem>
-                  <SelectItem value="inspection">Inspection</SelectItem>
+                  <SelectItem value="maintenance">{ot('Maintenance')}</SelectItem>
+                  <SelectItem value="repair">{ot('Repair')}</SelectItem>
+                  <SelectItem value="upgrade">{ot('Upgrade')}</SelectItem>
+                  <SelectItem value="inspection">{ot('Inspection')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="serviceDate">Date</Label>
+              <Label htmlFor="serviceDate">{ot('Date')}</Label>
               <DateInput
                 id="serviceDate"
                 name="serviceDate"
@@ -102,53 +105,53 @@ export function ServiceForm({ vehicleId, open, onOpenChange }: ServiceFormProps)
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="cost">Cost ($)</Label>
+              <Label htmlFor="cost">{ot('Cost ($)')}</Label>
               <Input id="cost" name="cost" type="number" step="0.01" placeholder="0.00" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="mileage">Mileage</Label>
+              <Label htmlFor="mileage">{ot('Mileage')}</Label>
               <Input id="mileage" name="mileage" type="number" placeholder="50000" />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="shopName">Shop Name</Label>
-              <Input id="shopName" name="shopName" placeholder="Joe's Auto Shop" />
+              <Label htmlFor="shopName">{ot('Shop Name')}</Label>
+              <Input id="shopName" name="shopName" placeholder={ot("Joe's Auto Shop")} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="techName">Technician</Label>
-              <Input id="techName" name="techName" placeholder="Mike" />
+              <Label htmlFor="techName">{ot('Technician')}</Label>
+              <Input id="techName" name="techName" placeholder={ot('Mike')} />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="parts">Parts Used</Label>
-            <Input id="parts" name="parts" placeholder="Oil filter, 5W-30 synthetic oil" />
+            <Label htmlFor="parts">{ot('Parts Used')}</Label>
+            <Input id="parts" name="parts" placeholder={ot('Oil filter, 5W-30 synthetic oil')} />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="laborHours">Labor Hours</Label>
+            <Label htmlFor="laborHours">{ot('Labor Hours')}</Label>
             <Input id="laborHours" name="laborHours" type="number" step="0.5" placeholder="1.0" />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Notes</Label>
+            <Label htmlFor="description">{ot('Notes')}</Label>
             <Textarea
               id="description"
               name="description"
-              placeholder="Additional details..."
+              placeholder={ot('Additional details...')}
               rows={3}
             />
           </div>
 
           <div className="flex justify-end gap-3 pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {ot('Cancel')}
             </Button>
             <Button data-save-shortcut type="submit" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Add Record
+              {ot('Add Record')}
             </Button>
           </div>
         </form>

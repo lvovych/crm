@@ -1,3 +1,4 @@
+import { normalizeOrgPhone } from '@/lib/sms'
 /**
  * SMS Send Tests
  *
@@ -318,18 +319,18 @@ describe('Phone number E.164 validation', () => {
     expect(result.success).toBe(true)
   })
 
-  it('rejects phone numbers without + prefix before calling the vendor', async () => {
+  it('rejects nonnumeric phone numbers before calling the vendor', async () => {
     setupAuth()
     setupSmsProvider('twilio')
     vi.mocked(db.customer.findFirst).mockResolvedValue({
       id: 'cust-bad-phone',
       name: 'Bad Phone',
-      phone: '5551234567',
+      phone: 'not-a-phone',
     } as any)
     vi.mocked(db.smsMessage.create).mockResolvedValue({
       ...SMS_RECORD,
       id: 'sms-bad',
-      toNumber: '5551234567',
+      toNumber: 'not-a-phone',
     } as any)
     vi.mocked(db.smsMessage.update).mockResolvedValue({} as any)
 
@@ -690,5 +691,22 @@ describe('SMS status reflects actual vendor response', () => {
     expect(result.success).toBe(false)
     expect(result.error).toContain('not configured')
     expect(mockFetch).not.toHaveBeenCalled()
+  })
+})
+
+describe('workshop phone defaults', () => {
+  it.each([
+    '0671234567',
+    '67 123 45 67',
+  ])('uses +380 for %s when the country setting is absent', async (phone) => {
+    vi.mocked(db.appSetting.findUnique).mockResolvedValue(null)
+    expect(await normalizeOrgPhone('org-a', phone)).toBe('+380671234567')
+  })
+  it('preserves an explicit country and an explicit empty setting', async () => {
+    vi.mocked(db.appSetting.findUnique).mockResolvedValue({ value: '+47' } as any)
+    expect(await normalizeOrgPhone('org-a', '91234567')).toBe('+4791234567')
+    vi.mocked(db.appSetting.findUnique).mockResolvedValue({ value: '' } as any)
+    expect(await normalizeOrgPhone('org-a', '0671234567')).toBeNull()
+    expect(await normalizeOrgPhone('org-a', '+380671234567')).toBe('+380671234567')
   })
 })

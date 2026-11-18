@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { useRef, useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
@@ -101,6 +102,8 @@ export function DateInput({
   className?: string
   placeholder?: string
 }) {
+  const ot = useOperationText()
+
   const { dateFormat } = useDateSettings()
   const display = (d: Date | undefined) => (d ? formatWithOrgPattern(d, dateFormat) : '')
 
@@ -174,7 +177,7 @@ export function DateInput({
             className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:text-foreground"
           >
             <CalendarIcon className="h-4 w-4" />
-            <span className="sr-only">Open calendar</span>
+            <span className="sr-only">{ot('Open calendar')}</span>
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="end">

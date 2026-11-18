@@ -128,7 +128,7 @@ function toTimezone(date: Date, timezone: string): Date {
  * Default date format matching the most common existing pattern.
  */
 export const DEFAULT_DATE_FORMAT = 'MMM d, yyyy'
-export const DEFAULT_TIME_FORMAT = '12h' as const
+export const DEFAULT_TIME_FORMAT = '24h' as const
 
 /**
  * Simple date-fns-style format function that handles common tokens.
@@ -214,7 +214,7 @@ export function formatDate(
 export function formatDateTime(
   date: Date | string,
   dateFormat: string = DEFAULT_DATE_FORMAT,
-  timeFormat: '12h' | '24h' = '12h',
+  timeFormat: '12h' | '24h' = DEFAULT_TIME_FORMAT,
   timezone?: string
 ): string {
   let d = typeof date === 'string' ? new Date(date) : date
@@ -230,7 +230,7 @@ export function formatDateTime(
  */
 export function formatTime(
   date: Date | string,
-  timeFormat: '12h' | '24h' = '12h',
+  timeFormat: '12h' | '24h' = DEFAULT_TIME_FORMAT,
   timezone?: string
 ): string {
   let d = typeof date === 'string' ? new Date(date) : date

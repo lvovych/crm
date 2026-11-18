@@ -122,12 +122,12 @@ test('the invoice designer draws the split on its sample sheet', async ({ page }
 test('a job charges GST and QST on their own lines', async ({ page }) => {
   job = await priceTheJob(page, `E2E Québec ${stamp}`)
   await expectTotals(page, {
-    Parts: '$300.00',
-    Labor: '$600.00',
-    Subtotal: '$900.00',
-    'GST (5%)': '$45.00',
-    'QST (9.975%)': '$89.78',
-    Total: '$1,034.78',
+    Parts: '300,00 UAH',
+    Labor: '600,00 UAH',
+    Subtotal: '900,00 UAH',
+    'GST (5%)': '45,00 UAH',
+    'QST (9.975%)': '89,78 UAH',
+    Total: '1 034,78 UAH',
   })
   // No combined line, and no rate field: the split is the workshop's.
   await expect(totalsRow(page, 'Tax')).toHaveCount(0)
@@ -141,16 +141,20 @@ test('a discount comes off before both taxes', async ({ page }) => {
   await setDiscount(page, 'Percentage', 10)
   await saveWorkOrder(page)
   await expectTotals(page, {
-    Discount: '-$90.00',
-    'GST (5%)': '$40.50',
-    'QST (9.975%)': '$80.80',
-    Total: '$931.30',
+    Discount: '-90,00 UAH',
+    'GST (5%)': '40,50 UAH',
+    'QST (9.975%)': '80,80 UAH',
+    Total: '931,30 UAH',
   })
 
   // The saved figures survive a reload: the server re-derived the split.
   await page.reload()
   await settle(page)
-  await expectTotals(page, { 'GST (5%)': '$40.50', 'QST (9.975%)': '$80.80', Total: '$931.30' })
+  await expectTotals(page, {
+    'GST (5%)': '40,50 UAH',
+    'QST (9.975%)': '80,80 UAH',
+    Total: '931,30 UAH',
+  })
 })
 
 test('the customer copy and the PDF print both taxes and both registration numbers', async ({
@@ -163,9 +167,9 @@ test('the customer copy and the PDF print both taxes and both registration numbe
   for (const text of [
     /GST \(5%\)/,
     /QST \(9\.975%\)/,
-    '$40.50',
-    '$80.80',
-    '$931.30',
+    '40,50 UAH',
+    '80,80 UAH',
+    '931,30 UAH',
     GST_NUMBER,
     QST_NUMBER,
   ]) {
@@ -183,9 +187,9 @@ test('the customer copy and the PDF print both taxes and both registration numbe
   for (const text of [
     'GST (5%)',
     'QST (9.975%)',
-    '40.50',
-    '80.80',
-    '931.30',
+    '40,50 UAH',
+    '80,80 UAH',
+    '931,30 UAH',
     'GST No.',
     GST_NUMBER,
     'QST No.',
@@ -205,9 +209,9 @@ test('a quote shows the same split', async ({ page }) => {
   const rows = page.getByTestId('tax-component-row')
   await expect(rows).toHaveCount(2)
   await expect(rows.nth(0)).toContainText('GST (5%)')
-  await expect(rows.nth(0)).toContainText('$45.00')
+  await expect(rows.nth(0)).toContainText('45,00 UAH')
   await expect(rows.nth(1)).toContainText('QST (9.975%)')
-  await expect(rows.nth(1)).toContainText('$89.78')
+  await expect(rows.nth(1)).toContainText('89,78 UAH')
 })
 
 test('the tax report totals each tax by name', async ({ page }) => {
@@ -226,8 +230,8 @@ test('the tax report totals each tax by name', async ({ page }) => {
   await expect(qst).toHaveCount(1)
   // Each row carries money and a count; the exact figures depend on what
   // earlier runs left in the period, so the shape is what is pinned.
-  await expect(gst).toContainText(/\$\d/)
-  await expect(qst).toContainText(/\$\d/)
+  await expect(gst).toContainText(/\d+,\d{2}\s*UAH/)
+  await expect(qst).toContainText(/\d+,\d{2}\s*UAH/)
 })
 
 test('switching the split off puts a new job back on one tax line', async ({ page }) => {
@@ -237,10 +241,10 @@ test('switching the split off puts a new job back on one tax line', async ({ pag
   await expect(page.locator('#defaultTaxRate')).toHaveValue('25')
 
   await priceTheJob(page, `E2E single again ${stamp}`)
-  await expectTotals(page, { Tax: '$225.00', Total: '$1,125.00' })
+  await expectTotals(page, { Tax: '225,00 UAH', Total: '1 125,00 UAH' })
   await expect(page.getByTestId('tax-component-row')).toHaveCount(0)
 
   // The Québec job keeps the taxes it was made with.
   await page.goto(job)
-  await expectTotals(page, { 'GST (5%)': '$40.50', 'QST (9.975%)': '$80.80' })
+  await expectTotals(page, { 'GST (5%)': '40,50 UAH', 'QST (9.975%)': '80,80 UAH' })
 })

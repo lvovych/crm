@@ -1,3 +1,4 @@
+import { getOperationText } from '@/i18n/operation-text.server'
 import { redirect } from 'next/navigation'
 import { getLayoutData } from '@/lib/get-layout-data'
 import { getFeatures, isCloudMode } from '@/lib/features'
@@ -7,6 +8,8 @@ import { FeatureLocked } from '../feature-locked-message'
 import { TireHotelSettings } from './tire-hotel-settings'
 
 export default async function TireHotelSettingsPage() {
+  const ot = await getOperationText()
+
   const data = await getLayoutData()
 
   if (data.status === 'unauthenticated') redirect('/auth/sign-in')
@@ -34,7 +37,9 @@ export default async function TireHotelSettingsPage() {
   return locked ? (
     <FeatureLocked
       feature="Tire Hotel"
-      description="Store your customers' seasonal tires, track which shelf every set sits on, and see at a glance how much room is left."
+      description={ot(
+        "Store your customers' seasonal tires, track which shelf every set sits on, and see at a glance how much room is left."
+      )}
       isCloud={isCloudMode()}
     >
       {content}

@@ -1,3 +1,4 @@
+import { languageState } from '../../support/language'
 import { expect, type Page, test } from '@playwright/test'
 import { customerOfVehicle, forgetEmailTemplates, ownerOrganizationId } from '../../support/db'
 import { openPreset, preview, railBlock, saveDesign } from '../../support/email-designer'
@@ -219,7 +220,7 @@ test.describe('a customer asking for a sign-in link', () => {
       .context()
       .browser()
       ?.newPage({
-        storageState: { cookies: [], origins: [] },
+        storageState: languageState('en'),
       })
     if (!customerPage) throw new Error('no browser to open the link with')
     await customerPage.goto(link)
@@ -281,7 +282,7 @@ test.describe('a logo in the mail', () => {
     expect(src, 'served from the public route').toContain('/api/public/email-')
     const stranger = await playwright.request.newContext({
       baseURL: new URL(src).origin,
-      storageState: { cookies: [], origins: [] },
+      storageState: languageState('en'),
     })
     const fetched = await stranger.get(src)
     expect(fetched.status(), `${src} answers a mail client`).toBe(200)

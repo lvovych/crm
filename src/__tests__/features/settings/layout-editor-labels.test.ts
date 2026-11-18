@@ -45,8 +45,8 @@ function layoutEditorMessages(locale: string) {
 }
 
 describe('layout editor labels', () => {
-  it('has at least the twelve shipped locales to check', () => {
-    expect(LOCALES.length).toBeGreaterThanOrEqual(12)
+  it('checks the three supported locales', () => {
+    expect([...LOCALES].sort()).toEqual(['en', 'ru', 'uk'])
   })
 
   it.each(LOCALES)('names every section in %s', (locale) => {

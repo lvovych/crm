@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { useCallback, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
@@ -77,6 +78,8 @@ export function PartDetailClient({
   /** workshop.unitSystem, orders unit suggestions in the edit form. */
   unitSystem?: string
 }) {
+  const ot = useOperationText()
+
   const t = useTranslations('inventory')
   const router = useRouter()
   const pathname = usePathname()
@@ -105,11 +108,11 @@ export function PartDetailClient({
   const reasonLabel = (value: string) => {
     switch (value) {
       case 'supplier_receipt':
-        return 'Надходження від постачальника'
+        return ot('Надходження від постачальника')
       case 'supplier_return':
-        return 'Повернення постачальнику'
+        return ot('Повернення постачальнику')
       case 'supplier_receipt_cancelled':
-        return 'Скасування надходження'
+        return ot('Скасування надходження')
       case 'service_record':
         return t('history.reasons.service_record')
       case 'service_record_deleted':
@@ -222,7 +225,7 @@ export function PartDetailClient({
                   <div className="min-w-0 flex-1">
                     {m.receiptId ? (
                       <Link className="underline" href={'/receipts/' + m.receiptId}>
-                        {m.note ?? 'Накладна'}
+                        {m.note ?? ot('Накладна')}
                       </Link>
                     ) : m.serviceRecordId ? (
                       <Link
@@ -318,7 +321,7 @@ export function PartDetailClient({
                     <TableCell>
                       {m.receiptId ? (
                         <Link className="underline" href={'/receipts/' + m.receiptId}>
-                          {m.note ?? 'Накладна'}
+                          {m.note ?? ot('Накладна')}
                         </Link>
                       ) : m.serviceRecordId ? (
                         <Link

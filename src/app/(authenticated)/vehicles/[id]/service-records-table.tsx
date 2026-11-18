@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { DEFAULT_CURRENCY_CODE } from '@/lib/currencies'
 import { useTableKeyboardNav } from '@/hooks/use-table-keyboard-nav'
 import { interactiveRow } from '@/lib/interactive-row'
@@ -106,6 +107,8 @@ export function ServiceRecordsTable({
   currencyCode = DEFAULT_CURRENCY_CODE,
   vehicleMileage,
 }: ServiceRecordsTableProps) {
+  const ot = useOperationText()
+
   const formatCurrency = useFormatCurrency()
   const router = useRouter()
   const { formatDate } = useFormatDate()
@@ -201,7 +204,7 @@ export function ServiceRecordsTable({
             onValueChange={(v) => navigate({ type: v === 'all' ? undefined : v })}
           >
             <SelectTrigger className="h-9 w-[130px] shrink-0 sm:w-[140px]">
-              <SelectValue placeholder="All types" />
+              <SelectValue placeholder={ot('All types')} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t('allTypes')}</SelectItem>

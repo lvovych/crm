@@ -1,5 +1,6 @@
+import { supportedLocale } from '@/i18n/config'
 import { NextResponse } from 'next/server'
-import { renderToBuffer } from '@react-pdf/renderer'
+import { renderToBuffer } from '@/lib/render-pdf'
 import '@/features/vehicles/Components/invoice-pdf/fonts'
 import { cookies } from 'next/headers'
 import { getAuthContext } from '@/lib/get-auth-context'
@@ -31,7 +32,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
     // Load locale-based PDF translations
     const cookieStore = await cookies()
-    const locale = cookieStore.get('locale')?.value || 'en'
+    const locale = supportedLocale(cookieStore.get('locale')?.value)
     let pdfMessages: Record<string, Record<string, string>>
     try {
       pdfMessages = (await import(`../../../../../../../messages/${locale}/pdf.json`)).default

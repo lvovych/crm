@@ -1,8 +1,11 @@
+import { getOperationText } from '@/i18n/operation-text.server'
 import { notFound, redirect } from 'next/navigation'
 import { supplierReturnDetail, supplierReturnOptions } from '@/features/receipts/return-actions'
 import { ConsolidatedReturnForm } from '@/features/receipts/ConsolidatedReturnForm'
 import { DocumentHeader } from '@/components/operations/document-ui'
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  const ot = await getOperationText()
+
   const { id } = await params,
     r = await supplierReturnDetail(id)
   if (!r.success) return <p role="alert">{r.error}</p>
@@ -17,8 +20,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   return (
     <>
       <DocumentHeader
-        title={'Редагування чернетки ' + d.number}
-        back={{ href: '/supplier-returns/' + id, label: 'До документа' }}
+        title={ot("Редагування чернетки ") + d.number}
+        back={{ href: '/supplier-returns/' + id, label: ot('До документа') }}
       />
       <ConsolidatedReturnForm
         data={options.data}

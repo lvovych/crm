@@ -1,3 +1,6 @@
+vi.mock('@/lib/invoice-number.server', async () => ({
+  nextInvoiceNumber: (await import('@/__tests__/stubs/invoice-number')).actionTestInvoiceNumber,
+}))
 /**
  * Tests for convertQuoteToServiceRecord — the point at which a quote's parts
  * become real consumption.

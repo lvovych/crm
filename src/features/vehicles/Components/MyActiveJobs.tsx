@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { useTableKeyboardNav } from '@/hooks/use-table-keyboard-nav'
 import { formatQuantity } from '@/lib/format-quantity'
 import { interactiveRow } from '@/lib/interactive-row'
@@ -78,6 +79,8 @@ export function MyActiveJobs({
   telegramEnabled,
   showEmpty = false,
 }: MyActiveJobsProps) {
+  const ot = useOperationText()
+
   const t = useTranslations('dashboard.myJobs')
   const tClock = useTranslations('timeTracking.job')
   const router = useRouter()
@@ -202,7 +205,7 @@ export function MyActiveJobs({
       partNumber: scannedPart.partNumber || undefined,
       name: scannedPart.name,
       quantity: qty,
-      unit: scannedPart.unit?.trim() || 'шт.',
+      unit: scannedPart.unit?.trim() || ot('шт.'),
       unitPrice: price,
       total: price * qty,
       unitCost: scannedPart.unitCost,

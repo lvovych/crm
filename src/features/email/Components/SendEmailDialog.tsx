@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -29,6 +30,8 @@ export function SendEmailDialog({
   entityLabel,
   onSend,
 }: SendEmailDialogProps) {
+  const ot = useOperationText()
+
   const modal = useGlassModal()
   const [sending, setSending] = useState(false)
   const [email, setEmail] = useState(defaultEmail)
@@ -56,12 +59,13 @@ export function SendEmailDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Mail className="h-5 w-5" />
-            Send {entityLabel}
+            {ot("Send ")}
+            {entityLabel}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSend} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Recipient Email</Label>
+            <Label htmlFor="email">{ot('Recipient Email')}</Label>
             <Input
               id="email"
               type="email"
@@ -72,10 +76,10 @@ export function SendEmailDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="message">Message (optional)</Label>
+            <Label htmlFor="message">{ot('Message (optional)')}</Label>
             <Textarea
               id="message"
-              placeholder="Add a personal message..."
+              placeholder={ot('Add a personal message...')}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={3}
@@ -88,7 +92,7 @@ export function SendEmailDialog({
           />
           <div className="flex justify-end gap-2">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-              Cancel
+              {ot('Cancel')}
             </Button>
             <Button type="submit" disabled={sending || !email}>
               {sending ? (
@@ -96,7 +100,7 @@ export function SendEmailDialog({
               ) : (
                 <Send className="mr-2 h-4 w-4" />
               )}
-              Send Email
+              {ot('Send Email')}
             </Button>
           </div>
         </form>

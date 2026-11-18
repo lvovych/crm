@@ -1,5 +1,5 @@
 import 'server-only'
-import { renderToBuffer } from '@react-pdf/renderer'
+import { renderToBuffer } from '@/lib/render-pdf'
 import '@/features/vehicles/Components/invoice-pdf/fonts'
 import React from 'react'
 import { readFile } from 'fs/promises'

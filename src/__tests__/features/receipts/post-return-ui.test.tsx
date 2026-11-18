@@ -1,3 +1,6 @@
+import { beforeEach as beforeLocale, vi as localeMock } from 'vitest'
+import { useLocale as testLocale } from 'next-intl'
+// These scenarios exercise the Ukrainian operational interface.
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { expect, it, vi, beforeEach } from 'vitest'
 const f = vi.hoisted(() => ({ post: vi.fn(), refresh: vi.fn() }))
@@ -31,3 +34,5 @@ it('keeps the draft visible and explains a stock failure', async () => {
   expect(f.refresh).not.toHaveBeenCalled()
   expect(screen.getByRole('button')).toBeEnabled()
 })
+
+beforeLocale(() => localeMock.mocked(testLocale).mockReturnValue('uk'))

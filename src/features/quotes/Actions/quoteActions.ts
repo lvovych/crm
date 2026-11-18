@@ -28,7 +28,7 @@ import { createQuoteSchema, quoteStatusSchema, updateQuoteSchema } from '../Sche
 import { createQuoteRecord } from '../Lib/createQuoteRecord'
 import { revalidatePath } from 'next/cache'
 import { onInventoryChanged } from '@/features/inventory/Lib/onInventoryChanged'
-import { resolveInvoicePrefix } from '@/lib/invoice-utils'
+import { nextInvoiceNumber } from '@/lib/invoice-number.server'
 import { workshopTimeZone } from '@/lib/workshop-timezone'
 import { toSafeWorkshopDate } from '@/lib/workshop-datetime'
 import { PermissionAction, PermissionSubject } from '@/lib/permissions'
@@ -466,19 +466,6 @@ export async function convertQuoteToServiceRecord(quoteId: string, vehicleId: st
       ])
       const settingsMap: Record<string, string> = {}
       for (const s of settings) settingsMap[s.key] = s.value
-      const prefix = resolveInvoicePrefix(settingsMap['workshop.invoicePrefix'] ?? '{year}-')
-
-      const lastRecord = await db.serviceRecord.findFirst({
-        where: { organizationId },
-        orderBy: { createdAt: 'desc' },
-        select: { invoiceNumber: true },
-      })
-      let nextNum = 1001
-      if (lastRecord?.invoiceNumber) {
-        const match = lastRecord.invoiceNumber.match(/(\d+)$/)
-        if (match) nextNum = parseInt(match[1], 10) + 1
-      }
-      const invoiceNumber = `${prefix}${nextNum}`
 
       // What the customer was told on the quote is what the job carries, "not
       // included" as much as twelve months: they accepted on those words. A
@@ -491,6 +478,7 @@ export async function convertQuoteToServiceRecord(quoteId: string, vehicleId: st
         : warrantyFieldsForNewDocument(readWarrantyDefaults(settingsMap), 'workOrder')
 
       const record = await db.$transaction(async (tx) => {
+        const invoiceNumber = await nextInvoiceNumber(tx, organizationId, timeZone)
         const created = await tx.serviceRecord.create({
           data: {
             customerLedgerTracked: true,

@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
@@ -52,6 +53,8 @@ export function InspectionShareDialog({
   smsEnabled = false,
   emailEnabled = false,
 }: InspectionShareDialogProps) {
+  const ot = useOperationText()
+
   const t = useTranslations('inspections.shareDialog')
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -191,7 +194,10 @@ export function InspectionShareDialog({
               {/* Notify customer */}
               {customer && (emailEnabled || smsEnabled) && (
                 <div className="space-y-3 rounded-lg border p-3">
-                  <p className="text-sm font-medium">Notify {customer.name}</p>
+                  <p className="text-sm font-medium">
+                    {ot("Notify ")}
+                    {customer.name}
+                  </p>
                   <div className="space-y-2">
                     {emailEnabled && (
                       <div className="flex items-center gap-2">
@@ -206,8 +212,8 @@ export function InspectionShareDialog({
                           className={`flex items-center gap-1.5 text-sm ${!hasEmail ? 'text-muted-foreground/50' : ''}`}
                         >
                           <Mail className="h-3.5 w-3.5" />
-                          Email
-                          {!hasEmail && <span className="text-xs">(no email on file)</span>}
+                          {ot('Email')}
+                          {!hasEmail && <span className="text-xs">{ot('(no email on file)')}</span>}
                         </Label>
                       </div>
                     )}
@@ -234,8 +240,8 @@ export function InspectionShareDialog({
                           className={`flex items-center gap-1.5 text-sm ${!hasPhone ? 'text-muted-foreground/50' : ''}`}
                         >
                           <MessageSquare className="h-3.5 w-3.5" />
-                          SMS
-                          {!hasPhone && <span className="text-xs">(no phone on file)</span>}
+                          {ot('SMS')}
+                          {!hasPhone && <span className="text-xs">{ot('(no phone on file)')}</span>}
                         </Label>
                       </div>
                     )}
@@ -249,7 +255,7 @@ export function InspectionShareDialog({
                     className="w-full"
                   >
                     {sending && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
-                    Send Notification
+                    {ot('Send Notification')}
                   </Button>
                 </div>
               )}
@@ -265,7 +271,7 @@ export function InspectionShareDialog({
                 ) : (
                   <Unlink className="mr-2 h-4 w-4" />
                 )}
-                Revoke Link
+                {ot('Revoke Link')}
               </Button>
             </>
           ) : (
@@ -275,7 +281,7 @@ export function InspectionShareDialog({
               ) : (
                 <Link2 className="mr-2 h-4 w-4" />
               )}
-              Generate Share Link
+              {ot('Generate Share Link')}
             </Button>
           )}
         </div>

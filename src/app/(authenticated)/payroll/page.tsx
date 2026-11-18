@@ -1,3 +1,4 @@
+import { getOperationText } from '@/i18n/operation-text.server'
 import { DocumentHeader, DocumentStatus, MoneySummary } from '@/components/operations/document-ui'
 import { EmployeeRules } from '@/features/payroll/EmployeeRules'
 import { Lines } from '@/features/payroll/Lines'
@@ -23,20 +24,22 @@ export default async function Payroll({
     slip?: string
   }>
 }) {
+  const ot = await getOperationText()
+
   const q = await searchParams,
     r = await payrollData(q.employee || '')
   if (!r.data) return <p>{r.error}</p>
   const { people, employee, canManage } = r.data
-  if (!employee) return <Link href="/employees">Додайте працівника</Link>
+  if (!employee) return <Link href="/employees">{ot('Додайте працівника')}</Link>
   const id = <input type="hidden" name="employee" value={employee.id} />
   const rules = q.mode === 'rules'
   const saved = q.slip ? r.data.slips.find((s) => s.id === q.slip) : undefined
-  if (q.slip && !saved) return <p>Документ не знайдено.</p>
+  if (q.slip && !saved) return <p>{ot('Документ не знайдено.')}</p>
   if (saved)
     return (
       <main className="ops-workspace mx-auto w-full max-w-6xl space-y-6 p-4 sm:p-6">
         <Link href="/employees?tab=documents" className="underline">
-          Документи нарахування
+          {ot('Документи нарахування')}
         </Link>
         <DocumentHeader
           title={'SAL · ' + employee.name}
@@ -45,28 +48,28 @@ export default async function Payroll({
               className="rounded-md border px-4 py-2 text-sm"
               href={'/documents/salary/' + saved.id}
             >
-              Пов’язані виплати
+              {ot('Пов’язані виплати')}
             </Link>
           }
           status={
             <DocumentStatus tone={saved.status === 'completed' ? 'success' : 'neutral'}>
-              {saved.status === 'new' ? 'Новий' : 'Завершено'}
+              {saved.status === 'new' ? ot('Новий') : ot('Завершено')}
             </DocumentStatus>
           }
         />
         <p>
           {saved.start.toISOString().slice(0, 10)} — {saved.end.toISOString().slice(0, 10)} ·{' '}
-          {saved.status === 'new' ? 'Новий' : 'Завершено'}
+          {saved.status === 'new' ? ot('Новий') : ot('Завершено')}
         </p>
         <Lines details={saved.lines as unknown as import('@/features/payroll/Lines').SlipDetails} />
         <MoneySummary
-          items={[{ label: 'Нараховано', value: saved.total.toFixed(2), emphasis: true }]}
+          items={[{ label: ot('Нараховано'), value: saved.total.toFixed(2), emphasis: true }]}
         />
         {saved.status === 'new' && (
           <form action={finishSAL}>
             <input type="hidden" name="slip" value={saved.id} />
             <button className="rounded bg-primary px-4 py-2 text-primary-foreground">
-              Завершити SAL
+              {ot('Завершити SAL')}
             </button>
           </form>
         )}
@@ -79,10 +82,10 @@ export default async function Payroll({
         className="text-sm underline"
         href={rules ? '/employees/' + encodeURIComponent(employee.id) : '/employees?tab=documents'}
       >
-        {rules ? 'Картка працівника' : 'Документи нарахування'}
+        {rules ? ot('Картка працівника') : ot('Документи нарахування')}
       </Link>
       <h1 className="text-3xl font-semibold">
-        {rules ? 'Правила нарахування' : 'Новий документ нарахування'}
+        {rules ? ot('Правила нарахування') : ot('Новий документ нарахування')}
       </h1>
       <p className="text-xl font-medium">{employee.name}</p>
       {rules && (
@@ -90,15 +93,15 @@ export default async function Payroll({
           <EmployeeRules data={r.data} />
           {canManage && (
             <details className="rounded border p-4">
-              <summary>Призначити відповідального за наряд</summary>
+              <summary>{ot('Призначити відповідального за наряд')}</summary>
               <form action={assignOrder} className="flex flex-wrap gap-3 py-2">
                 {id}
-                <input name="order" required placeholder="Номер або ID наряду" />
+                <input name="order" required placeholder={ot('Номер або ID наряду')} />
                 <select name="role">
-                  <option value="partsId">Запчастист</option>
-                  <option value="ownerId">Отримувач частки маржі</option>
+                  <option value="partsId">{ot('Запчастист')}</option>
+                  <option value="ownerId">{ot('Отримувач частки маржі')}</option>
                 </select>
-                <button>Призначити</button>
+                <button>{ot('Призначити')}</button>
               </form>
             </details>
           )}
@@ -106,10 +109,10 @@ export default async function Payroll({
       )}
       {!rules && (
         <section className="ops-panel">
-          <h2 className="text-xl font-semibold">Працівник і період</h2>
+          <h2 className="text-xl font-semibold">{ot('Працівник і період')}</h2>
           <form className="ops-form my-5">
             <label className="grid gap-1 text-sm font-medium">
-              Працівник
+              {ot('Працівник')}
               <select className="rounded border p-2" name="employee" defaultValue={employee.id}>
                 {people.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -119,18 +122,21 @@ export default async function Payroll({
               </select>
             </label>
             <label>
-              Початок періоду <input type="date" name="start" defaultValue={q.start} required />
+              {ot("Початок періоду ")}
+              <input type="date" name="start" defaultValue={q.start} required />
             </label>
             <label>
-              Кінець періоду <input type="date" name="end" defaultValue={q.end} required />
+              {ot("Кінець періоду ")}
+              <input type="date" name="end" defaultValue={q.end} required />
             </label>
-            <button>Попередній розрахунок</button>
+            <button>{ot('Попередній розрахунок')}</button>
           </form>
           {preview?.error && <p>{preview.error}</p>}
           {preview?.data && (
             <>
               <p className="my-4 text-lg font-semibold">
-                До нарахування · {preview.data.total} грн
+                {ot("До нарахування · ")}
+                {preview.data.total} {ot(" грн")}
               </p>
               <Lines details={preview.data} />
               {canManage && (
@@ -154,25 +160,25 @@ export default async function Payroll({
                     })}
                   />
                   <details className="my-2">
-                    <summary>Додати утримання або коригування</summary>
+                    <summary>{ot('Додати утримання або коригування')}</summary>
                     <select name="adjustType">
-                      <option value="deduct">Утримання</option>
-                      <option value="bonus">Донарахування</option>
+                      <option value="deduct">{ot('Утримання')}</option>
+                      <option value="bonus">{ot('Донарахування')}</option>
                     </select>
                     <input
                       type="number"
                       min="0"
                       step=".01"
                       name="adjustAmount"
-                      placeholder="Сума, грн"
+                      placeholder={ot('Сума, грн')}
                     />
                     <input
                       name="reason"
                       maxLength={300}
-                      placeholder="Підстава або номер попереднього листка"
+                      placeholder={ot('Підстава або номер попереднього листка')}
                     />
                   </details>
-                  <button>Зберегти SAL · Новий</button>
+                  <button>{ot('Зберегти SAL · Новий')}</button>
                 </form>
               )}
             </>
@@ -180,7 +186,7 @@ export default async function Payroll({
         </section>
       )}
       <Link href={'/employee-settlements?employee=' + employee.id} className="underline">
-        Взаєморозрахунки з працівником
+        {ot('Взаєморозрахунки з працівником')}
       </Link>
     </main>
   )

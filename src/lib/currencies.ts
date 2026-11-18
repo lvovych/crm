@@ -199,7 +199,7 @@ const BY_CODE = new Map(CURRENCIES.map((c) => [c.code, c]))
 export const SELECTABLE_CURRENCIES = CURRENCIES.filter((c) => !c.retired)
 
 /** What a workshop that never chose a currency is shown. */
-export const DEFAULT_CURRENCY_CODE = 'USD'
+export const DEFAULT_CURRENCY_CODE = 'UAH'
 
 export type CurrencyFormat = 'symbol' | 'code'
 export const DEFAULT_CURRENCY_FORMAT: CurrencyFormat = 'symbol'

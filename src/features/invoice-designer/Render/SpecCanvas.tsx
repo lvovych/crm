@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import type { Anchor, Block, DocumentSpec, FlowRow, PageSpec } from '../Spec/documentSpec'
@@ -265,6 +266,8 @@ export function SpecCanvas({
   zoom: number
   rulers: boolean
 }) {
+  const ot = useOperationText()
+
   const t = useTranslations('settings.designer')
   const placeholderLabel = t('placeholder')
   // The same set marks blocks here and rows inside them further down, since a
@@ -1182,7 +1185,8 @@ export function SpecCanvas({
             ))}
         </div>
         <div style={{ textAlign: 'center', fontSize: 12, color: '#8a8f97' }}>
-          Page {pageNumber} of {renderLayout.pageCount}
+          {ot("Page ")}
+          {pageNumber} of {renderLayout.pageCount}
         </div>
       </div>
     )

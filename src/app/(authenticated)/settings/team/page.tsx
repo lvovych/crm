@@ -1,3 +1,4 @@
+import { getOperationText } from '@/i18n/operation-text.server'
 import { memberLinks, linkEmployee } from '@/features/employees/actions'
 import { getOrganization } from '@/features/team/Actions/teamActions'
 import { getRoles } from '@/features/team/Actions/getRoles'
@@ -12,6 +13,8 @@ export default async function TeamPage({
 }: {
   searchParams: Promise<{ add?: string }>
 }) {
+  const ot = await getOperationText()
+
   // Quick Add sends people here to add somebody, so land them on the question
   // rather than on a page where they have to find the button again.
   const { add } = await searchParams
@@ -48,7 +51,7 @@ export default async function TeamPage({
       />
       {links && (
         <section className="m-6 space-y-3">
-          <h2 className="text-xl font-semibold">Прив’язка користувачів до працівників</h2>
+          <h2 className="text-xl font-semibold">{ot('Прив’язка користувачів до працівників')}</h2>
           {links.members.map(({ user }) => (
             <form key={user.id} action={linkEmployee} className="flex items-center gap-3">
               <input type="hidden" name="userId" value={user.id} />
@@ -58,7 +61,7 @@ export default async function TeamPage({
                   name="employee"
                   defaultValue={links.employees.find((e) => e.userId === user.id)?.id || ''}
                 >
-                  <option value="">Без прив’язки</option>
+                  <option value="">{ot('Без прив’язки')}</option>
                   {links.employees
                     .filter((e) => !e.userId || e.userId === user.id)
                     .map((e) => (
@@ -68,7 +71,7 @@ export default async function TeamPage({
                     ))}
                 </select>
               </label>
-              <button>Зберегти</button>
+              <button>{ot('Зберегти')}</button>
             </form>
           ))}
         </section>

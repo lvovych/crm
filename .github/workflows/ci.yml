@@ -28,7 +28,9 @@ jobs:
 
       - run: npx prisma generate
 
-      - run: npm test
+      - run: npm run test:coverage
+
+      - run: npm run test:coverage:check
 
       # Next reuses its compiler cache across builds when it is given one.
       # This build is the plain one, with no NEXT_PUBLIC_APP_URL override, so
@@ -71,4 +73,4 @@ jobs:
       - run: npm ci
       - run: npx prisma generate
       - run: npx prisma migrate deploy
-      - run: npx vitest run src/__tests__/features/finance src/__tests__/features/customer-ledger src/__tests__/features/documents
+      - run: npm run test:finance

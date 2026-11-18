@@ -1,3 +1,4 @@
+import { getOperationText } from '@/i18n/operation-text.server'
 import { getSettings } from '@/features/settings/Actions/settingsActions'
 import { getPaymentConnections } from '@/features/integrations/Actions/integrationActions'
 import { getLayoutData } from '@/lib/get-layout-data'
@@ -7,6 +8,8 @@ import { FeatureLocked } from '../feature-locked-message'
 import { redirect } from 'next/navigation'
 
 export default async function PaymentSettingsPage() {
+  const ot = await getOperationText()
+
   const data = await getLayoutData()
 
   if (data.status === 'unauthenticated') redirect('/auth/sign-in')
@@ -30,7 +33,9 @@ export default async function PaymentSettingsPage() {
   return locked ? (
     <FeatureLocked
       feature="Payment Settings"
-      description="Configure payment providers, terms, and online payment options for your invoices."
+      description={ot(
+        'Configure payment providers, terms, and online payment options for your invoices.'
+      )}
       isCloud={isCloudMode()}
     >
       {content}

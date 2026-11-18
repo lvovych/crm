@@ -1,3 +1,4 @@
+import { getOperationText } from '@/i18n/operation-text.server'
 import { getLayoutData } from '@/lib/get-layout-data'
 import { getFeatures, isCloudMode } from '@/lib/features'
 import { redirect } from 'next/navigation'
@@ -9,6 +10,8 @@ import {
 import { ReportScheduleSettings } from './report-schedule-settings'
 
 export default async function ReportSchedulePage() {
+  const ot = await getOperationText()
+
   const data = await getLayoutData()
 
   if (data.status === 'unauthenticated') redirect('/auth/sign-in')
@@ -31,7 +34,7 @@ export default async function ReportSchedulePage() {
   return locked ? (
     <FeatureLocked
       feature="Report Schedule"
-      description="Automatically generate and email report PDFs on a recurring schedule."
+      description={ot('Automatically generate and email report PDFs on a recurring schedule.')}
       isCloud={isCloudMode()}
     >
       {content}

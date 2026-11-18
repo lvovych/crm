@@ -1,3 +1,4 @@
+import { languageState } from '../../support/language'
 import { expect, test } from '@playwright/test'
 import { deletePersonWithEmail, organizationCount, personWithEmail } from '../../support/db'
 import { settle } from '../../support/hydration'
@@ -32,7 +33,7 @@ test.afterAll(async () => {
 })
 
 test.describe('a stranger signing up', () => {
-  test.use({ storageState: { cookies: [], origins: [] } })
+  test.use({ storageState: languageState('en') })
 
   test('is told to ask for an invitation instead of opening a workshop', async ({ page }) => {
     await page.goto('/auth/sign-up')

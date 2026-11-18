@@ -1,8 +1,10 @@
+import { operationText } from '@/i18n/operations'
 import { Document, Page, Text, View, Image, StyleSheet } from '@react-pdf/renderer'
 import type { InvoiceData } from '@/features/vehicles/Components/invoice-pdf/types'
 import { hryvniaWords } from './moneyWords'
 
 export interface CompletionActProps {
+  locale?: string
   data: InvoiceData
   provider: { name: string; address: string; phone: string; code: string; bank: string }
   logoDataUri?: string
@@ -79,6 +81,7 @@ function lineDiscount(line: { discountType?: string; discountValue?: number }) {
   return undefined
 }
 function Lines({
+  locale,
   title,
   lines,
   currency,
@@ -86,6 +89,7 @@ function Lines({
   showBrand = false,
   showDiscount,
 }: {
+  locale: string
   title: string
   lines: Line[]
   currency: string
@@ -93,6 +97,7 @@ function Lines({
   showBrand?: boolean
   showDiscount: boolean
 }) {
+  const ot = operationText(locale)
   const widths = showBrand
     ? showDiscount
       ? ['4%', '28%', '12%', '6%', '9%', '13%', '13%', '15%']
@@ -107,13 +112,13 @@ function Lines({
         <View style={[s.row, s.tableHead]}>
           {[
             '№',
-            'Назва',
-            ...(showBrand ? ['Бренд'] : []),
-            'Од.',
-            'Кількість',
-            taxed ? 'Ціна, грн' : 'Ціна без ПДВ',
-            ...(showDiscount ? ['Знижка'] : []),
-            showDiscount ? 'Сума зі знижкою' : taxed ? 'Сума, грн' : 'Сума без ПДВ',
+            ot('Назва'),
+            ...(showBrand ? [ot('Бренд')] : []),
+            ot('Од.'),
+            ot('Кількість'),
+            taxed ? ot('Ціна, грн') : ot('Ціна без ПДВ'),
+            ...(showDiscount ? [ot('Знижка')] : []),
+            showDiscount ? ot('Сума зі знижкою') : taxed ? ot('Сума, грн') : ot('Сума без ПДВ'),
           ].map((v, i) => (
             <Text
               key={i}
@@ -122,7 +127,7 @@ function Lines({
                 { width: widths[i], textAlign: i > (showBrand ? 3 : 2) ? 'right' : 'left' },
               ]}
             >
-              {v.replace('грн', currency)}
+              {v.replace(ot('грн'), currency)}
             </Text>
           ))}
         </View>
@@ -151,31 +156,34 @@ function Lines({
           ))}
         </View>
       ))}
-      {!lines.length && <Text style={{ padding: 5 }}>Не зазначено</Text>}
+      {!lines.length && <Text style={{ padding: 5 }}>{ot('Не зазначено')}</Text>}
       <Text style={s.subtotal}>
-        Разом: {money(lines.reduce((sum, line) => sum + line.total, 0))} {currency}
+        {ot("Разом: ")}
+        {money(lines.reduce((sum, line) => sum + line.total, 0))} {currency}
       </Text>
     </View>
   )
 }
 export function CompletionActPDF({
+  locale = 'uk',
   data,
   provider,
   logoDataUri,
   currency = 'UAH',
   timezone = 'Europe/Kyiv',
 }: CompletionActProps) {
+  const ot = operationText(locale)
   const customer = data.customer ?? data.vehicle?.customer
   const vehicle = data.vehicle
   const number = data.invoiceNumber || data.id
-  const date = new Intl.DateTimeFormat('uk-UA', { timeZone: timezone }).format(
+  const date = new Intl.DateTimeFormat(locale, { timeZone: timezone }).format(
     new Date(data.invoiceDate ?? data.serviceDate)
   )
-  const unit = currency === 'UAH' ? 'грн' : currency
+  const unit = currency === 'UAH' ? ot('грн') : currency
   const labor = data.laborItems.map((l) => ({
     discount: lineDiscount(l),
     name: l.description,
-    unit: l.pricingType === 'service' ? 'посл.' : 'н/год',
+    unit: l.pricingType === 'service' ? ot('посл.') : ot('н/год'),
     quantity: l.hours,
     price: l.rate,
     total: l.total,
@@ -184,7 +192,7 @@ export function CompletionActPDF({
     brand: p.brand || '---',
     discount: lineDiscount(p),
     name: p.name,
-    unit: p.unit || 'шт',
+    unit: p.unit || ot('шт'),
     quantity: p.quantity,
     price: p.unitPrice,
     total: p.total,
@@ -193,7 +201,7 @@ export function CompletionActPDF({
   const discount = data.discountAmount ?? 0
   const taxed = data.taxAmount > 0
   return (
-    <Document title={`Акт наданих послуг № ${number}`} author={provider.name}>
+    <Document title={ot('Акт наданих послуг № ') + number + ''} author={provider.name}>
       <Page size="A4" style={s.page}>
         <View style={s.header}>
           {logoDataUri ? (
@@ -202,38 +210,76 @@ export function CompletionActPDF({
             <Text style={{ fontSize: 23, fontWeight: 700 }}>L’AUTO</Text>
           )}
           <Text style={s.heading}>
-            Акт приймання-передачі наданих послуг{'\n'}№ {number}
-            {'\n'}від {date}
+            {ot('Акт приймання-передачі наданих послуг')}
+            {'\n'}№ {number}
+            {'\n'}
+            {ot("від ")}
+            {date}
           </Text>
         </View>
         <View style={s.parties} wrap={false}>
           <View style={s.party}>
-            <Text style={[s.bold, { marginBottom: 5 }]}>Виконавець: {provider.name}</Text>
-            {provider.address && <Text>Адреса: {provider.address}</Text>}
-            {provider.code && <Text>Код ЄДРПОУ / РНОКПП: {provider.code}</Text>}
+            <Text style={[s.bold, { marginBottom: 5 }]}>
+              {ot("Виконавець: ")}
+              {provider.name}
+            </Text>
+            {provider.address && (
+              <Text>
+                {ot("Адреса: ")}
+                {provider.address}
+              </Text>
+            )}
+            {provider.code && (
+              <Text>
+                {ot("Код ЄДРПОУ / РНОКПП: ")}
+                {provider.code}
+              </Text>
+            )}
             {provider.bank && <Text>{provider.bank}</Text>}
-            {provider.phone && <Text>Тел.: {provider.phone}</Text>}
+            {provider.phone && (
+              <Text>
+                {ot("Тел.: ")}
+                {provider.phone}
+              </Text>
+            )}
           </View>
           <View style={s.party}>
             <Text style={[s.bold, { marginBottom: 5 }]}>
-              Замовник: {customer?.company || customer?.name || '________________________'}
+              {ot("Замовник: ")}
+              {customer?.company || customer?.name || '________________________'}
             </Text>
             {customer?.company && customer.name && <Text>{customer.name}</Text>}
-            {customer?.address && <Text>Адреса: {customer.address}</Text>}
-            {customer?.taxId && <Text>Код ЄДРПОУ / РНОКПП: {customer.taxId}</Text>}
-            {customer?.phone && <Text>Тел.: {customer.phone}</Text>}
+            {customer?.address && (
+              <Text>
+                {ot("Адреса: ")}
+                {customer.address}
+              </Text>
+            )}
+            {customer?.taxId && (
+              <Text>
+                {ot("Код ЄДРПОУ / РНОКПП: ")}
+                {customer.taxId}
+              </Text>
+            )}
+            {customer?.phone && (
+              <Text>
+                {ot("Тел.: ")}
+                {customer.phone}
+              </Text>
+            )}
           </View>
         </View>
         {vehicle && (
           <View style={s.vehicle} wrap={false}>
             <Text>
-              Транспортний засіб: {vehicle.make}, {vehicle.model}, {vehicle.year}
+              {ot("Транспортний засіб: ")}
+              {vehicle.make}, {vehicle.model}, {vehicle.year}
             </Text>
             <Text>
               {[
                 vehicle.licensePlate,
                 vehicle.vin,
-                data.mileage != null ? `${data.mileage.toLocaleString('uk-UA')} км` : null,
+                data.mileage != null ? '' + data.mileage.toLocaleString('uk-UA') + ot(' км') : null,
               ]
                 .filter(Boolean)
                 .join(', ')}
@@ -241,14 +287,16 @@ export function CompletionActPDF({
           </View>
         )}
         <Lines
-          title="Найменування (характеристика) послуг"
+          locale={locale}
+          title={ot('Найменування (характеристика) послуг')}
           lines={labor}
           showDiscount={showDiscount}
           currency={unit}
           taxed={taxed}
         />
         <Lines
-          title="Запасні частини, матеріали й товари, використані для ремонту"
+          locale={locale}
+          title={ot('Запасні частини, матеріали й товари, використані для ремонту')}
           showBrand
           lines={parts}
           showDiscount={showDiscount}
@@ -259,50 +307,51 @@ export function CompletionActPDF({
           <View style={s.totals}>
             {discount > 0 && (
               <View style={s.totalRow}>
-                <Text>Знижка:</Text>
+                <Text>{ot('Знижка:')}</Text>
                 <Text>
                   {money(discount)} {unit}
                 </Text>
               </View>
             )}
             <View style={s.totalRow}>
-              <Text>Сума без ПДВ:</Text>
+              <Text>{ot('Сума без ПДВ:')}</Text>
               <Text>
                 {money(data.totalAmount - data.taxAmount)} {unit}
               </Text>
             </View>
             <View style={s.totalRow}>
-              <Text>ПДВ:</Text>
-              <Text>{taxed ? `${money(data.taxAmount)} ${unit}` : 'без ПДВ'}</Text>
+              <Text>{ot('ПДВ:')}</Text>
+              <Text>{taxed ? `${money(data.taxAmount)} ${unit}` : ot('без ПДВ')}</Text>
             </View>
             <View style={[s.totalRow, s.bold]}>
-              <Text>Загальна сума:</Text>
+              <Text>{ot('Загальна сума:')}</Text>
               <Text>
                 {money(data.totalAmount)} {unit}
               </Text>
             </View>
           </View>
           <Text style={s.words}>
-            Всього на загальну суму:{' '}
-            {currency === 'UAH'
+            {ot('Всього на загальну суму:')}{' '}
+            {currency === 'UAH' && locale === 'uk'
               ? hryvniaWords(data.totalAmount)
               : `${money(data.totalAmount)} ${currency}`}
           </Text>
           <Text style={[s.intro, { borderTopWidth: 0.7, paddingTop: 6 }]}>
-            Цей акт є підставою для оплати. Замовник зобов’язаний сплатити Виконавцю визначену в
-            цьому акті вартість наданих послуг та використаних запасних частин (матеріалів, товарів)
-            протягом 3-х робочих днів з дати підписання цього акта.
+            {ot(
+              'Цей акт є підставою для оплати. Замовник зобов’язаний сплатити Виконавцю визначену в цьому акті вартість наданих послуг та використаних запасних частин (матеріалів, товарів) протягом 3-х робочих днів з дати підписання цього акта.'
+            )}
           </Text>
           <Text style={s.acceptance}>
-            Даним підписом підтверджую отримання наданих послуг. Претензій до Виконавця щодо обсягу
-            робіт, зовнішнього вигляду та комплектації транспортного засобу не маю.
+            {ot(
+              'Даним підписом підтверджую отримання наданих послуг. Претензій до Виконавця щодо обсягу робіт, зовнішнього вигляду та комплектації транспортного засобу не маю.'
+            )}
           </Text>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
             <View style={s.signature}>
-              <Text style={s.bold}>Виконавець:</Text>
+              <Text style={s.bold}>{ot('Виконавець:')}</Text>
             </View>
             <View style={s.signature}>
-              <Text style={s.bold}>Замовник:</Text>
+              <Text style={s.bold}>{ot('Замовник:')}</Text>
             </View>
           </View>
         </View>

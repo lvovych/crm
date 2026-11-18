@@ -66,7 +66,7 @@ export async function createOnboardingOrg(
     // never fails the action — the library sync tops templates up later
     // anyway.
     try {
-      const zone = safeTimeZone(data.timeZone, '')
+      const zone = safeTimeZone(data.timeZone || 'Europe/Bucharest', 'Europe/Bucharest')
       if (zone) {
         await db.appSetting.create({
           data: {

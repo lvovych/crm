@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { cn } from '@/lib/utils'
 import { X } from 'lucide-react'
 
@@ -20,10 +21,12 @@ interface DurationPickerProps {
 }
 
 export function DurationPicker({ value, onChange, className }: DurationPickerProps) {
+  const ot = useOperationText()
+
   return (
     <div className={cn('space-y-1.5', className)}>
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-muted-foreground">Estimated hours</span>
+        <span className="text-xs font-medium text-muted-foreground">{ot('Estimated hours')}</span>
         {value !== null && (
           <button
             type="button"
@@ -31,7 +34,7 @@ export function DurationPicker({ value, onChange, className }: DurationPickerPro
             className="flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             <X className="h-3 w-3" />
-            Clear
+            {ot('Clear')}
           </button>
         )}
       </div>

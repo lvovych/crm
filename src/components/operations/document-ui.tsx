@@ -1,3 +1,4 @@
+import { useOperationText } from '@/i18n/use-operation-text'
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
@@ -69,6 +70,8 @@ export function MoneySummary({
 }: {
   items: { label: string; value: string; hint?: string; emphasis?: boolean }[]
 }) {
+  const ot = useOperationText()
+
   return (
     <dl
       className={
@@ -81,7 +84,7 @@ export function MoneySummary({
               ? 'sm:grid-cols-3'
               : 'sm:grid-cols-2 xl:grid-cols-4')
       }
-      aria-label="Підсумки документа"
+      aria-label={ot('Підсумки документа')}
     >
       {items.map((item) => (
         <div
@@ -93,7 +96,7 @@ export function MoneySummary({
         >
           <dt className="text-sm text-muted-foreground">{item.label}</dt>
           <dd className="mt-2 break-words text-xl font-semibold tabular-nums">
-            {moneyLabel(item.value)}
+            {moneyLabel(item.value, ot('грн'))}
           </dd>
           {item.hint && <p className="mt-1 text-xs text-muted-foreground">{item.hint}</p>}
         </div>

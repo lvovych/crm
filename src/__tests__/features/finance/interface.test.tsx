@@ -1,3 +1,6 @@
+import { beforeEach as beforeLocale, vi as localeMock } from 'vitest'
+import { useLocale as testLocale } from 'next-intl'
+// These scenarios exercise the Ukrainian operational interface.
 import { act, render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 const api = vi.hoisted(() => ({
@@ -152,7 +155,10 @@ describe('account selection in existing payment forms', () => {
     })
     const onChange = vi.fn()
     render(<AccountSelect onChange={onChange} />)
+    expect(screen.getByRole('combobox')).toBeDisabled()
+    expect(screen.getByRole('combobox')).toHaveAttribute('aria-busy', 'true')
     await waitFor(() => expect(screen.getByRole('combobox')).toHaveValue('cash'))
+    expect(screen.getByRole('combobox')).toBeEnabled()
     await waitFor(() => expect(onChange).toHaveBeenCalledWith('cash'))
   })
   it('requires a choice when multiple accounts are available', async () => {
@@ -592,3 +598,5 @@ it('does not show IBAN when editing a cash account', () => {
   fireEvent.click(screen.getByRole('button', { name: 'Редагувати реквізити рахунку' }))
   expect(screen.queryByLabelText('IBAN')).not.toBeInTheDocument()
 })
+
+beforeLocale(() => localeMock.mocked(testLocale).mockReturnValue('uk'))

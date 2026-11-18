@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -35,6 +36,8 @@ export function TelegramConversationPanel({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   t: any
 }) {
+  const ot = useOperationText()
+
   return (
     <div
       className={cn('flex min-w-0 flex-1 flex-col', selectedCustomerId ? 'flex' : 'hidden sm:flex')}
@@ -47,7 +50,7 @@ export function TelegramConversationPanel({
               size="icon"
               className="h-8 w-8 shrink-0 sm:hidden"
               onClick={onBack}
-              aria-label="Back"
+              aria-label={ot('Back')}
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
@@ -59,7 +62,7 @@ export function TelegramConversationPanel({
               {conversation.telegramChatId && (
                 <p className="flex items-center gap-1 text-xs text-muted-foreground">
                   <Send className="h-3 w-3" />
-                  Telegram
+                  {ot('Telegram')}
                 </p>
               )}
             </div>
@@ -69,7 +72,7 @@ export function TelegramConversationPanel({
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 shrink-0"
-                  aria-label="Conversation menu"
+                  aria-label={ot('Conversation menu')}
                 >
                   <MoreVertical className="h-4 w-4" />
                 </Button>

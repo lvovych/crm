@@ -1,4 +1,5 @@
 'use client'
+import { useOperationText } from '@/i18n/use-operation-text'
 import { useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -7,6 +8,8 @@ import { Input } from '@/components/ui/input'
 import { receiptTransferOptions, transferFromReceipt } from './transfer-actions'
 type Options = NonNullable<Awaited<ReturnType<typeof receiptTransferOptions>>['data']>
 export function TransferGoods({ receiptId, data }: { receiptId: string; data: Options }) {
+  const ot = useOperationText()
+
   const router = useRouter()
   const [selected, setSelected] = useState<string[]>([])
   const [quantities, setQuantities] = useState<Record<string, string>>({})
@@ -20,7 +23,7 @@ export function TransferGoods({ receiptId, data }: { receiptId: string; data: Op
   const eligible = data.lines.filter((l) => Number(l.available) > 0)
   function send(ids: string[]) {
     if (!order) {
-      setMessage('Оберіть наряд-замовлення.')
+      setMessage(ot('Оберіть наряд-замовлення.'))
       return
     }
     const body = {
@@ -44,7 +47,7 @@ export function TransferGoods({ receiptId, data }: { receiptId: string; data: Op
       try {
         const result = await transferFromReceipt({ ...body, requestId: request.current.id })
         if (!result.data) {
-          setMessage(result.error || 'Не вдалося передати товари.')
+          setMessage(result.error || ot('Не вдалося передати товари.'))
           return
         }
         setMessage(`Додано позицій у наряд: ${result.data.count}. Складський залишок оновлено.`)
@@ -55,7 +58,9 @@ export function TransferGoods({ receiptId, data }: { receiptId: string; data: Op
         router.refresh()
       } catch {
         setMessage(
-          'Не отримано відповіді. Оновіть сторінку та перевірте історію передавання перед повторною дією.'
+          ot(
+            'Не отримано відповіді. Оновіть сторінку та перевірте історію передавання перед повторною дією.'
+          )
         )
       }
     })
@@ -63,30 +68,31 @@ export function TransferGoods({ receiptId, data }: { receiptId: string; data: Op
   return (
     <section className="rounded-xl border-2 border-primary/30 bg-primary/5 p-5 space-y-4">
       <div>
-        <h2 className="text-lg font-semibold">Передати товари в наряд</h2>
+        <h2 className="text-lg font-semibold">{ot('Передати товари в наряд')}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Оберіть наряд і товари. Передавання додає позиції в наряд та списує їх зі складу. Для
-          різних нарядів повторіть дію з іншими товарами.
+          {ot(
+            'Оберіть наряд і товари. Передавання додає позиції в наряд та списує їх зі складу. Для різних нарядів повторіть дію з іншими товарами.'
+          )}
         </p>
       </div>
       <fieldset disabled={pending} className="min-w-0 space-y-4">
         <div className="grid gap-3 md:grid-cols-2">
           <label className="space-y-1 block">
-            Пошук наряду
+            {ot('Пошук наряду')}
             <Input
-              placeholder="Номер наряду або автомобіля"
+              placeholder={ot('Номер наряду або автомобіля')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
           </label>
           <label className="space-y-1 block">
-            Наряд-замовлення
+            {ot('Наряд-замовлення')}
             <select
               className="w-full rounded-md border bg-background p-2"
               value={order}
               onChange={(e) => setOrder(e.target.value)}
             >
-              <option value="">Оберіть відкритий наряд</option>
+              <option value="">{ot('Оберіть відкритий наряд')}</option>
               {data.orders
                 .filter(
                   (o) => o.id === order || o.label.toLowerCase().includes(query.toLowerCase())
@@ -100,7 +106,7 @@ export function TransferGoods({ receiptId, data }: { receiptId: string; data: Op
           </label>
         </div>
         {!data.orders.length && (
-          <p>Немає відкритих нарядів. Створіть наряд або відкрийте потрібний для роботи.</p>
+          <p>{ot('Немає відкритих нарядів. Створіть наряд або відкрийте потрібний для роботи.')}</p>
         )}
         <div className="flex flex-wrap items-center gap-3">
           <Button
@@ -112,16 +118,19 @@ export function TransferGoods({ receiptId, data }: { receiptId: string; data: Op
             }
           >
             {selected.length === eligible.length && eligible.length
-              ? 'Зняти вибір'
-              : 'Вибрати всі товари'}
+              ? ot('Зняти вибір')
+              : ot('Вибрати всі товари')}
           </Button>
-          <span>Вибрано: {selected.length}</span>
+          <span>
+            {ot("Вибрано: ")}
+            {selected.length}
+          </span>
           <Button
             type="button"
             disabled={!selected.length || !order}
             onClick={() => send(selected)}
           >
-            Додати вибрані в наряд
+            {ot('Додати вибрані в наряд')}
           </Button>
         </div>
         <div className="overflow-auto rounded-lg border bg-background">
@@ -129,12 +138,12 @@ export function TransferGoods({ receiptId, data }: { receiptId: string; data: Op
             <thead className="bg-muted">
               <tr>
                 {[
-                  'Вибір',
-                  'Товар / артикул',
-                  'Можна передати',
-                  'Кількість',
-                  'Ціна продажу, грн',
-                  'Дія',
+                  ot('Вибір'),
+                  ot('Товар / артикул'),
+                  ot('Можна передати'),
+                  ot('Кількість'),
+                  ot('Ціна продажу, грн'),
+                  ot('Дія'),
                 ].map((h) => (
                   <th className="p-3" key={h}>
                     {h}
@@ -147,7 +156,7 @@ export function TransferGoods({ receiptId, data }: { receiptId: string; data: Op
                 <tr key={l.id} className="border-t">
                   <td className="p-3">
                     <input
-                      aria-label={`Вибрати ${l.name}`}
+                      aria-label={ot('Вибрати ') + l.name + ''}
                       type="checkbox"
                       disabled={Number(l.available) === 0}
                       checked={selected.includes(l.id)}
@@ -165,7 +174,8 @@ export function TransferGoods({ receiptId, data }: { receiptId: string; data: Op
                     <div>{l.article}</div>
                     {l.transfers.map((t) => (
                       <p className="mt-1 text-xs text-muted-foreground" key={t.id}>
-                        Передано {t.quantity} {l.unit} →{' '}
+                        {ot("Передано ")}
+                        {t.quantity} {l.unit} →{' '}
                         <Link className="underline" href={t.href}>
                           {t.label}
                         </Link>
@@ -174,11 +184,14 @@ export function TransferGoods({ receiptId, data }: { receiptId: string; data: Op
                   </td>
                   <td className="p-3 whitespace-nowrap">
                     {l.available} {l.unit}
-                    <p className="text-xs text-muted-foreground">На складі: {l.stock}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {ot("На складі: ")}
+                      {l.stock}
+                    </p>
                   </td>
                   <td className="p-3">
                     <Input
-                      aria-label={`Кількість ${l.name}`}
+                      aria-label={ot('Кількість ') + l.name + ''}
                       className="w-28"
                       type="number"
                       min="0.001"
@@ -191,7 +204,7 @@ export function TransferGoods({ receiptId, data }: { receiptId: string; data: Op
                   </td>
                   <td className="p-3">
                     <Input
-                      aria-label={`Ціна продажу ${l.name}`}
+                      aria-label={ot('Ціна продажу ') + l.name + ''}
                       className="w-28"
                       type="number"
                       min="0"
@@ -207,7 +220,7 @@ export function TransferGoods({ receiptId, data }: { receiptId: string; data: Op
                       disabled={!order || Number(l.available) === 0}
                       onClick={() => send([l.id])}
                     >
-                      Додати в наряд
+                      {ot('Додати в наряд')}
                     </Button>
                   </td>
                 </tr>
@@ -216,20 +229,21 @@ export function TransferGoods({ receiptId, data }: { receiptId: string; data: Op
           </table>
         </div>
       </fieldset>
-      {pending && <p role="status">Передаємо товари…</p>}
+      {pending && <p role="status">{ot('Передаємо товари…')}</p>}
       {message && (
         <p role="status">
           {message}{' '}
           {href && (
             <Link className="underline" href={href}>
-              Відкрити наряд →
+              {ot('Відкрити наряд →')}
             </Link>
           )}
         </p>
       )}
       <p className="text-xs text-muted-foreground">
-        Історія фіксує первинне передавання. Подальші зміни кількості в наряді не змінюють цю
-        історію.
+        {ot(
+          'Історія фіксує первинне передавання. Подальші зміни кількості в наряді не змінюють цю історію.'
+        )}
       </p>
     </section>
   )

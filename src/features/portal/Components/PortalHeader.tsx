@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -37,6 +38,8 @@ export function PortalHeader({
   orgLogo?: string | null
   customerName: string
 }) {
+  const ot = useOperationText()
+
   const t = useTranslations('portal')
   const router = useRouter()
   const pathname = usePathname()
@@ -115,7 +118,7 @@ export function PortalHeader({
           {/* Mobile menu */}
           <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Menu">
+              <Button variant="ghost" size="icon" className="lg:hidden" aria-label={ot('Menu')}>
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>

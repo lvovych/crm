@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { safeRedirectPath } from '@/lib/safe-redirect'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -13,6 +14,8 @@ import { Gauge, Loader2 } from 'lucide-react'
 import { createOnboardingOrg } from '../Actions/createOnboardingOrg'
 
 export function OnboardingForm({ redirectTo }: { redirectTo?: string }) {
+  const ot = useOperationText()
+
   const t = useTranslations('onboarding.form')
   const [workshopName, setWorkshopName] = useState('')
   const [loadSampleData, setLoadSampleData] = useState(true)
@@ -30,7 +33,7 @@ export function OnboardingForm({ redirectTo }: { redirectTo?: string }) {
         loadSampleData,
         // The workshop is where the browser is, on first run. Stored as a
         // choice, not a guess, so scheduling has a zone from day one.
-        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        timeZone: 'Europe/Bucharest',
       })
       if (!result.success) {
         modal.open('error', t('setupFailed'), result.error || t('couldNotCreate'))
@@ -51,7 +54,7 @@ export function OnboardingForm({ redirectTo }: { redirectTo?: string }) {
         <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2">
           <Gauge className="h-5 w-5 text-primary" />
           <span className="gradient-text text-sm font-bold tracking-wider uppercase">
-            Torqvoice
+            {ot('Torqvoice')}
           </span>
         </div>
         <h1 className="text-2xl font-bold tracking-tight">{t('title')}</h1>

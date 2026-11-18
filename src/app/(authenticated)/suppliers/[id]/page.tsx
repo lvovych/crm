@@ -1,3 +1,4 @@
+import { getOperationText } from '@/i18n/operation-text.server'
 import { ReturnList } from '@/features/receipts/ReturnList'
 import { DocumentHeader, DocumentStatus } from '@/components/operations/document-ui'
 import { DocumentTabs } from '@/components/operations/document-tabs'
@@ -17,6 +18,8 @@ export default async function SupplierPage({
   params: Promise<{ id: string }>
   searchParams: Promise<{ date?: string; returnsPage?: string }>
 }) {
+  const ot = await getOperationText()
+
   const { id } = await params
   const query = await searchParams
   const [r, cap, t] = await Promise.all([
@@ -41,25 +44,25 @@ export default async function SupplierPage({
       <main className="ops-workspace mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6">
         <DocumentHeader
           title={s.name}
-          back={{ href: '/suppliers', label: 'Постачальники' }}
+          back={{ href: '/suppliers', label: ot('Постачальники') }}
           status={s.isArchived ? <DocumentStatus>{t('archived')}</DocumentStatus> : undefined}
           actions={
             <>
               {receipts.read && (
                 <Button asChild variant="outline">
-                  <Link href={'/receipts?supplierId=' + id}>Накладні</Link>
+                  <Link href={'/receipts?supplierId=' + id}>{ot('Накладні')}</Link>
                 </Button>
               )}
               {receipts.create && receipts.post && finance.create && (
                 <Button asChild variant="outline">
                   <Link href={'/supplier-returns/new?supplier=' + id}>
-                    Повернення постачальнику
+                    {ot('Повернення постачальнику')}
                   </Link>
                 </Button>
               )}
               {finance.read && (
                 <Button asChild>
-                  <Link href={'/settlements?supplier=' + id}>Оплата й розрахунки</Link>
+                  <Link href={'/settlements?supplier=' + id}>{ot('Оплата й розрахунки')}</Link>
                 </Button>
               )}
               {cap.data?.update && (
@@ -76,7 +79,7 @@ export default async function SupplierPage({
               ? [
                   {
                     id: 'returns',
-                    label: 'Повернення',
+                    label: ot('Повернення'),
                     content: (
                       <ReturnList
                         filters={{ supplier: id, page: query.returnsPage }}
@@ -94,7 +97,7 @@ export default async function SupplierPage({
               ? [
                   {
                     id: 'documents',
-                    label: 'Документи взаєморозрахунків',
+                    label: ot('Документи взаєморозрахунків'),
                     content: (
                       <PartyDocuments kind="supplier" id={id} date={(await searchParams).date} />
                     ),
@@ -103,7 +106,7 @@ export default async function SupplierPage({
               : []),
             {
               id: 'profile',
-              label: 'Реквізити й контакти',
+              label: ot('Реквізити й контакти'),
               content: (
                 <div className="ops-panel space-y-6">
                   <dl className="grid max-w-4xl gap-4 sm:grid-cols-2">
@@ -158,7 +161,7 @@ export default async function SupplierPage({
             },
             {
               id: 'parts',
-              label: 'Товари постачальника',
+              label: ot('Товари постачальника'),
               content: (
                 <div className="ops-panel space-y-5">
                   <section>
@@ -176,7 +179,7 @@ export default async function SupplierPage({
             },
             {
               id: 'history',
-              label: 'Історія',
+              label: ot('Історія'),
               content: (
                 <div className="ops-panel space-y-5">
                   <section>

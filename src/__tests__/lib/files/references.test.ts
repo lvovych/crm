@@ -49,7 +49,6 @@ const NOT_FILES: Record<string, string> = {
   'InventoryPart.supplierUrl': "the supplier's website",
   'Notification.entityUrl': 'an in-app link to a page',
   'Quote.taxComponents': 'tax lines',
-  'RecurringInvoice.taxComponents': 'tax lines',
   'ServiceRecord.taxComponents': 'tax lines',
   'ServiceRecord.issuedData':
     'frozen issuer and customer details; the issued logo is bytes in DocumentAssetSnapshot',

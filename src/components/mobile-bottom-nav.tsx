@@ -22,7 +22,6 @@ import {
   Package,
   Pencil,
   Plus,
-  Receipt,
   Scale,
   ScanBarcode,
   Settings,
@@ -74,7 +73,6 @@ const tireHotelItem = { href: '/tire-hotel', icon: Disc3, labelKey: 'tireHotel' 
 
 const businessItems = [
   { href: '/quotes', icon: FileText, labelKey: 'quotes' },
-  { href: '/billing', icon: Receipt, labelKey: 'billing' },
   { href: '/labor-presets', icon: Layers, labelKey: 'laborPresets' },
   { href: '/reports', icon: BarChart3, labelKey: 'reports' },
   { href: '/timesheets', icon: Timer, labelKey: 'timesheets' },

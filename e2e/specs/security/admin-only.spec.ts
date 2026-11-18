@@ -1,3 +1,4 @@
+import { languageState } from '../../support/language'
 import { expect, type Browser, type Page, test } from '@playwright/test'
 import {
   contentCounts,
@@ -27,7 +28,7 @@ import { linkIn, waitForMail } from '../../support/mail'
 test.describe.configure({ mode: 'serial' })
 
 // The colleague starts as a stranger with no session.
-test.use({ storageState: { cookies: [], origins: [] } })
+test.use({ storageState: languageState('en') })
 
 const stamp = Date.now()
 const MANAGER = `e2e-manager-${stamp}@example.com`
@@ -43,6 +44,7 @@ async function signIn(page: Page, email: string, password: string) {
   // The sign-in page sends anyone with a session straight on, so a re-sign-in
   // after a role change has to drop the old session first.
   await page.context().clearCookies()
+  await page.context().addCookies(languageState().cookies)
   await page.goto('/auth/sign-in')
   await page.locator('#email').fill(email)
   await page.locator('#password').fill(password)

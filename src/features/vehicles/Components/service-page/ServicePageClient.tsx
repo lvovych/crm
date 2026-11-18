@@ -1,4 +1,5 @@
 'use client'
+import { useOperationText } from '@/i18n/use-operation-text'
 import { SubcontractReminder } from '@/features/receipts/SubcontractReminder'
 import { createLaborPreset } from '@/features/labor-presets/Actions/laborPresetActions'
 
@@ -129,6 +130,8 @@ export function ServicePageClient({
   jobClock = { entries: [], viewerTechnicianIds: [], canEdit: false, timeZone: 'UTC' },
   initialLayout = 'modern',
 }: ServicePageClientProps) {
+  const ot = useOperationText()
+
   const t = useTranslations('service')
   const router = useRouter()
 
@@ -270,7 +273,7 @@ export function ServicePageClient({
           brand: part.brand?.name ?? '---',
           name: part.name,
           quantity: 1,
-          unit: part.unit?.trim() || 'шт.',
+          unit: part.unit?.trim() || ot('шт.'),
           unitPrice,
           total: lineTotal(1, unitPrice),
           unitCost: part.unitCost,
@@ -392,7 +395,7 @@ export function ServicePageClient({
         partNumber: part.partNumber || '',
         brand: part.brand ?? '---',
         quantity: part.quantity,
-        unit: part.unit?.trim() || 'шт.',
+        unit: part.unit?.trim() || ot('шт.'),
         unitPrice: part.unitPrice,
         total: lineTotal(part.quantity, part.unitPrice),
         unitCost: 0,
@@ -429,7 +432,14 @@ export function ServicePageClient({
 
     const ok = await confirmComplete({
       title: t('invoice.markCompletedTitle'),
-      description: [t('invoice.markCompletedDescription'), formState.laborItems.some(l => l.supplierId && !l.receiptId) ? 'У наряді є роботи підрядника без приходу.' : ''].filter(Boolean).join(' '),
+      description: [
+        t('invoice.markCompletedDescription'),
+        formState.laborItems.some((l) => l.supplierId && !l.receiptId)
+          ? ot('У наряді є роботи підрядника без приходу.')
+          : '',
+      ]
+        .filter(Boolean)
+        .join(' '),
       confirmLabel: t('invoice.markCompletedConfirm'),
     })
     if (!ok) return
@@ -703,7 +713,12 @@ export function ServicePageClient({
 
         {(lockState.locked || lockState.unlockedAt) && (
           <div className="shrink-0 px-4 pt-3">
-            {lockState.locked && <SubcontractReminder recordId={record.id} count={formState.laborItems.filter(l=>l.supplierId && !l.receiptId).length}/>}
+            {lockState.locked && (
+              <SubcontractReminder
+                recordId={record.id}
+                count={formState.laborItems.filter((l) => l.supplierId && !l.receiptId).length}
+              />
+            )}
             <DocumentLockBanner
               state={lockState}
               kind="invoice"

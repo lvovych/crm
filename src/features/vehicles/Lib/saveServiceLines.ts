@@ -1,3 +1,4 @@
+import { lineMatcher } from './lineMatcher'
 import { randomUUID } from 'node:crypto'
 import type { TxClient } from '@/lib/db'
 import type { ServiceLaborInput, ServicePartInput } from '../Schema/serviceSchema'
@@ -11,19 +12,15 @@ export async function prepareParts(
   const previous = recordId
     ? await tx.servicePart.findMany({ where: { serviceRecordId: recordId } })
     : []
-  const used = new Set<string>()
+  const key = (p: {
+    name: string
+    partNumber?: string | null
+    quantity: number
+    unitPrice: number
+  }) => JSON.stringify([p.name, p.partNumber ?? '', p.quantity, p.unitPrice])
+  const match = lineMatcher(previous, key)
   return lines.map((line, sortOrder) => {
-    const old = previous.find(
-      (p) =>
-        !used.has(p.id) &&
-        (line.id
-          ? p.id === line.id
-          : p.name === line.name &&
-            (p.partNumber ?? '') === (line.partNumber ?? '') &&
-            p.quantity === line.quantity &&
-            p.unitPrice === line.unitPrice)
-    )
-    if (old) used.add(old.id)
+    const old = match(line.id, key(line))
     if (line.id && !old) throw new Error('Позицію вже змінено. Оновіть наряд перед збереженням.')
     const next = {
       ...line,
@@ -51,7 +48,9 @@ export async function prepareLabor(
         include: { subcontract: true },
       })
     : []
-  const used = new Set<string>()
+  const key = (l: { description: string; hours: number; rate: number; total: number }) =>
+    JSON.stringify([l.description, l.hours, l.rate, l.total])
+  const match = lineMatcher(previous, key)
   const ids = [
     ...new Set([...lines, ...previous].flatMap((l) => (l.technicianId ? [l.technicianId] : []))),
   ]
@@ -64,20 +63,12 @@ export async function prepareLabor(
   const technicians = ids.length
     ? await tx.technician.findMany({ where: { organizationId, id: { in: ids } } })
     : []
+  const bySupplier = new Map(suppliers.map((s) => [s.id, s]))
+  const byTechnician = new Map(technicians.map((t) => [t.id, t]))
   const normalized = lines.map((line, sortOrder) => {
-    const old = previous.find(
-      (l) =>
-        !used.has(l.id) &&
-        (line.id
-          ? l.id === line.id
-          : l.description === line.description &&
-            l.hours === line.hours &&
-            l.rate === line.rate &&
-            l.total === line.total)
-    )
-    if (old) used.add(old.id)
+    const old = match(line.id, key(line))
     if (line.id && !old) throw new Error('Послугу вже змінено. Оновіть наряд перед збереженням.')
-    const supplier = suppliers.find((s) => s.id === line.supplierId)
+    const supplier = bySupplier.get(line.supplierId ?? '')
     if (
       line.supplierId &&
       (!supplier ||
@@ -97,11 +88,14 @@ export async function prepareLabor(
     ) {
       throw new Error('Закупівля вже пов’язана з накладною. Перевірте документ.')
     }
-    const technicianId =
-      supplier ? null : line.technicianId === undefined ? (old?.technicianId ?? null) : line.technicianId
+    const technicianId = supplier
+      ? null
+      : line.technicianId === undefined
+        ? (old?.technicianId ?? null)
+        : line.technicianId
     const changed = technicianId !== (old?.technicianId ?? null)
     if (technicianId) {
-      const technician = technicians.find((t) => t.id === technicianId)
+      const technician = byTechnician.get(technicianId ?? '')
       if (!technician || ((!old || changed) && !technician.isActive))
         throw new Error('Оберіть активного механіка вашої майстерні.')
     }
@@ -119,8 +113,8 @@ export async function prepareLabor(
         : old?.subcontract
           ? null
           : changed
-            ? (technicians.find((t) => t.id === technicianId)?.name ?? null)
-            : (old?.executorName ?? technicians.find((t) => t.id === technicianId)?.name ?? null),
+            ? (byTechnician.get(technicianId ?? '')?.name ?? null)
+            : (old?.executorName ?? byTechnician.get(technicianId ?? '')?.name ?? null),
       executorFrozen: supplier
         ? true
         : old?.subcontract
@@ -131,9 +125,10 @@ export async function prepareLabor(
       executorLegacy: changed ? false : (old?.executorLegacy ?? false),
     }
   })
-  const removed = previous.filter(
-    (p) => p.subcontract && !normalized.some((l, i) => l.id === p.id && lines[i].supplierId)
+  const retainedSubcontracts = new Set(
+    normalized.flatMap((l, i) => (lines[i].supplierId ? [l.id] : []))
   )
+  const removed = previous.filter((p) => p.subcontract && !retainedSubcontracts.has(p.id))
   if (removed.some((p) => p.subcontract?.receiptLineId))
     throw new Error('Не можна видалити роботу з накладною.')
   if (removed.length)

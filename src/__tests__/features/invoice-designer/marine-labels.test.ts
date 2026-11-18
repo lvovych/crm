@@ -54,11 +54,11 @@ describe('invoice print labels', () => {
   })
 
   it("uses the locale's own unit for engine hours", async () => {
-    expect((await loadPrintLabels('nb', MARINE)).km).toBe(
-      pdfMessages('nb').invoice.mileageUnitMarine
+    expect((await loadPrintLabels('uk', MARINE)).km).toBe(
+      pdfMessages('uk').invoice.mileageUnitMarine
     )
-    expect((await loadPrintLabels('de', MARINE)).vin).toBe('HIN: {vin}')
-    expect((await loadPrintLabels('de', MARINE)).vehicle).toBe('Wasserfahrzeug')
+    expect((await loadPrintLabels('ru', MARINE)).vin).toBe('HIN: {vin}')
+    expect((await loadPrintLabels('ru', MARINE)).vehicle).toBe(pdfMessages('ru').invoice.vehicleMarine)
   })
 })
 

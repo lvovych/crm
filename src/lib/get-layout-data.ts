@@ -109,7 +109,7 @@ export async function getLayoutData(): Promise<AuthResult> {
     companyLogo: orgMap.get(SETTING_KEYS.COMPANY_LOGO) || undefined,
     dateFormat: orgMap.get(SETTING_KEYS.DATE_FORMAT) || undefined,
     timeFormat: orgMap.get(SETTING_KEYS.TIME_FORMAT) || undefined,
-    timezone: orgMap.get(SETTING_KEYS.TIMEZONE) || undefined,
+    timezone: orgMap.get(SETTING_KEYS.TIMEZONE) ?? 'Europe/Bucharest',
     weekStartDay: parseInt(orgMap.get(SETTING_KEYS.WORKBOARD_WEEK_START_DAY) || '1', 10),
     serviceType: orgMap.get(SETTING_KEYS.SERVICE_TYPE) || undefined,
     typeKeyEnabled: typeKeyEnabledIn(Object.fromEntries(orgMap)),

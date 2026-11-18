@@ -1,4 +1,5 @@
 'use client'
+import { useOperationText } from '@/i18n/use-operation-text'
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -167,6 +168,7 @@ export function SettingsNav({
 }) {
   const pathname = usePathname()
   const router = useRouter()
+  const ot = useOperationText()
   const t = useTranslations('settings')
 
   const newPill = (item: SettingsNavItem) =>
@@ -200,7 +202,7 @@ export function SettingsNav({
             return visibleItems.map((item) => (
               <SelectItem key={item.href} value={item.href}>
                 <span className="flex items-center gap-2">
-                  {item.title ?? t(`nav.items.${item.key}.title`)}
+                  {item.title ? ot(item.title) : t(`nav.items.${item.key}.title`)}
                   {newPill(item)}
                 </span>
               </SelectItem>
@@ -242,7 +244,7 @@ export function SettingsNav({
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <p className={cn('truncate', isActive && 'font-medium')}>
-                          {item.title ?? t(`nav.items.${item.key}.title`)}
+                          {item.title ? ot(item.title) : t(`nav.items.${item.key}.title`)}
                         </p>
                         {isLocked && (
                           <span className="shrink-0 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-600">
@@ -252,7 +254,9 @@ export function SettingsNav({
                         {newPill(item)}
                       </div>
                       <p className="hidden truncate text-xs text-muted-foreground lg:block">
-                        {item.description ?? t(`nav.items.${item.key}.description`)}
+                        {item.description
+                          ? ot(item.description)
+                          : t(`nav.items.${item.key}.description`)}
                       </p>
                     </div>
                   </Link>

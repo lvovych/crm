@@ -1,3 +1,6 @@
+import { beforeEach as beforeLocale, vi as localeMock } from 'vitest'
+import { useLocale as testLocale } from 'next-intl'
+// These scenarios exercise the Ukrainian operational interface.
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 const f = vi.hoisted(() => ({ send: vi.fn(), search: vi.fn(), push: vi.fn(), refresh: vi.fn() }))
@@ -221,3 +224,5 @@ it('ignores an older search response arriving after a newer result', async () =>
   await waitFor(() => expect(screen.getByLabelText('Обрати Part B · INV-B')).toBeVisible())
   expect(screen.queryByLabelText('Обрати Part A · INV-A')).not.toBeInTheDocument()
 })
+
+beforeLocale(() => localeMock.mocked(testLocale).mockReturnValue('uk'))

@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import {
   Camera,
   Check,
@@ -211,6 +212,8 @@ export function QuoteView({
   serviceType?: 'automotive' | 'marine'
   taxLabel?: string
 }) {
+  const ot = useOperationText()
+
   const t = useTranslations('share.quote')
   const tc = useTranslations('share.common')
 
@@ -538,7 +541,7 @@ export function QuoteView({
             <span className="text-xs text-gray-400">{tc('poweredBy')}</span>
             <img src="/torqvoice_app_logo.png" alt="Torqvoice" className="h-3.5 w-3.5" />
             <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
-              Torqvoice
+              {ot('Torqvoice')}
             </span>
           </div>
         )}
@@ -566,7 +569,7 @@ export function QuoteView({
               rel="noopener noreferrer"
               className="text-xs font-semibold text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
             >
-              Torqvoice
+              {ot('Torqvoice')}
             </a>
           </>
         ) : (

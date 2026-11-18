@@ -173,10 +173,22 @@ export async function POST(request: NextRequest) {
   }
 
   if (options.vehicles) {
-    queries.push(db.payAssignment.findMany({ where: { order: { organizationId: ctx.organizationId } } }).then(rows => { data.payAssignments = rows }))
+    queries.push(
+      db.payAssignment
+        .findMany({ where: { order: { organizationId: ctx.organizationId } } })
+        .then((rows) => {
+          data.payAssignments = rows
+        })
+    )
   }
   if (options.inventory && options.vehicles) {
-    queries.push(db.subcontractWork.findMany({where: {labor: {serviceRecord: {organizationId: ctx.organizationId}}}}).then(rows => {data.subcontractWork = rows}))
+    queries.push(
+      db.subcontractWork
+        .findMany({ where: { labor: { serviceRecord: { organizationId: ctx.organizationId } } } })
+        .then((rows) => {
+          data.subcontractWork = rows
+        })
+    )
   }
   if (options.inventory) {
     queries.push(
@@ -189,7 +201,13 @@ export async function POST(request: NextRequest) {
           data.supplierEntries = rows
         })
     )
-    queries.push(db.supplierReturn.findMany({ where: { organizationId: ctx.organizationId }, include: { lines: true } }).then(rows => { data.supplierReturns = rows }))
+    queries.push(
+      db.supplierReturn
+        .findMany({ where: { organizationId: ctx.organizationId }, include: { lines: true } })
+        .then((rows) => {
+          data.supplierReturns = rows
+        })
+    )
     queries.push(
       db.supplierReceipt
         .findMany({
@@ -250,7 +268,6 @@ export async function POST(request: NextRequest) {
             // their photos. Deleted with the vehicle on a restore like the rest.
             conditionMarks: true,
             aiMessages: true,
-            recurringInvoices: { include: { templateParts: true, templateLabor: true } },
             serviceRecords: {
               include: {
                 concerns: true,

@@ -1,3 +1,4 @@
+import { supportedLocale } from '@/i18n/config'
 import { documentFilename, pdfDisposition } from '@/lib/document-filename'
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
@@ -44,7 +45,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     // The workshop reads its own copy in its own language; the customer's
     // copy follows the customer's, which the shared renderer resolves.
     const cookieStore = await cookies()
-    const locale = cookieStore.get('locale')?.value || 'en'
+    const locale = supportedLocale(cookieStore.get('locale')?.value)
 
     // Load image attachments as base64 data URIs for PDF embedding
     const imageAttachments: { fileName: string; dataUri: string; description?: string }[] = []

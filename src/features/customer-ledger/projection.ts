@@ -23,11 +23,13 @@ export type LedgerDocument = {
   vehicleId: string | null
   label: string
   events: LedgerEvent[]
+  eventCount?: number
 }
 export function projectLedger(
   documents: LedgerDocument[],
   customers: Map<string, { name: string; phone: string | null }>,
-  asOf: string
+  asOf: string,
+  includeHistory = true
 ): PartyRow[] {
   const parties = new Map<string, PartyRow>()
   for (const d of documents) {
@@ -55,7 +57,7 @@ export function projectLedger(
       expected: !reason && !completed && !cancelled ? (state.amount ?? '0.00') : '0.00',
       reason,
       provisional: false,
-      history: events,
+      ...(includeHistory ? { history: events } : { historyAsOf: asOf, historyCount: d.eventCount }),
     }
     const key = d.customerId ?? 'unassigned',
       customer = d.customerId ? customers.get(d.customerId) : null

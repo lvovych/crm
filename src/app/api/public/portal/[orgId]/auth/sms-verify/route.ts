@@ -47,7 +47,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ org
       },
       select: { value: true },
     })
-    const defaultCountryCode = countrySetting?.value ?? null
+    const defaultCountryCode = countrySetting?.value ?? '+380'
     const e164 = normalizePortalPhone(phone, defaultCountryCode)
     if (!e164) {
       return NextResponse.json(

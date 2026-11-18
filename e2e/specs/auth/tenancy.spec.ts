@@ -1,3 +1,4 @@
+import { languageState } from '../../support/language'
 import { expect, type Page, test } from '@playwright/test'
 import { attach } from '../../support/attachments'
 import {
@@ -37,7 +38,7 @@ import { shareLink } from '../../support/work-order'
 test.describe.configure({ mode: 'serial' })
 
 // A stranger's browser: no session, until this file makes one.
-test.use({ storageState: { cookies: [], origins: [] } })
+test.use({ storageState: languageState('en') })
 
 const stamp = Date.now()
 const OUTSIDER = `e2e-outsider-${stamp}@example.com`

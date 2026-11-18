@@ -1,3 +1,5 @@
+import { languageState } from './support/language'
+import { ownerOrganizationId, setWorkshopSetting } from './support/db'
 import { test as setup, expect } from '@playwright/test'
 
 /**
@@ -12,6 +14,7 @@ const email = process.env.E2E_USER_EMAIL ?? 'demo@torqvoice.com'
 const password = process.env.E2E_USER_PASSWORD ?? 'demo-e2e-pass'
 
 setup('sign in as the workshop owner', async ({ page, context }) => {
+  await context.addCookies(languageState().cookies)
   await page.goto('/auth/sign-in')
 
   await page.locator('#email').fill(email)
@@ -44,6 +47,13 @@ setup('sign in as the workshop owner', async ({ page, context }) => {
   // here rather than per test so the saved state carries it everywhere.
   const { hostname } = new URL(page.url())
   await context.addCookies([{ name: 'locale', value: 'en', domain: hostname, path: '/' }])
+
+  // Email has no browser Accept-Language. Pin the seeded workshop's customer
+  // documents as well, so download/share/email parity compares one language.
+  // Newly created workshops still exercise the real Ukrainian defaults.
+  const organizationId = await ownerOrganizationId()
+  await setWorkshopSetting(organizationId, 'workshop.locale', 'en')
+  await setWorkshopSetting(organizationId, 'workshop.forceCustomerLocale', 'true')
 
   await context.storageState({ path: AUTH_STATE })
 })

@@ -1,4 +1,5 @@
 'use client'
+import { useOperationText } from '@/i18n/use-operation-text'
 import { ReturnReasonSelect } from './ReturnReasonSelect'
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
@@ -22,6 +23,8 @@ export function ConsolidatedReturnForm({
     quantities: Record<string, string>
   }
 }) {
+  const ot = useOperationText()
+
   const router = useRouter(),
     pending = useRef(false),
     request = useRef<string | undefined>(undefined)
@@ -58,7 +61,7 @@ export function ConsolidatedReturnForm({
       const result = await supplierReturnOptions(data.supplierId, [], { page, q })
       if (sequence !== searchRequest.current) return
       if (!result.success || !result.data)
-        throw new Error(result.error || 'Не вдалося завантажити позиції.')
+        throw new Error(result.error || ot('Не вдалося завантажити позиції.'))
       setPageData(result.data)
       setSelectedRows((current) => {
         const updated = { ...current }
@@ -67,7 +70,7 @@ export function ConsolidatedReturnForm({
       })
     } catch {
       if (sequence === searchRequest.current)
-        setSearchError('Не вдалося завантажити позиції. Спробуйте ще раз.')
+        setSearchError(ot('Не вдалося завантажити позиції. Спробуйте ще раз.'))
     } finally {
       if (sequence === searchRequest.current) setLoading(false)
     }
@@ -131,13 +134,13 @@ export function ConsolidatedReturnForm({
             lines: selected.map((l) => ({ id: l.id, quantity: quantities[l.id] })),
           })
           if (!r.success || !r.data) {
-            setError(r.error || 'Не вдалося зберегти чернетку.')
+            setError(r.error || ot('Не вдалося зберегти чернетку.'))
             return
           }
           router.push('/supplier-returns/' + r.data)
           router.refresh()
         } catch {
-          setError('Не вдалося отримати відповідь. Повторіть збереження з тими самими даними.')
+          setError(ot('Не вдалося отримати відповідь. Повторіть збереження з тими самими даними.'))
         } finally {
           pending.current = false
           setBusy(false)
@@ -146,14 +149,15 @@ export function ConsolidatedReturnForm({
     >
       <section className="ops-panel space-y-4">
         <div>
-          <h2 className="text-lg font-semibold">1. Оберіть товари або послуги</h2>
+          <h2 className="text-lg font-semibold">{ot('1. Оберіть товари або послуги')}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Доступні залишки з усіх проведених надходжень цього постачальника. Якщо одна запчастина
-            є в кількох накладних, оберіть потрібне надходження та його ціну.
+            {ot(
+              'Доступні залишки з усіх проведених надходжень цього постачальника. Якщо одна запчастина є в кількох накладних, оберіть потрібне надходження та його ціну.'
+            )}
           </p>
         </div>
         <label className="grid gap-2 text-sm">
-          Знайти позицію
+          {ot('Знайти позицію')}
           <input
             value={search}
             maxLength={120}
@@ -164,7 +168,7 @@ export function ConsolidatedReturnForm({
               }
             }}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Артикул, бренд, назва або номер накладної"
+            placeholder={ot('Артикул, бренд, назва або номер накладної')}
             className="h-11 rounded-md border bg-background px-3"
           />
         </label>
@@ -174,7 +178,7 @@ export function ConsolidatedReturnForm({
           disabled={busy}
           onClick={() => void load(1, search)}
         >
-          {loading ? 'Пошук…' : 'Знайти'}
+          {loading ? ot('Пошук…') : ot('Знайти')}
         </Button>
         {searchError && (
           <p role="alert" className="text-destructive">
@@ -185,13 +189,13 @@ export function ConsolidatedReturnForm({
           <table>
             <thead>
               <tr>
-                <th>Вибрати</th>
-                <th>Позиція / бренд</th>
-                <th>Артикул</th>
-                <th>Надходження</th>
-                <th>Ціна</th>
-                <th>Доступно</th>
-                <th>Повернути</th>
+                <th>{ot('Вибрати')}</th>
+                <th>{ot('Позиція / бренд')}</th>
+                <th>{ot('Артикул')}</th>
+                <th>{ot('Надходження')}</th>
+                <th>{ot('Ціна')}</th>
+                <th>{ot('Доступно')}</th>
+                <th>{ot('Повернути')}</th>
               </tr>
             </thead>
             <tbody>
@@ -201,7 +205,7 @@ export function ConsolidatedReturnForm({
                     <input
                       type="checkbox"
                       className="size-4"
-                      aria-label={'Обрати ' + l.name + ' · ' + l.receiptNumber}
+                      aria-label={ot('Обрати ') + l.name + ' · ' + l.receiptNumber}
                       checked={Object.hasOwn(quantities, l.id)}
                       disabled={busy || loading || Number(l.available) <= 0}
                       onChange={(e) =>
@@ -215,7 +219,7 @@ export function ConsolidatedReturnForm({
                   <td>
                     <span className="font-medium">{l.name}</span>
                     <p className="text-sm text-muted-foreground">
-                      {l.brand || (l.kind === 'service' ? 'Послуга' : 'Бренд не вказано')}
+                      {l.brand || (l.kind === 'service' ? ot('Послуга') : ot('Бренд не вказано'))}
                     </p>
                   </td>
                   <td className="font-mono">{l.article || '—'}</td>
@@ -235,7 +239,7 @@ export function ConsolidatedReturnForm({
                       min="0.001"
                       step="0.001"
                       max={l.available}
-                      aria-label={'Кількість ' + l.name + ' · ' + l.receiptNumber}
+                      aria-label={ot('Кількість ') + l.name + ' · ' + l.receiptNumber}
                       value={quantities[l.id] ?? ''}
                       disabled={busy || !Object.hasOwn(quantities, l.id)}
                       required={Object.hasOwn(quantities, l.id)}
@@ -251,32 +255,41 @@ export function ConsolidatedReturnForm({
         {!visible.length && (
           <p role="status" className="p-4 text-sm text-muted-foreground">
             {pageData.q
-              ? 'Позицій за цим пошуком немає.'
-              : 'Немає доступних залишків для повернення.'}
+              ? ot('Позицій за цим пошуком немає.')
+              : ot('Немає доступних залишків для повернення.')}
           </p>
         )}
-        <nav aria-label="Сторінки доступних позицій" className="flex flex-wrap items-center gap-3">
+        <nav
+          aria-label={ot('Сторінки доступних позицій')}
+          className="flex flex-wrap items-center gap-3"
+        >
           <Button
             type="button"
             variant="outline"
             disabled={busy || loading || pageData.page <= 1}
             onClick={() => void load(pageData.page - 1, pageData.q)}
           >
-            Назад
+            {ot('Назад')}
           </Button>
-          <span aria-live="polite">Сторінка {pageData.page}</span>
+          <span aria-live="polite">
+            {ot("Сторінка ")}
+            {pageData.page}
+          </span>
           <Button
             type="button"
             variant="outline"
             disabled={busy || loading || !pageData.hasMore}
             onClick={() => void load(pageData.page + 1, pageData.q)}
           >
-            Далі
+            {ot('Далі')}
           </Button>
         </nav>
       </section>
       <section className="ops-panel space-y-4">
-        <h2 className="text-lg font-semibold">2. Перевірте повернення · {selected.length} поз.</h2>
+        <h2 className="text-lg font-semibold">
+          {ot("2. Перевірте повернення · ")}
+          {selected.length} {ot(" поз.")}
+        </h2>
         {selected.length > 0 && (
           <ul className="divide-y">
             {selected.map((l) => (
@@ -286,23 +299,28 @@ export function ConsolidatedReturnForm({
                     {l.brand} {l.article} · {l.name}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Накладна {l.receiptNumber} · {quantities[l.id]} {l.unit}
+                    {ot("Накладна ")}
+                    {l.receiptNumber} · {quantities[l.id]} {l.unit}
                   </p>
                 </div>
                 <Button type="button" variant="ghost" disabled={busy} onClick={() => update(l.id)}>
-                  Прибрати
+                  {ot('Прибрати')}
                 </Button>
               </li>
             ))}
           </ul>
         )}
-        <p className="text-xl font-semibold">Сума: {moneyLabel(total)}</p>
+        <p className="text-xl font-semibold">
+          {ot("Сума: ")}
+          {moneyLabel(total, ot('грн'))}
+        </p>
         <p className="text-sm text-muted-foreground">
-          Документ зменшить складський залишок і загальний борг перед {data.supplier}. Оплати
-          накладних не зміняться.
+          {ot("Документ зменшить складський залишок і загальний борг перед ")}
+          {data.supplier}
+          {ot('. Оплати накладних не зміняться.')}
         </p>
         <label className="grid gap-2 text-sm">
-          Номер документа постачальника
+          {ot('Номер документа постачальника')}
           <input
             type="text"
             maxLength={120}
@@ -312,7 +330,7 @@ export function ConsolidatedReturnForm({
               request.current = undefined
               setSupplierDocumentNumber(e.target.value)
             }}
-            placeholder="Необов’язково"
+            placeholder={ot('Необов’язково')}
             className="h-11 w-full rounded-md border bg-background px-3"
           />
         </label>
@@ -330,7 +348,7 @@ export function ConsolidatedReturnForm({
           </p>
         )}
         <Button disabled={busy || loading || !valid}>
-          {busy ? 'Збереження…' : 'Зберегти чернетку'}
+          {busy ? ot('Збереження…') : ot('Зберегти чернетку')}
         </Button>
       </section>
     </form>

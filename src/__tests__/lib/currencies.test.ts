@@ -52,7 +52,7 @@ describe('currency registry', () => {
   })
 
   it('reads the workshop currency out of a settings record or map', () => {
-    expect(resolveCurrencySettings({})).toEqual({ currencyCode: 'USD', currencyFormat: 'symbol' })
+    expect(resolveCurrencySettings({})).toEqual({ currencyCode: 'UAH', currencyFormat: 'symbol' })
     expect(
       resolveCurrencySettings({
         'workshop.currencyCode': 'NIO',
