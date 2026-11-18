@@ -41,7 +41,7 @@ test.describe('line validation protects the saved work order', () => {
     await dialog.getByLabel('Unit Price', { exact: true }).fill('300')
     await expectRefused(dialog)
     await expect(dialog.getByLabel('Unit Price', { exact: true })).toHaveValue('300')
-    await expect(totalsRow(page, 'Parts')).toContainText('$500.00')
+    await expect(totalsRow(page, 'Parts')).toContainText('500,00 UAH')
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
     await page
       .getByRole('alertdialog')
@@ -49,7 +49,7 @@ test.describe('line validation protects the saved work order', () => {
       .click()
     await page.reload()
     await expect(partRows(page)).toHaveCount(1)
-    await expect(totalsRow(page, 'Parts')).toContainText('$500.00')
+    await expect(totalsRow(page, 'Parts')).toContainText('500,00 UAH')
   })
 
   test('naming the part lets both lines be saved', async ({ page }) => {
@@ -58,7 +58,7 @@ test.describe('line validation protects the saved work order', () => {
     await saveWorkOrder(page)
     await page.reload()
     await expect(partRows(page)).toHaveCount(2)
-    await expect(totalsRow(page, 'Parts')).toContainText('$1,100.00')
+    await expect(totalsRow(page, 'Parts')).toContainText('1 100,00 UAH')
   })
 
   test('labor requires a description and can be corrected without losing its price', async ({
@@ -79,7 +79,7 @@ test.describe('line validation protects the saved work order', () => {
     await saveWorkOrder(page)
     await page.reload()
     await expect(laborRows(page)).toHaveCount(1)
-    await expect(totalsRow(page, 'Labor')).toContainText('$2,700.00')
+    await expect(totalsRow(page, 'Labor')).toContainText('2 700,00 UAH')
   })
 
   for (const [label, value, original] of [
@@ -91,13 +91,13 @@ test.describe('line validation protects the saved work order', () => {
       const dialog = await editPart(page)
       await dialog.getByLabel(label, { exact: true }).fill(value)
       await expectRefused(dialog)
-      await expect(totalsRow(page, 'Parts')).toContainText('$1,100.00')
+      await expect(totalsRow(page, 'Parts')).toContainText('1 100,00 UAH')
       await dialog.getByLabel(label, { exact: true }).fill(original)
       await applyLine(dialog)
       await saveWorkOrder(page)
       await page.reload()
-      await expect(totalsRow(page, 'Parts')).toContainText('$1,100.00')
-      await expect(totalsRow(page, 'Labor')).toContainText('$2,700.00')
+      await expect(totalsRow(page, 'Parts')).toContainText('1 100,00 UAH')
+      await expect(totalsRow(page, 'Labor')).toContainText('2 700,00 UAH')
     })
   }
 })

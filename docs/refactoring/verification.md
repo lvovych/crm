@@ -1,4 +1,6 @@
-# Final verification
+# Financial-refactor verification snapshot
+
+This records the financial-refactor milestone before the later localization and removal of recurring billing. It is not the final release gate. See [localization](localization.md), [billing removal](remove-customer-billing.md), and the final PR checks for subsequent verification.
 
 2026-11-18; same isolated worktree and Node/PostgreSQL environment as the [pre-change baseline](baseline.md). Latest `origin/main` was checked again and remains `334e7f2bcad6d24b1de093aa8b12ab8c6619e02f`.
 

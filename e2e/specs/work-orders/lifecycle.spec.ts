@@ -55,7 +55,7 @@ test.describe('a work order from intake to completion', () => {
 
     await page.reload()
     await expect(page.locator('input[name="title"]')).toHaveValue(TITLE)
-    await expect(totalsRow(page, 'Parts')).toContainText('$240.00')
+    await expect(totalsRow(page, 'Parts')).toContainText('240,00 UAH')
   })
 
   test('labour is added and the totals follow', async ({ page }) => {
@@ -63,8 +63,8 @@ test.describe('a work order from intake to completion', () => {
     await addLabor(page, { description: 'Change the oil and filter', hours: 1, rate: 800 })
     await saveWorkOrder(page)
 
-    await expect(totalsRow(page, 'Labor')).toContainText('$800.00')
-    await expect(totalsRow(page, 'Subtotal')).toContainText('$1,040.00')
+    await expect(totalsRow(page, 'Labor')).toContainText('800,00 UAH')
+    await expect(totalsRow(page, 'Subtotal')).toContainText('1 040,00 UAH')
   })
 
   test('a price is corrected and the totals follow it', async ({ page }) => {
@@ -75,26 +75,26 @@ test.describe('a work order from intake to completion', () => {
     await expect(quantity).toHaveValue('2')
     await quantity.fill('3')
     await applyLine(dialog)
-    await expect(totalsRow(page, 'Parts')).toContainText('$360.00')
+    await expect(totalsRow(page, 'Parts')).toContainText('360,00 UAH')
     await saveWorkOrder(page)
 
     await page.reload()
-    await expect(totalsRow(page, 'Parts')).toContainText('$360.00')
-    await expect(totalsRow(page, 'Subtotal')).toContainText('$1,160.00')
+    await expect(totalsRow(page, 'Parts')).toContainText('360,00 UAH')
+    await expect(totalsRow(page, 'Subtotal')).toContainText('1 160,00 UAH')
   })
 
   test('a second part is added and then removed again', async ({ page }) => {
     await page.goto(jobUrl)
     await addPart(page, { name: SECOND_PART, quantity: 1, unitPrice: 90 })
     await saveWorkOrder(page)
-    await expect(totalsRow(page, 'Parts')).toContainText('$450.00')
+    await expect(totalsRow(page, 'Parts')).toContainText('450,00 UAH')
 
     await page.reload()
     await deletePart(page, (await partRows(page).count()) - 1)
     await saveWorkOrder(page)
 
     await page.reload()
-    await expect(totalsRow(page, 'Parts')).toContainText('$360.00')
+    await expect(totalsRow(page, 'Parts')).toContainText('360,00 UAH')
     await expect(partRows(page)).toHaveCount(1)
   })
 

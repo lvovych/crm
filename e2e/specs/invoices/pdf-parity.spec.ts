@@ -39,11 +39,11 @@ const LABOR = 'Replace water pump\nand the timing belt with it\nrefill and bleed
 
 /** What every copy has to say, whoever it is for. */
 const FACTS = [
-  '$1,450.00',
-  '$2,000.00',
-  'Subtotal $3,450.00',
-  'Tax (25%) $862.50',
-  'Total $4,312.50',
+  '1 450,00 UAH',
+  '2 000,00 UAH',
+  'Subtotal 3 450,00 UAH',
+  'Tax (25%) 862,50 UAH',
+  'Total 4 312,50 UAH',
 ]
 
 let jobUrl = ''

@@ -156,7 +156,7 @@ test.describe('a job with files attached to it', () => {
     // renderer's own stream and the request hung until it timed out.
     const pdf = await workshopCopy(page, url)
     expect(pdf.pages).toBeGreaterThan(0)
-    expect(pdf.flat, 'the invoice is still the invoice').toContain('$120.00')
+    expect(pdf.flat, 'the invoice is still the invoice').toContain('120,00 UAH')
     // Listed by name, the way an unreadable file already was, rather than drawn.
     expect(pdf.flat).toContain('e2e-broken.png')
   })

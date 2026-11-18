@@ -9,6 +9,7 @@
  * header style still produces a valid document.
  */
 import React from 'react'
+import { extractText } from 'unpdf'
 import { renderToBuffer, type DocumentProps } from '@react-pdf/renderer'
 import { describe, expect, it } from 'vitest'
 import '@/features/vehicles/Components/invoice-pdf/fonts'
@@ -95,6 +96,21 @@ const workshop = {
 const settings = { currencyCode: 'EUR', bankAccount: 'XX00 1234 5678', orgNumber: '123 456 789' }
 
 describe('the printed invoice follows the designed layout', () => {
+  it('preserves Ukrainian currency codes in regular and bold invoice text', async () => {
+    const buffer = await renderToBuffer(
+      <InvoicePDF
+        data={invoice}
+        workshop={workshop}
+        invoiceSettings={{ ...settings, currencyCode: 'UAH' }}
+      />
+    )
+    const { text } = await extractText(new Uint8Array(buffer), { mergePages: true })
+    const flat = String(text).replace(/\s+/g, ' ')
+    expect(flat).toContain('256,12 UAH')
+    expect(flat).toContain('1 253,82 UAH')
+    expect(flat).toContain('VEHICLE')
+  })
+
   it('renders a valid PDF for every header style', async () => {
     for (const headerStyle of ['standard', 'compact', 'modern', 'framed']) {
       const buffer = await renderToBuffer(
