@@ -230,8 +230,8 @@ test('the tax report totals each tax by name', async ({ page }) => {
   await expect(qst).toHaveCount(1)
   // Each row carries money and a count; the exact figures depend on what
   // earlier runs left in the period, so the shape is what is pinned.
-  await expect(gst).toContainText(/\$\d/)
-  await expect(qst).toContainText(/\$\d/)
+  await expect(gst).toContainText(/\d+,\d{2}\s*UAH/)
+  await expect(qst).toContainText(/\d+,\d{2}\s*UAH/)
 })
 
 test('switching the split off puts a new job back on one tax line', async ({ page }) => {
