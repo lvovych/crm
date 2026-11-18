@@ -4,7 +4,7 @@ import { rateLimit } from '@/lib/rate-limit'
 import { getAuthContext } from '@/lib/get-auth-context'
 import { db } from '@/lib/db'
 import { isDemoMode } from '@/lib/demo'
-import { resolveInvoicePrefix } from '@/lib/invoice-utils'
+import { nextInvoiceNumber } from '@/lib/invoice-number.server'
 import { workshopTimeZone } from '@/lib/workshop-timezone'
 import { toSafeWorkshopDate } from '@/lib/workshop-datetime'
 import { mkdir, writeFile, rm } from 'fs/promises'
@@ -296,24 +296,6 @@ export async function POST(request: NextRequest) {
       docsByInvoice.set(doc.documentable_id, existing)
     }
 
-    // Get invoice prefix settings
-    const prefixSetting = await db.appSetting.findFirst({
-      where: { organizationId, key: 'workshop.invoicePrefix' },
-    })
-    const invoicePrefix = resolveInvoicePrefix(prefixSetting?.value ?? '{year}-')
-
-    // Get the current highest invoice number
-    const lastRecord = await db.serviceRecord.findFirst({
-      where: { organizationId },
-      orderBy: { createdAt: 'desc' },
-      select: { invoiceNumber: true },
-    })
-    let nextInvoiceNum = 1001
-    if (lastRecord?.invoiceNumber) {
-      const match = lastRecord.invoiceNumber.match(/(\d+)$/)
-      if (match) nextInvoiceNum = Number.parseInt(match[1], 10) + 1
-    }
-
     // Uploads directory for this org
     const uploadsBase = path.join(uploadsRoot(), organizationId)
 
@@ -402,8 +384,7 @@ export async function POST(request: NextRequest) {
             .slice(0, 3)
           const title = itemNames.length > 0 ? itemNames.join(', ') : `Invoice #${invoice.number}`
 
-          const invoiceNumber = `${invoicePrefix}${nextInvoiceNum}`
-          nextInvoiceNum++
+          const invoiceNumber = await nextInvoiceNumber(tx, organizationId, timeZone)
 
           const partsTotal = partItems.reduce((sum, li) => sum + (li.line_total || 0), 0)
           const laborTotal = laborItems.reduce((sum, li) => sum + (li.line_total || 0), 0)

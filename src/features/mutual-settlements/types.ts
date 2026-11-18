@@ -13,6 +13,8 @@ export type DocumentRow = {
   reason: string | null
   provisional: boolean
   history?: LedgerEvent[]
+  historyAsOf?: string
+  historyCount?: number
 }
 export type PartyRow = {
   id: string

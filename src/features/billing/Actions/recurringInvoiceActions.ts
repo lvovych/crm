@@ -1,5 +1,6 @@
 'use server'
 
+import { executeRecurringInvoice } from '../Lib/recurringExecution'
 import { db } from '@/lib/db'
 import { withAuth } from '@/lib/with-auth'
 import { PermissionAction, PermissionSubject } from '@/lib/permissions'
@@ -10,15 +11,11 @@ import {
   type CreateRecurringInvoiceInput,
   type UpdateRecurringInvoiceInput,
 } from '../Schema/recurringInvoiceSchema'
-import { resolveInvoicePrefix } from '@/lib/invoice-utils'
 import {
-  documentTotals,
   readWorkshopTax,
   taxFieldsForNewDocument,
   WORKSHOP_TAX_SETTING_KEYS,
 } from '@/features/settings/Lib/workshopTax'
-import { lineTotal } from '@/features/inventory/Lib/partPricing'
-import { calculateNextRunDate } from '@/lib/cron/recurring-invoices'
 import { endOfWorkshopDay, toSafeWorkshopDate } from '@/lib/workshop-datetime'
 import { workshopTimeZone } from '@/lib/workshop-timezone'
 
@@ -274,138 +271,25 @@ export async function toggleRecurringInvoice(id: string) {
   )
 }
 
-async function generateInvoiceNumber(organizationId: string): Promise<string> {
-  const settings = await db.appSetting.findMany({
-    where: {
-      organizationId,
-      key: { in: ['workshop.invoicePrefix', 'workshop.invoiceStartNumber'] },
-    },
-  })
-
-  const settingsMap: Record<string, string> = {}
-  for (const s of settings) settingsMap[s.key] = s.value
-
-  const prefix = resolveInvoicePrefix(settingsMap['workshop.invoicePrefix'] ?? '{year}-')
-  const startNumber = parseInt(settingsMap['workshop.invoiceStartNumber'] || '0', 10)
-
-  const lastRecord = await db.serviceRecord.findFirst({
-    where: { organizationId },
-    orderBy: { createdAt: 'desc' },
-    select: { invoiceNumber: true },
-  })
-
-  let nextNum = startNumber || 1001
-  if (lastRecord?.invoiceNumber) {
-    const match = lastRecord.invoiceNumber.match(/(\d+)$/)
-    if (match) {
-      const lastNum = parseInt(match[1], 10) + 1
-      nextNum = Math.max(nextNum, lastNum)
-    }
-  }
-
-  return `${prefix}${nextNum}`
-}
-
 export async function processRecurringInvoices() {
   return withAuth(
     async ({ organizationId }) => {
       const now = new Date()
-      const timeZone = await workshopTimeZone(organizationId)
-
-      const dueInvoices = await db.recurringInvoice.findMany({
+      const due = await db.recurringInvoice.findMany({
         where: {
           isActive: true,
           nextRunDate: { lte: now },
           vehicle: { organizationId },
         },
-        include: {
-          templateParts: true,
-          templateLabor: true,
-          vehicle: { select: { organizationId: true } },
-        },
+        select: { id: true, nextRunDate: true },
       })
-
       const results: { id: string; serviceRecordId: string }[] = []
-
-      for (const ri of dueInvoices) {
-        const invoiceNumber = await generateInvoiceNumber(organizationId)
-
-        // Calculate totals
-        const partsSubtotal = ri.templateParts.reduce((s, p) => s + p.quantity * p.unitPrice, 0)
-        const laborSubtotal = ri.templateLabor.reduce((s, l) => s + l.hours * l.rate, 0)
-        const subtotal = ri.cost + partsSubtotal + laborSubtotal
-        const { taxAmount, totalAmount, taxComponents } = documentTotals({
-          subtotal,
-          discountAmount: 0,
-          taxRate: ri.taxRate,
-          taxInclusive: ri.taxInclusive,
-          taxComponents: ri.taxComponents,
-        })
-
-        const serviceRecord = await db.$transaction(async (tx) => {
-          const sr = await tx.serviceRecord.create({
-            data: {
-              customerLedgerTracked: true,
-              organizationId,
-              title: ri.title,
-              description: ri.description,
-              type: ri.type,
-              status: 'completed',
-              cost: ri.cost,
-              serviceDate: now,
-              startDateTime: now,
-              invoiceNotes: ri.invoiceNotes,
-              subtotal,
-              taxRate: ri.taxRate,
-              taxInclusive: ri.taxInclusive,
-              taxComponents,
-              taxAmount,
-              totalAmount,
-              invoiceNumber,
-              vehicleId: ri.vehicleId,
-              partItems: {
-                create: ri.templateParts.map((p) => ({
-                  name: p.name,
-                  partNumber: p.partNumber,
-                  quantity: p.quantity,
-                  unitPrice: p.unitPrice,
-                  total: lineTotal(p.quantity, p.unitPrice),
-                })),
-              },
-              laborItems: {
-                create: ri.templateLabor.map((l) => ({
-                  description: l.description,
-                  hours: l.hours,
-                  rate: l.rate,
-                  total: l.hours * l.rate,
-                })),
-              },
-            },
-          })
-
-          // Update recurring invoice
-          const nextRunDate = calculateNextRunDate(ri.nextRunDate, ri.frequency, timeZone)
-          const shouldDeactivate = ri.endDate && nextRunDate > ri.endDate
-
-          await tx.recurringInvoice.update({
-            where: { id: ri.id },
-            data: {
-              lastRunAt: now,
-              runCount: { increment: 1 },
-              nextRunDate,
-              ...(shouldDeactivate && { isActive: false }),
-            },
-          })
-
-          return sr
-        })
-
-        results.push({ id: ri.id, serviceRecordId: serviceRecord.id })
+      for (const candidate of due) {
+        const record = await executeRecurringInvoice(candidate, organizationId, now)
+        if (record) results.push({ id: candidate.id, serviceRecordId: record.id })
       }
-
       revalidatePath('/billing')
       revalidatePath('/billing/recurring')
-
       return { processed: results.length, results }
     },
     {

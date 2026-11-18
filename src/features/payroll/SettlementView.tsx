@@ -8,14 +8,14 @@ import { cents, decimal } from '@/features/finance/money'
 export default async function SettlementView({
   searchParams,
 }: {
-  searchParams: Promise<{ employee?: string; slip?: string }>
+  searchParams: Promise<{ employee?: string; slip?: string; from?: string; to?: string }>
 }) {
-  const r = await settlementData()
+  const query = await searchParams
+  const r = await settlementData(query)
   if (!r.data) return <p>{r.error}</p>
-  const { people, accounts, categories, canPay } = r.data
-  const { employee, slip } = await searchParams
+  const { people, person, period, accounts, categories, canPay } = r.data
+  const { slip } = query
   const format = (value: bigint) => decimal(value).replace('.', ',')
-  const person = people.find((p) => p.id === employee)
   return (
     <main className="ops-workspace mx-auto w-full max-w-6xl space-y-6 p-4 sm:p-6">
       <h1 className="text-3xl font-semibold">Взаєморозрахунки з працівниками</h1>
@@ -29,14 +29,7 @@ export default async function SettlementView({
           </thead>
           <tbody>
             {people.map((p) => {
-              const earned = p.paySlips
-                .filter((s) => s.status === 'completed')
-                .reduce((sum, slip) => sum + cents(slip.total.toFixed(2)), BigInt(0))
-              const balance = p.staffPayments.reduce(
-                (sum, payment) =>
-                  payment.document.reversal ? sum : sum - cents(payment.document.amount.toFixed(2)),
-                earned
-              )
+              const balance = cents(p.balance)
               return (
                 <tr key={p.id} className="border-t">
                   <td className="py-2">
@@ -60,6 +53,21 @@ export default async function SettlementView({
           <Link className="underline" href={'/payroll?employee=' + person.id}>
             Нарахувати зарплату
           </Link>
+          <form className="flex flex-wrap gap-3">
+            <input type="hidden" name="employee" value={person.id} />
+            <label>
+              Від <input type="date" name="from" defaultValue={period.from} required />
+            </label>
+            <label>
+              До <input type="date" name="to" defaultValue={period.to} required />
+            </label>
+            <button className="underline">Показати період</button>
+          </form>
+          <p>
+            Загальний залишок:{' '}
+            {format(cents(people.find((p) => p.id === person.id)?.balance ?? '0'))} грн. Нижче —
+            документи за обраний період.
+          </p>
           <h3 className="font-semibold">Розрахункові листки</h3>
           {!person.paySlips.length && <p>Проведених листків ще немає.</p>}
           {person.paySlips
@@ -84,7 +92,7 @@ export default async function SettlementView({
                   </summary>
                   <Lines details={s.lines as unknown as SlipDetails} />
                   {s.allocations.map((a) => {
-                    const payment = person.staffPayments.find((p) => p.id === a.paymentId)!
+                    const payment = a.payment
                     return (
                       <p key={a.id}>
                         {payment.document.date.toLocaleDateString('uk-UA', { timeZone: 'UTC' })}
@@ -107,12 +115,7 @@ export default async function SettlementView({
               Документ {p.documentId}
               {p.allocations.map((a) => (
                 <p key={a.id}>
-                  Листок{' '}
-                  {person.paySlips
-                    .find((s) => s.id === a.slipId)
-                    ?.start.toISOString()
-                    .slice(0, 10)}{' '}
-                  · {a.amount.toFixed(2)} грн
+                  Листок {a.slip.start.toISOString().slice(0, 10)} · {a.amount.toFixed(2)} грн
                 </p>
               ))}
             </details>

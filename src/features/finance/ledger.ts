@@ -134,10 +134,13 @@ export async function postMoney(
   if (data.sourceAccountId) {
     const account = accounts.find((a) => a.id === data.sourceAccountId)!
     if (!account.allowNegative) {
-      const rows = await tx.moneyEntry.findMany({
-        where: { organizationId: org, accountId: account.id },
-        select: { date: true, amount: true },
-      })
+      // Collapse all prior history into the posting day, then one exact sum
+      // per future day. Preserve the same end-of-day overdraft semantics.
+      const rows = await tx.$queryRaw<{ date: Date; amount: { toFixed(n: number): string } }[]>`
+        SELECT GREATEST("date", ${date}::date) AS date, SUM("amount") AS amount
+        FROM "public"."money_entries"
+        WHERE "organizationId" = ${org} AND "accountId" = ${account.id}
+        GROUP BY 1`
       assertHistoricalBalance(
         rows.map((r) => ({ date: dateKey(r.date), amount: r.amount.toFixed(2) })),
         data.date,
@@ -148,20 +151,38 @@ export async function postMoney(
   let categoryId = data.categoryId
   let automaticCategory: { systemCode: string; name: string; direction: string } | undefined
   if (data.kind === 'customer_payment' && data.paymentId) {
-    automaticCategory = { systemCode: 'work_order_sales', name: 'Продаж послуг / запчастин', direction: 'income' }
+    automaticCategory = {
+      systemCode: 'work_order_sales',
+      name: 'Продаж послуг / запчастин',
+      direction: 'income',
+    }
   }
   if (data.kind === 'supplier_payment' && data.supplierEntryId) {
     const kinds = await tx.supplierReceiptLine.findMany({
-      where: { receipt: { organizationId: org, settlement: {
-        debits: { some: { creditId: data.supplierEntryId, reversedAt: null } },
-      } } },
-      select: { kind: true }, distinct: ['kind'],
+      where: {
+        receipt: {
+          organizationId: org,
+          settlement: {
+            debits: { some: { creditId: data.supplierEntryId, reversedAt: null } },
+          },
+        },
+      },
+      select: { kind: true },
+      distinct: ['kind'],
     })
     if (kinds.length > 1) throw new Error('Проведіть оплату товарів і послуг окремо.')
     if (kinds[0]?.kind === 'part')
-      automaticCategory = { systemCode: 'purchase_parts', name: 'Закупівля запчастин', direction: 'expense' }
+      automaticCategory = {
+        systemCode: 'purchase_parts',
+        name: 'Закупівля запчастин',
+        direction: 'expense',
+      }
     if (kinds[0]?.kind === 'service')
-      automaticCategory = { systemCode: 'purchase_services', name: 'Закупівля послуг', direction: 'expense' }
+      automaticCategory = {
+        systemCode: 'purchase_services',
+        name: 'Закупівля послуг',
+        direction: 'expense',
+      }
   }
   if (automaticCategory) {
     const { systemCode, name, direction } = automaticCategory
@@ -178,7 +199,9 @@ export async function postMoney(
       if (matches.length > 1) throw new Error('У довіднику кілька статей з однаковою назвою.')
       const category = matches.length
         ? await tx.cashFlowCategory.update({ where: { id: matches[0].id }, data: { systemCode } })
-        : await tx.cashFlowCategory.create({ data: { organizationId: org, name, direction, systemCode } })
+        : await tx.cashFlowCategory.create({
+            data: { organizationId: org, name, direction, systemCode },
+          })
       categoryId = category.id
     }
   }

@@ -30,7 +30,7 @@ import { onInventoryChanged } from '@/features/inventory/Lib/onInventoryChanged'
 import { randomUUID } from 'crypto'
 import { releaseFiles } from '@/lib/files/manager'
 import { serviceRecordFileUrls } from '@/lib/files/collect'
-import { resolveInvoicePrefix } from '@/lib/invoice-utils'
+import { nextInvoiceNumber } from '@/lib/invoice-number.server'
 import { workshopTimeZone } from '@/lib/workshop-timezone'
 import { endOfWorkshopDay, toSafeWorkshopDate } from '@/lib/workshop-datetime'
 import { zonedDayKey } from '@/lib/timezone'
@@ -405,7 +405,6 @@ export async function createServiceRecord(input: unknown) {
       for (const s of settings) settingsMap[s.key] = s.value
 
       const shopName = data.shopName || org?.name || undefined
-      const prefix = resolveInvoicePrefix(settingsMap['workshop.invoicePrefix'] ?? '{year}-')
 
       // If the caller didn't pass taxInclusive, inherit the org's current setting.
       // Existing callers (vehicle-detail-client, ServiceForm) don't send the field,
@@ -438,31 +437,6 @@ export async function createServiceRecord(input: unknown) {
             })
           : null
 
-      // Generate sequential invoice number
-      const startNumber = parseInt(settingsMap['workshop.invoiceStartNumber'] || '0', 10)
-      const lastRecord = await db.serviceRecord.findFirst({
-        where: { organizationId },
-        orderBy: { createdAt: 'desc' },
-        select: { invoiceNumber: true },
-      })
-      let nextNum = startNumber || 1001
-      if (lastRecord?.invoiceNumber) {
-        const match = lastRecord.invoiceNumber.match(/(\d+)$/)
-        if (match) {
-          const lastNum = parseInt(match[1], 10) + 1
-          nextNum = Math.max(nextNum, lastNum)
-        }
-      }
-      const invoiceNumber = `${prefix}${nextNum}`
-
-      // Clear start number after first use so it doesn't override future increments
-      if (startNumber && nextNum === startNumber) {
-        await db.appSetting.updateMany({
-          where: { organizationId, key: 'workshop.invoiceStartNumber' },
-          data: { value: '' },
-        })
-      }
-
       const {
         concerns,
         partItems,
@@ -494,6 +468,7 @@ export async function createServiceRecord(input: unknown) {
       const warrantyStartsOn = toSafeWorkshopDate(serviceDate, timeZone) ?? new Date()
 
       const record = await db.$transaction(async (tx) => {
+        const invoiceNumber = await nextInvoiceNumber(tx, organizationId, timeZone)
         const normalizedParts = await prepareParts(tx, null, partItems ?? [])
         const normalizedLabor = await prepareLabor(tx, organizationId, null, laborItems ?? [])
         if (partItems?.length || laborItems?.length) {
@@ -623,7 +598,8 @@ export async function createServiceRecord(input: unknown) {
           })
         }
 
-        if (laborItems?.some(l => l.supplierId)) await saveSubcontracts(tx, laborItems, normalizedLabor)
+        if (laborItems?.some((l) => l.supplierId))
+          await saveSubcontracts(tx, laborItems, normalizedLabor)
 
         if (attachments && attachments.length > 0) {
           await tx.serviceAttachment.createMany({
@@ -802,7 +778,8 @@ export async function updateServiceRecord(input: unknown) {
       }
 
       const record = await db.$transaction(async (tx) => {
-        if (laborItems !== undefined) await tx.$queryRaw`SELECT id FROM "public"."service_records" WHERE id=${id} AND "organizationId"=${organizationId} FOR UPDATE`
+        if (laborItems !== undefined)
+          await tx.$queryRaw`SELECT id FROM "public"."service_records" WHERE id=${id} AND "organizationId"=${organizationId} FOR UPDATE`
         const previousPartsForTotals = await tx.servicePart.findMany({
           where: { serviceRecordId: id },
         })
@@ -1026,7 +1003,8 @@ export async function updateServiceRecord(input: unknown) {
               })),
             })
           }
-          if (laborItems.some(l => l.supplierId)) await saveSubcontracts(tx, laborItems, normalizedLabor)
+          if (laborItems.some((l) => l.supplierId))
+            await saveSubcontracts(tx, laborItems, normalizedLabor)
         }
 
         // Replace attachments if provided (only for the categories included in the payload)
@@ -1498,7 +1476,9 @@ export async function deleteServiceRecord(recordId: string) {
           // preserves "this stock came back from job X".
           serviceRecordLabel: record.invoiceNumber || record.title,
         })
-        await tx.subcontractWork.deleteMany({where: {labor: {serviceRecordId:recordId}, receiptLineId:null}})
+        await tx.subcontractWork.deleteMany({
+          where: { labor: { serviceRecordId: recordId }, receiptLineId: null },
+        })
         await tx.serviceRecord.delete({ where: { id: recordId } })
       })
       await releaseFiles(files, { organizationId, reason: 'work order deleted' })

@@ -1,5 +1,5 @@
 import { directory, saveEmployee } from '@/features/employees/actions'
-import { settlementData } from '@/features/payroll/settlements'
+import { settlementData, payrollDocuments } from '@/features/payroll/settlements'
 import { cents, decimal } from '@/features/finance/money'
 import { UserRound } from 'lucide-react'
 import { roles, RoleFields } from '@/features/employees/RoleFields'
@@ -9,7 +9,7 @@ import Link from 'next/link'
 export default async function Employees({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; employee?: string }>
+  searchParams: Promise<{ tab?: string; employee?: string; page?: string }>
 }) {
   const result = await directory()
   if (!result.data) return <p>{result.error}</p>
@@ -18,9 +18,9 @@ export default async function Employees({
   const payroll = result.data.canSeePayroll ? await settlementData() : null
   if (payroll && !payroll.data) return <p role="alert">{payroll.error}</p>
   const docs = query.tab === 'documents' && !!payroll
-  const slips = (payroll?.data?.people ?? [])
-    .flatMap((p) => p.paySlips.map((s) => ({ ...s, employee: p })))
-    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+  const documents = docs ? await payrollDocuments(Math.max(1, Number(query.page) || 1)) : null
+  if (documents && !documents.data) return <p role="alert">{documents.error}</p>
+  const slips = (documents?.data?.rows ?? []).map((s) => ({ ...s, employee: s.technician }))
   const button =
     'inline-flex rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground'
   const tabClass = (active: boolean) =>
@@ -87,6 +87,17 @@ export default async function Employees({
                 ))}
               </tbody>
             </table>
+            {documents?.data && (
+              <nav className="flex gap-4 p-4" aria-label="Сторінки нарахувань">
+                {documents.data.page > 1 && (
+                  <Link href={'?tab=documents&page=' + (documents.data.page - 1)}>Назад</Link>
+                )}
+                <span>Сторінка {documents.data.page}</span>
+                {documents.data.page * 50 < documents.data.count && (
+                  <Link href={'?tab=documents&page=' + (documents.data.page + 1)}>Далі</Link>
+                )}
+              </nav>
+            )}
             {!slips.length && <p className="p-4">Проведених документів ще немає.</p>}
           </div>
         </>
@@ -119,18 +130,7 @@ export default async function Employees({
               <tbody>
                 {result.data.people.map((p) => {
                   const account = payroll?.data?.people.find((person) => person.id === p.id)
-                  const earned =
-                    account?.paySlips
-                      .filter((s) => s.status === 'completed')
-                      .reduce((sum, s) => sum + cents(s.total.toFixed(2)), BigInt(0)) ?? BigInt(0)
-                  const balance =
-                    account?.staffPayments.reduce(
-                      (sum, payment) =>
-                        payment.document.reversal
-                          ? sum
-                          : sum - cents(payment.document.amount.toFixed(2)),
-                      earned
-                    ) ?? earned
+                  const balance = cents(account?.balance ?? '0')
                   return (
                     <tr className="border-t hover:bg-muted/40" key={p.id}>
                       <td className="p-3">

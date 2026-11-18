@@ -1,17 +1,17 @@
 import { z } from 'zod'
 
+import { parseFixed, formatFixed } from '@/lib/exact-money'
+
 /** API and ledger amounts never pass through binary floating point. */
 export function cents(value: string): bigint {
-  if (!/^-?\d{1,20}(\.\d{1,2})?$/.test(value))
+  try {
+    return parseFixed(value)
+  } catch {
     throw new Error('Вкажіть суму з точністю до копійки.')
-  const negative = value.startsWith('-')
-  const [whole, fraction = ''] = value.replace(/^-/, '').split('.')
-  const n = BigInt(whole) * BigInt('100') + BigInt(fraction.padEnd(2, '0'))
-  return negative ? -n : n
+  }
 }
-export function decimal(value: bigint): string {
-  const n = value < BigInt('0') ? -value : value
-  return `${value < BigInt('0') ? '-' : ''}${n / BigInt('100')}.${String(n % BigInt('100')).padStart(2, '0')}`
+export function decimal(value: bigint) {
+  return formatFixed(value)
 }
 export function normalizeMoney(value: string): string {
   return decimal(

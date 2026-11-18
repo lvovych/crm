@@ -11,6 +11,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet'
+import { LedgerHistory } from './LedgerHistory'
 import { cents, decimal } from '@/features/finance/money'
 import { moneyLabel, dayLabel } from '@/features/finance/presentation'
 import type { Overview, PartyRow, DocumentRow } from './types'
@@ -98,49 +99,8 @@ export function SettlementDocument({ row }: { row: DocumentRow }) {
           </>
         )}
       </dl>
-      {row.history && (
-        <details className="mt-4 rounded-lg border p-3">
-          <summary className="min-h-11 cursor-pointer font-medium">
-            Історія зобов’язань і оплат ({row.history.length})
-          </summary>
-          <ol className="mt-3 space-y-3" aria-label="Історія документа">
-            {row.history.map((event) => (
-              <li key={event.id} className="border-t pt-3 text-sm">
-                <p className="font-medium">
-                  {(
-                    {
-                      created: 'Створено наряд',
-                      completed: 'Виникло зобов’язання',
-                      adjusted: 'Змінено суму або умови',
-                      status_changed: 'Змінено статус',
-                      cancelled: 'Скасовано зобов’язання',
-                      payment: 'Отримано оплату',
-                      payment_reversed: 'Сторновано запис оплати',
-                      refund: 'Повернення клієнту',
-                      deleted: 'Видалено порожній наряд',
-                    } as Record<string, string>
-                  )[event.kind] ?? event.kind}{' '}
-                  · {dayLabel(event.date)}
-                </p>
-                <p>
-                  Зміна зобов’язання: <Amount value={event.chargeDelta} /> · Зміна оплат:{' '}
-                  <Amount value={event.paidDelta} />
-                </p>
-                <p className="text-muted-foreground">
-                  {event.actor ?? 'Система / автор не зафіксований'} · Зареєстровано{' '}
-                  {event.recordedAt.replace('T', ' ').replace('Z', ' UTC')}
-                </p>
-                {event.sourceDate && event.sourceDate !== event.date && (
-                  <p>Дата первинної оплати: {dayLabel(event.sourceDate)}</p>
-                )}
-                {event.manualPaid && (
-                  <p>Ручна позначка «Оплачено» не замінює фактичну оплату й не зменшує борг.</p>
-                )}
-                {event.note && <p className="break-words">{event.note}</p>}
-              </li>
-            ))}
-          </ol>
-        </details>
+      {(row.history || row.historyAsOf) && (
+        <LedgerHistory key={row.id + row.historyAsOf} row={row} />
       )}
     </article>
   )
@@ -523,7 +483,7 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
             <SheetDescription>
               {selected?.phone && `${selected.phone} · `}Документи на {dayLabel(data.asOf)}.{' '}
               {selected?.kind === 'customer'
-                ? selected.documents.some((d) => d.history)
+                ? selected.documents.some((d) => d.history || d.historyAsOf)
                   ? 'Зобов’язання й оплати з історією. Старі документи позначено окремо.'
                   : 'Попередній розрахунок, без історичного підтвердження.'
                 : 'За даними чинного обліку постачальників.'}

@@ -96,3 +96,15 @@ it('keeps the previous due date for historical overdue reports', () => {
   expect(dueOn(new Date('2026-11-11'), changes, '2026-11-03')).toBe('2026-11-01')
   expect(dueOn(new Date('2026-11-11'), changes, '2026-11-04')).toBe('2026-11-11')
 })
+
+it('retains an unset due date and does not allocate zero credit', () => {
+  expect(dueOn(null, [], '2026-01-01')).toBeNull()
+  expect(
+    dueOn(
+      new Date('2026-02-01'),
+      [{ changedAt: new Date('2026-01-02'), previous: null }],
+      '2026-01-01'
+    )
+  ).toBeNull()
+  expect(suggestedDistribution('0', [{ id: 'invoice', open: '1.00' }])).toEqual({})
+})

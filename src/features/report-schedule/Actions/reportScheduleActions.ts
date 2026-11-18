@@ -1,8 +1,8 @@
 'use server'
 
+import { nextReportRun as calculateNextRunDate } from '../Lib/nextReportRun'
 import { db } from '@/lib/db'
-import { atZonedTime } from '@/lib/timezone'
-import { endOfWorkshopDay, shiftWorkshopTime } from '@/lib/workshop-datetime'
+import { endOfWorkshopDay } from '@/lib/workshop-datetime'
 import { workshopTimeZone } from '@/lib/workshop-timezone'
 import { withAuth } from '@/lib/with-auth'
 import { PermissionAction, PermissionSubject } from '@/lib/permissions'
@@ -11,38 +11,6 @@ import {
   createReportScheduleSchema,
   updateReportScheduleSchema,
 } from '../Schema/reportScheduleSchema'
-
-/** The next run is 08:00 on the workshop's clock, one period on from `from`. */
-function calculateNextRunDate(from: Date, frequency: string, timeZone: string): Date {
-  let next = from
-  switch (frequency) {
-    case 'daily':
-      next = shiftWorkshopTime(from, { days: 1 }, timeZone)
-      break
-    case 'weekly':
-      next = shiftWorkshopTime(from, { days: 7 }, timeZone)
-      break
-    case 'biweekly':
-      next = shiftWorkshopTime(from, { days: 14 }, timeZone)
-      break
-    case 'monthly':
-      next = shiftWorkshopTime(from, { months: 1 }, timeZone)
-      break
-    case 'bimonthly':
-      next = shiftWorkshopTime(from, { months: 2 }, timeZone)
-      break
-    case 'quarterly':
-      next = shiftWorkshopTime(from, { months: 3 }, timeZone)
-      break
-    case 'semiannually':
-      next = shiftWorkshopTime(from, { months: 6 }, timeZone)
-      break
-    case 'yearly':
-      next = shiftWorkshopTime(from, { years: 1 }, timeZone)
-      break
-  }
-  return atZonedTime(next, '08:00', timeZone)
-}
 
 export async function getReportSchedules() {
   return withAuth(

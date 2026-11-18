@@ -1,3 +1,6 @@
+vi.mock('@/lib/invoice-number.server', async () => ({
+  nextInvoiceNumber: (await import('@/__tests__/stubs/invoice-number')).actionTestInvoiceNumber,
+}))
 /**
  * Counter sales (service records without a vehicle)
  *
@@ -68,6 +71,7 @@ function setupCreateEnvironment() {
 
 beforeEach(() => {
   vi.resetAllMocks()
+  vi.mocked(db.$transaction).mockImplementation((async (fn: any) => fn(db)) as any)
   // Locking is read before any edit to an invoice or quote; no settings
   // rows means locking is off, which is how these tests expect to run.
   vi.mocked(db.appSetting.findMany).mockResolvedValue([] as any)

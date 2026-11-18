@@ -1,3 +1,6 @@
+vi.mock('@/lib/invoice-number.server', async () => ({
+  nextInvoiceNumber: (await import('@/__tests__/stubs/invoice-number')).actionTestInvoiceNumber,
+}))
 /**
  * Tests for work order (service record) creation.
  *
@@ -88,6 +91,7 @@ function setupCommonMocks() {
 
 beforeEach(() => {
   vi.resetAllMocks()
+  vi.mocked(db.$transaction).mockImplementation((async (fn: any) => fn(db)) as any)
   // An empty shop unless a test says otherwise, so slot-finding has something
   // to read and every other test keeps asserting what it always did.
   vi.mocked(db.serviceRecord.findMany).mockResolvedValue([])

@@ -1,9 +1,7 @@
 import { decimalAmount, lineCents } from './money'
 import { quantityUnits } from './transfer-schema'
-function cents(value: string) {
-  const [whole, fraction = ''] = value.split('.')
-  return BigInt(whole) * BigInt(100) + BigInt(fraction.padEnd(2, '0'))
-}
+import { parseFixed } from '@/lib/exact-money'
+const cents = (value: string) => parseFixed(value, 2, { signed: false })
 export function returnLineAmount(
   line: {
     originalQuantity: string

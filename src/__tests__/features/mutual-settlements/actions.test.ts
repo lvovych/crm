@@ -10,6 +10,7 @@ const m = vi.hoisted(() => ({
   enabled: vi.fn(),
   admin: false,
 }))
+vi.mock('@/features/customer-ledger/summary', () => ({ ledgerSummaries: m.ledger }))
 vi.mock('@/lib/db', () => ({
   db: {
     customerLedgerDocument: { findMany: m.ledger },
@@ -200,17 +201,7 @@ it('does not leak an unrelated tenant customer through a linked vehicle', async 
 it('scopes ledger documents and customer identity to the authorized organization', async () => {
   rights('billing')
   await mutualSettlementsReport('2020-01-01')
-  expect(m.ledger).toHaveBeenCalledWith(
-    expect.objectContaining({
-      where: { organizationId: 'org' },
-      include: {
-        events: {
-          where: { effectiveDate: { lte: new Date('2020-01-01T00:00:00Z') } },
-          orderBy: { id: 'asc' },
-        },
-      },
-    })
-  )
+  expect(m.ledger).toHaveBeenCalledWith(expect.anything(), 'org', '2020-01-01', undefined)
   expect(m.customers).toHaveBeenCalledWith(
     expect.objectContaining({ where: { organizationId: 'org', id: { in: [] } } })
   )

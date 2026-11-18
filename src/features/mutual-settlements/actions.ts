@@ -1,5 +1,6 @@
 'use server'
 import { z } from 'zod'
+import { ledgerSummaries } from '@/features/customer-ledger/summary'
 import { projectLedger } from '@/features/customer-ledger/projection'
 import { db } from '@/lib/db'
 import { withAuth } from '@/lib/with-auth'
@@ -13,7 +14,10 @@ import { isCredit } from '@/features/settlements/amounts'
 import { projectCustomers } from './projection'
 import type { Overview, PartyRow } from './types'
 
-export async function mutualSettlementsReport(requestedDate?: string, party?: { kind: 'customer' | 'supplier'; id: string }) {
+export async function mutualSettlementsReport(
+  requestedDate?: string,
+  party?: { kind: 'customer' | 'supplier'; id: string }
+) {
   return withAuth(async (ctx): Promise<Overview> => {
     const member = ctx.isAdmin ? null : await getCachedMembership(ctx.userId)
     const can = (subject: S) =>
@@ -21,7 +25,8 @@ export async function mutualSettlementsReport(requestedDate?: string, party?: { 
       (member?.organizationId === ctx.organizationId &&
         hasPermission(member.customRole?.permissions ?? [], { action: A.READ, subject }))
     const customersAllowed = party?.kind !== 'supplier' && can(S.BILLING)
-    const suppliersAllowed = party?.kind !== 'customer' && can(S.SETTLEMENTS) && settlementsEnabled(ctx.organizationId)
+    const suppliersAllowed =
+      party?.kind !== 'customer' && can(S.SETTLEMENTS) && settlementsEnabled(ctx.organizationId)
     if (!customersAllowed && !suppliersAllowed)
       throw new Error('Немає доступу до взаєморозрахунків.')
     const zone = await workshopTimeZone(ctx.organizationId)
@@ -34,8 +39,12 @@ export async function mutualSettlementsReport(requestedDate?: string, party?: { 
     const parties: PartyRow[] = []
     if (customersAllowed && asOf === today) {
       const records = await db.serviceRecord.findMany({
-        where: { organizationId: ctx.organizationId, customerLedgerTracked: false,
-          ...(party && { OR: [{ customerId: party.id }, { customerId: null, vehicle: { customerId: party.id } }] }),
+        where: {
+          organizationId: ctx.organizationId,
+          customerLedgerTracked: false,
+          ...(party && {
+            OR: [{ customerId: party.id }, { customerId: null, vehicle: { customerId: party.id } }],
+          }),
         },
         select: {
           id: true,
@@ -81,15 +90,7 @@ export async function mutualSettlementsReport(requestedDate?: string, party?: { 
     }
     let trackedParties: PartyRow[] = []
     if (customersAllowed) {
-      const documents = await db.customerLedgerDocument.findMany({
-        where: { organizationId: ctx.organizationId, ...(party && { customerId: party.id }) },
-        include: {
-          events: {
-            where: { effectiveDate: { lte: new Date(asOf + 'T00:00:00Z') } },
-            orderBy: { id: 'asc' },
-          },
-        },
-      })
+      const documents = await ledgerSummaries(db, ctx.organizationId, asOf, party?.id)
       const customers = await db.customer.findMany({
         where: {
           organizationId: ctx.organizationId,
@@ -98,27 +99,10 @@ export async function mutualSettlementsReport(requestedDate?: string, party?: { 
         select: { id: true, name: true, phone: true },
       })
       trackedParties = projectLedger(
-        documents.map((d) => ({
-          ...d,
-          events: d.events.map((e) => ({
-            id: e.id.toString(),
-            kind: e.kind,
-            date: e.effectiveDate.toISOString().slice(0, 10),
-            recordedAt: e.recordedAt.toISOString(),
-            chargeDelta: e.chargeDelta.toFixed(2),
-            paidDelta: e.paidDelta.toFixed(2),
-            amount: e.amount?.toFixed(2) ?? null,
-            status: e.status,
-            due: e.due?.toISOString().slice(0, 10) ?? null,
-            manualPaid: e.manualPaid,
-            paymentId: e.paymentId,
-            sourceDate: e.sourceDate?.toISOString().slice(0, 10) ?? null,
-            actor: e.actorName ?? e.actorId,
-            note: e.note,
-          })),
-        })),
+        documents,
         new Map(customers.map((c) => [c.id, c])),
-        asOf
+        asOf,
+        false
       )
     }
     let supplierError: string | null = null
@@ -158,15 +142,29 @@ export async function mutualSettlementsReport(requestedDate?: string, party?: { 
                   .filter((r) => r.active)
                   .map((r) => ({
                     id: r.id,
-                    label: r.kind === 'return_credit' ? 'Повернення постачальнику · ' + r.reference : r.kind === 'adjustment_credit' ? 'Коригування · зменшення нашого боргу'
-                      : r.kind === 'adjustment_debt' ? 'Коригування · збільшення нашого боргу'
-                      : r.reference || (isCredit(r.kind) ? 'Оплата / аванс' : 'Зобов’язання'),
-                    href: r.returnUrl ? r.returnUrl : r.receiptId ? '/receipts/' + r.receiptId : '/settlements?' + new URLSearchParams({ supplier: s.id, date: asOf }),
+                    label:
+                      r.kind === 'return_credit'
+                        ? 'Повернення постачальнику · ' + r.reference
+                        : r.kind === 'adjustment_credit'
+                          ? 'Коригування · зменшення нашого боргу'
+                          : r.kind === 'adjustment_debt'
+                            ? 'Коригування · збільшення нашого боргу'
+                            : r.reference || (isCredit(r.kind) ? 'Оплата / аванс' : 'Зобов’язання'),
+                    href: r.returnUrl
+                      ? r.returnUrl
+                      : r.receiptId
+                        ? '/receipts/' + r.receiptId
+                        : '/settlements?' + new URLSearchParams({ supplier: s.id, date: asOf }),
                     date: r.date,
                     due: r.due,
                     amount: r.amount,
                     paid: null,
-                    debt: ['adjustment_credit', 'return_credit'].includes(r.kind) && r.open !== '0.00' ? '-' + r.open : isCredit(r.kind) ? '0.00' : r.open,
+                    debt:
+                      ['adjustment_credit', 'return_credit'].includes(r.kind) && r.open !== '0.00'
+                        ? '-' + r.open
+                        : isCredit(r.kind)
+                          ? '0.00'
+                          : r.open,
                     advance: r.kind === 'payment' || r.kind === 'opening_credit' ? r.open : '0.00',
                     expected: '0.00',
                     reason: null,

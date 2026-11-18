@@ -1,3 +1,4 @@
+import { nextReportRun as calculateNextRunDate } from '@/features/report-schedule/Lib/nextReportRun'
 import { paymentTotal } from '@/features/finance/payment-total'
 import { resolveCurrencyCode, resolveCurrencyFormat } from '@/lib/currencies'
 import { CronJob } from 'cron'
@@ -10,14 +11,7 @@ import { ReportPDF } from '@/features/reports/Components/ReportPDF'
 import { SETTING_KEYS } from '@/features/settings/Schema/settingsSchema'
 import { netLineTotal } from '@/lib/tax'
 import { TaxByRateTable } from '@/features/reports/Lib/taxByRate'
-import {
-  addZonedDays,
-  atZonedTime,
-  startOfZonedDay,
-  zonedDate,
-  zonedDayKey,
-  zonedParts,
-} from '@/lib/timezone'
+import { addZonedDays, startOfZonedDay, zonedDate, zonedDayKey, zonedParts } from '@/lib/timezone'
 import { shiftWorkshopTime, workshopMonthKey } from '@/lib/workshop-datetime'
 import { isShopFeeLine } from '@/features/settings/Lib/shopFee'
 import { workshopTimeZone } from '@/lib/workshop-timezone'
@@ -25,38 +19,6 @@ import { workshopTimeZone } from '@/lib/workshop-timezone'
 // --------------- date helpers ---------------
 // All in the workshop's zone: the server runs in UTC and its clock says
 // nothing about which day a report window or a run time falls on.
-
-/** The next run is 08:00 on the workshop's clock, one period on from `current`. */
-function calculateNextRunDate(current: Date, frequency: string, timeZone: string): Date {
-  let next = current
-  switch (frequency) {
-    case 'daily':
-      next = shiftWorkshopTime(current, { days: 1 }, timeZone)
-      break
-    case 'weekly':
-      next = shiftWorkshopTime(current, { days: 7 }, timeZone)
-      break
-    case 'biweekly':
-      next = shiftWorkshopTime(current, { days: 14 }, timeZone)
-      break
-    case 'monthly':
-      next = shiftWorkshopTime(current, { months: 1 }, timeZone)
-      break
-    case 'bimonthly':
-      next = shiftWorkshopTime(current, { months: 2 }, timeZone)
-      break
-    case 'quarterly':
-      next = shiftWorkshopTime(current, { months: 3 }, timeZone)
-      break
-    case 'semiannually':
-      next = shiftWorkshopTime(current, { months: 6 }, timeZone)
-      break
-    case 'yearly':
-      next = shiftWorkshopTime(current, { years: 1 }, timeZone)
-      break
-  }
-  return atZonedTime(next, '08:00', timeZone)
-}
 
 /** Whole workshop days, from the start of the period to the end of today. */
 function getDateRange(dateRange: string, now: Date, timeZone: string): { start: Date; end: Date } {

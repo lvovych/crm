@@ -1,9 +1,4 @@
-// Quantity has three decimal places, price four. Retain all seven places
-// until the extended line amount is rounded to the nearest kopeck (half up).
-function scaled(value: string, places: number) {
-  const [whole, fraction = ''] = value.split('.')
-  return BigInt(whole + fraction.padEnd(places, '0'))
-}
+import { parseFixed, formatFixed, roundScaled } from '@/lib/exact-money'
 
 export function lineCents({
   quantity,
@@ -14,18 +9,23 @@ export function lineCents({
 }): bigint | null {
   if (!/^\d{1,9}(\.\d{1,3})?$/.test(quantity) || !/^\d{1,9}(\.\d{1,4})?$/.test(unitPrice))
     return null
-  const product = scaled(quantity, 3) * scaled(unitPrice, 4)
-  return (product + BigInt(50000)) / BigInt(100000)
+  const product =
+    parseFixed(quantity, 3, { signed: false, wholeDigits: 9 }) *
+    parseFixed(unitPrice, 4, { signed: false, wholeDigits: 9 })
+  return roundScaled(product, BigInt(100000))
 }
 
-export function decimalAmount(cents: bigint) {
-  return String(cents / BigInt(100)) + '.' + String(cents % BigInt(100)).padStart(2, '0')
+export function decimalAmount(value: bigint) {
+  return formatFixed(value)
 }
 
 // Persisted line amounts have already been rounded to two decimal places.
 export function receiptTotal(lines: ReadonlyArray<{ amount: { toString(): string } }>) {
   return decimalAmount(
-    lines.reduce((sum, line) => sum + scaled(line.amount.toString(), 2), BigInt(0))
+    lines.reduce(
+      (sum, line) => sum + parseFixed(line.amount.toString(), 2, { signed: false }),
+      BigInt(0)
+    )
   )
 }
 
