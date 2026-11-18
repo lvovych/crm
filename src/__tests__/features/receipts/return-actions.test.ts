@@ -6,8 +6,10 @@ const { post, validate, zone, tx } = vi.hoisted(() => ({
   tx: {},
 }))
 vi.mock('@/lib/with-auth', () => ({
-  withAuth: async (fn: (ctx: unknown) => Promise<unknown>) =>
-    ({ success: true, data: await fn({ organizationId: 'org', userId: 'manager' }) }),
+  withAuth: async (fn: (ctx: unknown) => Promise<unknown>) => ({
+    success: true,
+    data: await fn({ organizationId: 'org', userId: 'manager' }),
+  }),
 }))
 vi.mock('@/lib/db', () => ({
   db: { $transaction: async (fn: (client: unknown) => Promise<unknown>) => fn(tx) },
@@ -21,7 +23,10 @@ vi.mock('@/features/inventory/Lib/onInventoryChanged', () => ({ onInventoryChang
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 import { createSupplierReturn } from '@/features/receipts/return-actions'
 
-afterEach(() => { vi.useRealTimers(); vi.clearAllMocks() })
+afterEach(() => {
+  vi.useRealTimers()
+  vi.clearAllMocks()
+})
 describe('return date at the workshop midnight boundary', () => {
   it.each([
     ['UTC', '2026-11-17'],
@@ -33,6 +38,13 @@ describe('return date at the workshop midnight boundary', () => {
     zone.mockResolvedValue(timeZone)
     await createSupplierReturn({ receiptId: 'receipt' })
     expect(validate).toHaveBeenCalledWith({ organizationId: 'org', userId: 'manager' }, expected)
-    expect(post).toHaveBeenCalledWith(tx, 'org', 'manager', { receiptId: 'receipt' }, expected)
+    expect(post).toHaveBeenCalledWith(
+      tx,
+      'org',
+      'manager',
+      { receiptId: 'receipt' },
+      expected,
+      'draft'
+    )
   })
 })

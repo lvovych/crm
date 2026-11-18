@@ -1,4 +1,5 @@
 'use client'
+import { ReturnReasonSelect } from './ReturnReasonSelect'
 import { moneyLabel, dayLabel, unitPriceLabel } from '@/features/finance/presentation'
 import { DocumentStatus } from '@/components/operations/document-ui'
 import Link from 'next/link'
@@ -19,6 +20,7 @@ export function Returns({
 }) {
   const router = useRouter()
   const [quantities, setQuantities] = useState<Record<string, string>>({})
+  const [supplierDocumentNumber, setSupplierDocumentNumber] = useState('')
   const [reason, setReason] = useState('')
   const [requestId, setRequestId] = useState<string>()
   const submitting = useRef(false)
@@ -35,6 +37,13 @@ export function Returns({
           Немає доступних позицій для повернення: товари вже передані в наряди або повернуті
           постачальнику.
         </p>
+      )}
+      {canCreate && (
+        <Button asChild variant="outline">
+          <Link href={'/supplier-returns/new?supplier=' + data.supplierId}>
+            Повернення з кількох накладних
+          </Link>
+        </Button>
       )}
       {canCreate && data.enabled && (
         <details>
@@ -56,6 +65,7 @@ export function Returns({
                   id,
                   receiptId,
                   reason,
+                  supplierDocumentNumber,
                   lines: data.lines
                     .filter((l) => Number(quantities[l.id]) > 0)
                     .map((l) => ({ id: l.id, quantity: quantities[l.id] })),
@@ -66,7 +76,9 @@ export function Returns({
                 }
                 setQuantities({})
                 setReason('')
+                setSupplierDocumentNumber('')
                 setRequestId(undefined)
+                router.push('/supplier-returns/' + result.data)
                 router.refresh()
               } catch {
                 setError(
@@ -94,6 +106,8 @@ export function Returns({
                 <thead className="bg-muted">
                   <tr>
                     <th className="p-3">Позиція</th>
+                    <th>Бренд</th>
+                    <th>Артикул</th>
                     <th>Ціна закупівлі</th>
                     <th>Доступно</th>
                     <th>Повернути</th>
@@ -103,6 +117,8 @@ export function Returns({
                   {data.lines.map((l) => (
                     <tr key={l.id} className="border-b">
                       <td className="p-3">{l.name}</td>
+                      <td>{l.brand || '—'}</td>
+                      <td className="font-mono">{l.article || '—'}</td>
                       <td className="text-right">{unitPriceLabel(l.unitPrice)}</td>
                       <td>
                         {l.available} {l.unit}
@@ -128,22 +144,30 @@ export function Returns({
                 </tbody>
               </table>
             </div>
-            <label className="grid gap-2 text-sm font-medium">
-              Причина повернення
+            <label className="grid gap-2">
+              Номер документа постачальника
               <input
-                required
-                maxLength={1000}
-                value={reason}
-                disabled={busy}
+                type="text"
+                maxLength={120}
+                value={supplierDocumentNumber}
                 onChange={(e) => {
                   setRequestId(undefined)
-                  setReason(e.target.value)
+                  setSupplierDocumentNumber(e.target.value)
                 }}
-                className="block h-11 w-full rounded border bg-background px-3"
+                className="h-11 rounded-md border bg-background px-3"
+                placeholder="Необов’язково"
               />
             </label>
+            <ReturnReasonSelect
+              value={reason}
+              disabled={busy}
+              onChange={(value) => {
+                setRequestId(undefined)
+                setReason(value)
+              }}
+            />
             <Button disabled={busy || !data.lines.some((l) => Number(quantities[l.id]) > 0)}>
-              {busy ? 'Проведення…' : 'Провести повернення'}
+              {busy ? 'Збереження…' : 'Зберегти чернетку'}
             </Button>
             {error && (
               <p role="alert" className="text-destructive">
@@ -156,16 +180,20 @@ export function Returns({
       {data.documents.map((d) => (
         <article key={d.id} id={d.id} className="rounded-xl border bg-muted/20 p-4 space-y-3">
           <h3 className="flex flex-wrap items-center gap-2 font-semibold">
-            <Link className="underline" href={'/receipts/' + receiptId + '/returns/' + d.id}>
+            <Link className="underline" href={'/supplier-returns/' + d.id}>
               {d.number}
             </Link>{' '}
-            · {dayLabel(d.date)} <DocumentStatus tone="success">Проведено</DocumentStatus>
+            · {dayLabel(d.date)}{' '}
+            <DocumentStatus>{d.status === 'posted' ? 'Проведено' : 'Чернетка'}</DocumentStatus>
           </h3>
           <p>{d.reason}</p>
           <table className="w-full text-left">
             <thead className="bg-muted">
               <tr>
                 <th className="p-2">Позиція</th>
+                <th>Бренд</th>
+                <th>Артикул</th>
+                <th>Надходження</th>
                 <th>Кількість</th>
                 <th>Сума</th>
               </tr>
@@ -174,6 +202,13 @@ export function Returns({
               {d.lines.map((l, i) => (
                 <tr key={i} className="border-b">
                   <td className="p-2">{l.name}</td>
+                  <td>{l.brand || '—'}</td>
+                  <td className="font-mono">{l.article || '—'}</td>
+                  <td>
+                    <Link className="underline" href={'/receipts/' + l.receiptId}>
+                      {l.receiptNumber}
+                    </Link>
+                  </td>
                   <td>
                     {l.quantity} {l.unit}
                   </td>

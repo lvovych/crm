@@ -71,19 +71,18 @@ test('returns all receipt goods in one document and updates supplier debt and st
     await expect(
       returns.getByLabel('Повернути ' + fixture.prefix + '-line-1', { exact: true })
     ).toHaveValue('2.000')
-    await returns.getByLabel('Причина повернення').fill('E2E full return')
-    await returns.getByRole('button', { name: 'Провести повернення', exact: true }).click()
-    await expect(returns.locator('article')).toHaveCount(1)
-    await expect(returns.locator('article')).toContainText('Разом 500 грн')
-    await page.getByRole('tab', { name: 'Оплати й розрахунки', exact: true }).click()
-    await expect(payments.getByText('До сплати', { exact: true }).locator('..')).toContainText(
-      '0,00 грн'
-    )
-    await page.getByRole('tab', { name: /^Повернення/ }).click()
-    const documentLink = returns.locator('article').getByRole('link')
-    const href = await documentLink.getAttribute('href')
-    await documentLink.click()
-    await expect(page).toHaveURL(href!)
+    await returns.getByLabel('Причина повернення').selectOption('Відмова клієнта')
+    await returns.getByRole('button', { name: 'Зберегти чернетку', exact: true }).click()
+    await expect(page.getByText('Чернетка', { exact: true })).toBeVisible()
+    await expect(
+      page.getByRole('button', { name: 'Провести повернення', exact: true })
+    ).toBeVisible()
+    expect(
+      (await db.query('select quantity from inventory_parts where id=$1', [fixture.part.id]))
+        .rows[0].quantity
+    ).toBe(10)
+    await page.getByRole('button', { name: 'Провести повернення', exact: true }).click()
+    await expect(page.getByText('Проведено', { exact: true })).toBeVisible()
     await expect(page.getByRole('heading', { name: /Повернення постачальнику №/ })).toBeVisible()
     await expect(page.getByRole('row')).toHaveCount(3)
     await page.reload()
@@ -106,7 +105,7 @@ test('returns all receipt goods in one document and updates supplier debt and st
           )
         ).rows[0].total
       )
-    ).toBe(500)
+    ).toBe(0)
     await page.goto('/settlements?supplier=' + fixture.supplier.id)
     await settle(page)
     await expect(

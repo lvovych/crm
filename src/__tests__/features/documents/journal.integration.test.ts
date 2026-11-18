@@ -280,6 +280,7 @@ describe.skipIf(!url)('document journal on PostgreSQL', () => {
         organizationId: f.org.id,
         receiptId: f.receipt.id,
         number: 'RETURN-001',
+        supplierId: f.supplier.id,
         date,
         reason: 'Return',
         fingerprint: 'test',

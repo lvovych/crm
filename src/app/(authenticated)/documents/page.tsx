@@ -71,8 +71,8 @@ export default async function DocumentsPage({
             <input type="date" name="to" defaultValue={filters.to} />
           </label>
           <div className="flex gap-2">
-            <Button>Показати</Button>
-            <Button asChild variant="ghost">
+            <Button className="h-11">Показати</Button>
+            <Button asChild variant="ghost" className="h-11">
               <Link href="/documents">Скинути</Link>
             </Button>
           </div>

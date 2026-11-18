@@ -22,11 +22,10 @@ export function visibleDocuments(s: DocumentScope): Prisma.Sql {
       c.name AS party, r."receivedDate"::text AS date, coalesce((SELECT sum(l.amount) FROM supplier_receipt_lines l WHERE l."receiptId"=r.id),0)::text AS amount,
       r.status, '/receipts/'||r.id AS href, 'Дата документа: '||r."documentDate"::text AS note
       FROM supplier_receipts r JOIN counterparties c ON c.id=r."supplierId" AND c."organizationId"=r."organizationId" WHERE r."organizationId"=${org}`)
-    queries.push(Prisma.sql`SELECT 'return:'||d.id,'return',d.id,d.number,c.name,d.date::text,
+    queries.push(Prisma.sql`SELECT 'return:'||d.id,'return',d.id,d.number || CASE WHEN d."supplierDocumentNumber" IS NOT NULL THEN ' · № постачальника ' || d."supplierDocumentNumber" ELSE '' END,c.name,d.date::text,
       coalesce((SELECT sum(l.amount) FROM supplier_return_lines l WHERE l."returnId"=d.id),0)::text,
-      'posted','/receipts/'||r.id||'/returns/'||d.id,d.reason
-      FROM supplier_returns d JOIN supplier_receipts r ON r.id=d."receiptId" AND r."organizationId"=d."organizationId"
-      JOIN counterparties c ON c.id=r."supplierId" AND c."organizationId"=r."organizationId" WHERE d."organizationId"=${org}`)
+      d.status,'/supplier-returns/'||d.id,d.reason
+      FROM supplier_returns d JOIN counterparties c ON c.id=d."supplierId" AND c."organizationId"=d."organizationId" WHERE d."organizationId"=${org}`)
   }
   if (s.orders) {
     queries.push(Prisma.sql`SELECT 'order:'||r.id,'order',r.id,'Наряд / рахунок '||coalesce(r."invoiceNumber",r.title),
@@ -113,7 +112,9 @@ export function documentEdges(org: string): Prisma.Sql {
     UNION SELECT 'receipt:'||r.id,'order:'||sl."serviceRecordId",'Послуга постачальника для наряду'
     FROM subcontract_work w JOIN service_labor sl ON sl.id=w."laborId" JOIN supplier_receipt_lines l ON l.id=w."receiptLineId"
     JOIN supplier_receipts r ON r.id=l."receiptId" JOIN service_records o ON o.id=sl."serviceRecordId" AND o."organizationId"=r."organizationId" WHERE r."organizationId"=${org}
-    UNION SELECT 'receipt:'||d."receiptId",'return:'||d.id,'Повернення з накладної' FROM supplier_returns d WHERE d."organizationId"=${org}
+    UNION SELECT 'receipt:'||l."receiptId",'return:'||d.id,'Повернення з накладної'
+    FROM supplier_returns d JOIN supplier_return_lines rl ON rl."returnId"=d.id JOIN supplier_receipt_lines l ON l.id=rl."lineId"
+    JOIN supplier_receipts r ON r.id=l."receiptId" AND r."organizationId"=d."organizationId" WHERE d."organizationId"=${org}
     UNION SELECT 'order:'||p."serviceRecordId",coalesce('finance:'||d.id,'payment:'||p.id),'Оплата наряду'
     FROM payments p JOIN service_records o ON o.id=p."serviceRecordId" LEFT JOIN financial_documents d ON d."paymentId"=p.id AND d."organizationId"=o."organizationId" WHERE o."organizationId"=${org}
     UNION SELECT coalesce('receipt:'||debit."receiptId",'supplier:'||debit.id),

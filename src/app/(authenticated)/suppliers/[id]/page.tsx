@@ -1,3 +1,4 @@
+import { ReturnList } from '@/features/receipts/ReturnList'
 import { DocumentHeader, DocumentStatus } from '@/components/operations/document-ui'
 import { DocumentTabs } from '@/components/operations/document-tabs'
 import { Button } from '@/components/ui/button'
@@ -48,6 +49,13 @@ export default async function SupplierPage({
                   <Link href={'/receipts?supplierId=' + id}>Накладні</Link>
                 </Button>
               )}
+              {receipts.create && receipts.post && finance.create && (
+                <Button asChild variant="outline">
+                  <Link href={'/supplier-returns/new?supplier=' + id}>
+                    Повернення постачальнику
+                  </Link>
+                </Button>
+              )}
               {finance.read && (
                 <Button asChild>
                   <Link href={'/settlements?supplier=' + id}>Оплата й розрахунки</Link>
@@ -63,6 +71,15 @@ export default async function SupplierPage({
         />
         <DocumentTabs
           tabs={[
+            ...(receipts.read
+              ? [
+                  {
+                    id: 'returns',
+                    label: 'Повернення',
+                    content: <ReturnList filters={{ supplier: id }} />,
+                  },
+                ]
+              : []),
             ...(finance.read
               ? [
                   {

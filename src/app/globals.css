@@ -721,3 +721,58 @@ html body[data-scroll-locked] {
   .ops-form { grid-template-columns: minmax(0, 1fr); }
   .ops-panel { padding: 1rem; }
 }
+
+/* Keep single-choice native menus in the page's coordinate system. This avoids
+   platform popup scaling/position differences while retaining native form,
+   keyboard and validation behavior. Unsupported browsers keep their picker.
+   Hidden Radix form controls and multi-row listboxes are intentionally excluded. */
+@supports (appearance: base-select) {
+  select:not([multiple]):not([size]):not([aria-hidden="true"]),
+  select[size="1"]:not([multiple]):not([aria-hidden="true"]) {
+    appearance: base-select;
+    align-items: center;
+  }
+
+  select:not([multiple]):not([size]):not([aria-hidden="true"])::picker(select),
+  select[size="1"]:not([multiple]):not([aria-hidden="true"])::picker(select) {
+    appearance: base-select;
+    position: fixed;
+    inset: auto;
+    top: anchor(bottom);
+    left: anchor(left);
+    position-try-fallbacks: flip-block, flip-inline;
+    margin: 0.25rem 0;
+    width: anchor-size(width);
+    min-width: 0;
+    max-width: calc(100vw - 1rem);
+    max-height: min(20rem, 50dvh);
+    overflow: auto;
+    overscroll-behavior: contain;
+    padding: 0.25rem;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    background: var(--popover);
+    color: var(--popover-foreground);
+    font: inherit;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 20%);
+  }
+
+  select:not([multiple]):not([size]):not([aria-hidden="true"]) option,
+  select[size="1"]:not([multiple]):not([aria-hidden="true"]) option {
+    min-height: 2.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.25rem;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  select:not([multiple]):not([size]):not([aria-hidden="true"]) option:is(:checked, :focus, :hover),
+  select[size="1"]:not([multiple]):not([aria-hidden="true"]) option:is(:checked, :focus, :hover) {
+    background: var(--accent);
+    color: var(--accent-foreground);
+  }
+
+  select option:disabled {
+    opacity: 0.5;
+  }
+}

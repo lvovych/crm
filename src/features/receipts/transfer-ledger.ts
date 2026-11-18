@@ -29,7 +29,11 @@ export async function transferReceiptGoods(
   await tx.$queryRaw`SELECT id FROM "public"."supplier_receipts" WHERE id=${receipt.id} AND "organizationId"=${organizationId} FOR UPDATE`
   const current = await tx.supplierReceipt.findUniqueOrThrow({
     where: { id: receipt.id },
-    include: { lines: { include: { transfers: true, returns: true } } },
+    include: {
+      lines: {
+        include: { transfers: true, returns: { where: { document: { status: 'posted' } } } },
+      },
+    },
   })
   const prior = await tx.receiptTransfer.findMany({
     where: { requestId: data.requestId, line: { receipt: { organizationId } } },
@@ -124,7 +128,10 @@ export async function transferReceiptGoods(
   return { serviceRecordId: record.id, vehicleId: record.vehicleId, count: sorted.length }
 }
 
-export async function refreshOrderTotals(tx: TxClient, record: import('@/generated/prisma/client').ServiceRecord) {
+export async function refreshOrderTotals(
+  tx: TxClient,
+  record: import('@/generated/prisma/client').ServiceRecord
+) {
   await refreshShopFeeLines(tx, record.id, record.organizationId!)
   const [parts, labor] = await Promise.all([
     tx.servicePart.aggregate({ where: { serviceRecordId: record.id }, _sum: { total: true } }),

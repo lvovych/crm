@@ -5,9 +5,11 @@ type Transfer = { servicePartId: string; serviceRecordId: string; quantity: { to
 type Line = { id: string; partId: string | null; transfers: Transfer[] }
 
 /** Keep historical transfers intact, but recognize goods restored by reducing
- * the original order line. Missing/changed references remain conservative. */
+ * the original order line. Deleted rows in a surviving order release their
+ * goods only when no replacement row still consumes the same inventory item.
+ * Missing orders remain conservative (historical/imported references). */
 export async function currentTransferred(
-  db: Pick<TxClient, 'servicePart'>,
+  db: Pick<TxClient, 'servicePart' | 'serviceRecord'>,
   organizationId: string,
   lines: Line[]
 ) {
@@ -18,6 +20,16 @@ export async function currentTransferred(
         select: { id: true, quantity: true, serviceRecordId: true, inventoryPartId: true },
       })
     : []
+  const orderIds = [
+    ...new Set(lines.flatMap((line) => line.transfers.map((t) => t.serviceRecordId))),
+  ]
+  const orders = orderIds.length
+    ? await db.serviceRecord.findMany({
+        where: { id: { in: orderIds }, organizationId },
+        select: { id: true, partItems: { select: { inventoryPartId: true } } },
+      })
+    : []
+  const byOrder = new Map(orders.map((order) => [order.id, order]))
   const byId = new Map(parts.map((part) => [part.id, part]))
   return new Map(
     lines.map((line) => [
@@ -30,7 +42,12 @@ export async function currentTransferred(
           part.serviceRecordId === transfer.serviceRecordId &&
           part.inventoryPartId === line.partId
             ? Prisma.Decimal.min(original, Prisma.Decimal.max(0, part.quantity))
-            : original
+            : byOrder.has(transfer.serviceRecordId) &&
+                !byOrder
+                  .get(transfer.serviceRecordId)!
+                  .partItems.some((p) => p.inventoryPartId === line.partId)
+              ? new Prisma.Decimal(0)
+              : original
         return sum.plus(consumed)
       }, new Prisma.Decimal(0)),
     ])
