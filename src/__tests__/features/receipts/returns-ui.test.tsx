@@ -28,6 +28,21 @@ function open() {
   return view
 }
 describe('supplier return form', () => {
+  it('explains an exhausted receipt and disables selecting all', () => {
+    render(
+      <Returns
+        receiptId="receipt"
+        data={{ ...data, lines: data.lines.map((l) => ({ ...l, available: '0.000' })) }}
+        canCreate
+      />
+    )
+    expect(screen.getByRole('status')).toHaveTextContent('Немає доступних позицій')
+    fireEvent.click(screen.getByText('Створити повернення з накладної'))
+    expect(
+      screen.getByRole('button', { name: 'Повернути все доступне з накладної' })
+    ).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Провести повернення' })).toBeDisabled()
+  })
   it('selects all available goods in one request, excludes exhausted lines and clears after success', async () => {
     open()
     fireEvent.click(screen.getByRole('button', { name: 'Повернути все доступне з накладної' }))

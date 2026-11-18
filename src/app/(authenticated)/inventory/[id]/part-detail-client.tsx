@@ -30,7 +30,7 @@ import { formatQuantity } from '@/lib/format-quantity'
 import { ArrowLeft, ArrowUpRight, Pencil } from 'lucide-react'
 
 interface Movement {
-  receiptId?:string|null
+  receiptId?: string | null
   id: string
   delta: number
   quantityAfter: number
@@ -104,9 +104,12 @@ export function PartDetailClient({
 
   const reasonLabel = (value: string) => {
     switch (value) {
-      case 'supplier_receipt': return 'Надходження від постачальника'
-      case 'supplier_return': return 'Повернення постачальнику'
-      case 'supplier_receipt_cancelled': return 'Скасування надходження'
+      case 'supplier_receipt':
+        return 'Надходження від постачальника'
+      case 'supplier_return':
+        return 'Повернення постачальнику'
+      case 'supplier_receipt_cancelled':
+        return 'Скасування надходження'
       case 'service_record':
         return t('history.reasons.service_record')
       case 'service_record_deleted':
@@ -125,7 +128,7 @@ export function PartDetailClient({
   }
 
   return (
-    <div className="space-y-6 p-4 pt-0">
+    <div className="ops-workspace mx-auto w-full max-w-7xl space-y-6 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
           <Button variant="ghost" size="sm" asChild className="-ml-2 h-7">
@@ -146,17 +149,17 @@ export function PartDetailClient({
           onClick={() => setShowForm(true)}
           aria-label={t('actions.edit')}
           title={t('actions.edit')}
-          className="h-9 w-9 shrink-0 p-0 md:w-auto md:px-4"
+          className="min-h-11 shrink-0 px-4"
         >
           <Pencil className="h-4 w-4 md:mr-2" />
-          <span className="hidden md:inline">{t('actions.edit')}</span>
+          <span className="inline">{t('actions.edit')}</span>
         </Button>
       </div>
 
       {/* Summary — the context you need while reading the ledger below. */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-lg border bg-card px-3 py-2">
-          <p className="text-[11px] text-muted-foreground">{t('table.inStock')}</p>
+        <div className="rounded-xl border bg-card p-4">
+          <p className="text-sm text-muted-foreground">{t('table.inStock')}</p>
           <p className={`text-lg font-bold ${isLow ? 'text-destructive' : ''}`}>
             {formatQuantity(part.quantity, part.unit)}
             {isLow && (
@@ -166,16 +169,16 @@ export function PartDetailClient({
             )}
           </p>
         </div>
-        <div className="rounded-lg border bg-card px-3 py-2">
-          <p className="text-[11px] text-muted-foreground">{t('form.minQty')}</p>
+        <div className="rounded-xl border bg-card p-4">
+          <p className="text-sm text-muted-foreground">{t('form.minQty')}</p>
           <p className="text-lg font-bold">{formatQuantity(part.minQuantity, part.unit)}</p>
         </div>
-        <div className="rounded-lg border bg-card px-3 py-2">
-          <p className="text-[11px] text-muted-foreground">{t('table.unitCost')}</p>
+        <div className="rounded-xl border bg-card p-4">
+          <p className="text-sm text-muted-foreground">{t('table.unitCost')}</p>
           <p className="text-lg font-bold">{formatCurrency(part.unitCost, currencyCode)}</p>
         </div>
-        <div className="rounded-lg border bg-card px-3 py-2">
-          <p className="text-[11px] text-muted-foreground">{t('table.sellPrice')}</p>
+        <div className="rounded-xl border bg-card p-4">
+          <p className="text-sm text-muted-foreground">{t('table.sellPrice')}</p>
           <p className="text-lg font-bold">{formatCurrency(part.sellPrice, currencyCode)}</p>
         </div>
       </div>
@@ -217,7 +220,11 @@ export function PartDetailClient({
               <div key={m.id} className="rounded-lg border bg-card p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    {m.receiptId ? <Link className="underline" href={'/receipts/'+m.receiptId}>{m.note??'Накладна'}</Link> : m.serviceRecordId ? (
+                    {m.receiptId ? (
+                      <Link className="underline" href={'/receipts/' + m.receiptId}>
+                        {m.note ?? 'Накладна'}
+                      </Link>
+                    ) : m.serviceRecordId ? (
                       <Link
                         href={
                           m.vehicleId
@@ -309,7 +316,11 @@ export function PartDetailClient({
                       {formatQuantity(m.quantityAfter, part.unit)}
                     </TableCell>
                     <TableCell>
-                      {m.receiptId ? <Link className="underline" href={'/receipts/'+m.receiptId}>{m.note??'Накладна'}</Link> : m.serviceRecordId ? (
+                      {m.receiptId ? (
+                        <Link className="underline" href={'/receipts/' + m.receiptId}>
+                          {m.note ?? 'Накладна'}
+                        </Link>
+                      ) : m.serviceRecordId ? (
                         <Link
                           href={
                             m.vehicleId

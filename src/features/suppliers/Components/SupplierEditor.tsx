@@ -63,7 +63,7 @@ export function SupplierEditor({
     }
   }
   return (
-    <form onSubmit={submit} className="max-w-4xl space-y-6">
+    <form onSubmit={submit} className="ops-panel max-w-4xl space-y-6">
       <fieldset disabled={busy} className="space-y-6">
         <div className="grid gap-4 sm:grid-cols-2">
           {(

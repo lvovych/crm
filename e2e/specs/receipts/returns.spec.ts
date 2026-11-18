@@ -54,11 +54,12 @@ test('returns all receipt goods in one document and updates supplier debt and st
     )
     await page.goto('/receipts/' + receiptId)
     await settle(page)
-    const payments = page
-      .locator('section')
-      .filter({ has: page.getByRole('heading', { name: 'Оплата накладної', exact: true }) })
-      .first()
-    await expect(payments).toContainText('Відкрито до сплати 500.00 грн')
+    await page.getByRole('tab', { name: 'Оплати й розрахунки', exact: true }).click()
+    const payments = page.getByRole('tabpanel', { name: 'Оплати й розрахунки', exact: true })
+    await expect(payments.getByText('До сплати', { exact: true }).locator('..')).toContainText(
+      '500,00 грн'
+    )
+    await page.getByRole('tab', { name: 'Повернення', exact: true }).click()
     const returns = page
       .locator('section')
       .filter({ has: page.getByRole('heading', { name: 'Повернення постачальнику', exact: true }) })
@@ -74,7 +75,11 @@ test('returns all receipt goods in one document and updates supplier debt and st
     await returns.getByRole('button', { name: 'Провести повернення', exact: true }).click()
     await expect(returns.locator('article')).toHaveCount(1)
     await expect(returns.locator('article')).toContainText('Разом 500 грн')
-    await expect(payments).toContainText('Відкрито до сплати 0.00 грн')
+    await page.getByRole('tab', { name: 'Оплати й розрахунки', exact: true }).click()
+    await expect(payments.getByText('До сплати', { exact: true }).locator('..')).toContainText(
+      '0,00 грн'
+    )
+    await page.getByRole('tab', { name: /^Повернення/ }).click()
     const documentLink = returns.locator('article').getByRole('link')
     const href = await documentLink.getAttribute('href')
     await documentLink.click()
@@ -104,7 +109,9 @@ test('returns all receipt goods in one document and updates supplier debt and st
     ).toBe(500)
     await page.goto('/settlements?supplier=' + fixture.supplier.id)
     await settle(page)
-    await expect(page.getByText(/Сальдо/).first()).toContainText('0.00 грн')
+    await expect(
+      page.getByText('Сальдо постачальника', { exact: true }).locator('..')
+    ).toContainText('0,00 грн')
     await expect(page.getByText(/Повернення постачальнику/).first()).toBeVisible()
   } finally {
     await db.end()

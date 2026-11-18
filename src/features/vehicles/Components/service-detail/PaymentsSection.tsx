@@ -121,7 +121,7 @@ export function PaymentsSection({
   const paymentForm = (
     <div
       ref={formRef}
-      className="space-y-3 rounded-lg border p-3"
+      className="space-y-4 rounded-xl border bg-muted/20 p-4"
       onKeyDown={(e) => {
         if (e.key === 'Enter' && e.target instanceof HTMLInputElement) {
           e.preventDefault()
@@ -129,9 +129,9 @@ export function PaymentsSection({
         }
       }}
     >
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1">
-          <Label htmlFor="paymentAmount" className="text-xs">
+          <Label htmlFor="paymentAmount" className="text-sm">
             {t('amount')}
           </Label>
           <Input
@@ -145,7 +145,7 @@ export function PaymentsSection({
           />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="paymentDate" className="text-xs">
+          <Label htmlFor="paymentDate" className="text-sm">
             {t('date')}
           </Label>
           <DateInput
@@ -161,7 +161,7 @@ export function PaymentsSection({
             onChange={setMoneyAccountId}
             inactiveFallback={
               <>
-                <Label className="text-xs">{t('method')}</Label>
+                <Label className="text-sm">{t('method')}</Label>
                 <Select value={paymentMethod} onValueChange={setPaymentMethod}>
                   <SelectTrigger>
                     <SelectValue />
@@ -178,7 +178,7 @@ export function PaymentsSection({
           />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="paymentNote" className="text-xs">
+          <Label htmlFor="paymentNote" className="text-sm">
             {t('note')}
           </Label>
           <Input id="paymentNote" name="paymentNote" placeholder={t('notePlaceholder')} />

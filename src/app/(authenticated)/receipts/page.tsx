@@ -1,9 +1,11 @@
-import { Transition } from '@/features/receipts/Transition'
-import { settlementAccess } from '@/features/settlements/actions'
 import Link from 'next/link'
+import { Plus } from 'lucide-react'
+import { settlementAccess } from '@/features/settlements/actions'
 import { receiptList, receiptAccess } from '@/features/receipts/actions'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { DocumentHeader, DocumentStatus } from '@/components/operations/document-ui'
+import { dayLabel, moneyLabel } from '@/features/finance/presentation'
 import { statuses } from '@/features/receipts/status'
 export default async function Page({
   searchParams,
@@ -28,23 +30,31 @@ export default async function Page({
   const pageUrl = (n: number) => '/receipts?' + new URLSearchParams({ ...p, page: String(n) })
   return (
     <>
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Надходження</h1>
-        {finance.read && (
-          <Link className="underline" href="/settlements">
-            Розрахунки з постачальниками
-          </Link>
-        )}
-        {access.create && (
-          <Link className="underline" href="/receipts/new">
-            Нова накладна
-          </Link>
-        )}
-      </div>
-      <form className="flex flex-wrap items-end gap-3">
+      <DocumentHeader
+        title="Надходження"
+        description="Накладні постачальників · товари та послуги"
+        actions={
+          <>
+            {finance.read && (
+              <Button asChild variant="outline">
+                <Link href="/mutual-settlements?view=supplier">Взаєморозрахунки</Link>
+              </Button>
+            )}
+            {access.create && (
+              <Button asChild>
+                <Link href="/receipts/new">
+                  <Plus className="size-4" />
+                  Нова накладна
+                </Link>
+              </Button>
+            )}
+          </>
+        }
+      />
+      <form className="ops-panel grid items-end gap-3 sm:grid-cols-2 xl:grid-cols-[2fr_1fr_1fr_1fr_auto] [&_label]:grid [&_label]:gap-2 [&_label]:text-sm">
         <label>
           Номер або постачальник
-          <Input name="q" defaultValue={p.q} />
+          <Input name="q" placeholder="Знайти накладну…" defaultValue={p.q} />
         </label>
         <label>
           Дата приймання
@@ -54,7 +64,7 @@ export default async function Page({
         <label>
           Статус
           <select
-            className="block rounded border bg-background p-2"
+            className="h-10 rounded-md border bg-background px-3"
             name="status"
             defaultValue={p.status}
           >
@@ -69,7 +79,11 @@ export default async function Page({
         {finance.read && (
           <label>
             Оплата
-            <select className="block rounded border p-2" name="payment" defaultValue={p.payment}>
+            <select
+              className="h-10 rounded-md border bg-background px-3"
+              name="payment"
+              defaultValue={p.payment}
+            >
               <option value="">Усі</option>
               {Object.entries(labels).map(([k, v]) => (
                 <option key={k} value={k}>
@@ -79,55 +93,85 @@ export default async function Page({
             </select>
           </label>
         )}
-        <Button>Знайти</Button>
+        <div className="flex items-center gap-2">
+          <Button>Знайти</Button>
+          {Object.values(p).some(Boolean) && (
+            <Button asChild variant="ghost">
+              <Link href="/receipts">Скинути</Link>
+            </Button>
+          )}
+        </div>
       </form>
-      <div className="overflow-auto">
-        <table className="w-full text-left text-sm">
+      <div className="ops-table-scroll">
+        <table>
           <thead>
             <tr>
-              {[
-                'Номер',
-                'Постачальник',
-                'Дата документа',
-                'Дата приймання',
-                'Статус',
-                'Сума, грн',
-                ...(finance.read ? ['Зараховано', 'До сплати', 'Строк', 'Оплата'] : []),
-                'Дії',
-              ].map((s) => (
-                <th className="p-2" key={s}>
-                  {s}
-                </th>
-              ))}
+              <th>Накладна / дата</th>
+              <th>Постачальник</th>
+              <th>Статус</th>
+              <th className="text-right">Сума</th>
+              {finance.read && (
+                <>
+                  <th className="text-right">До сплати</th>
+                  <th>Оплата / строк</th>
+                </>
+              )}
+              <th>Дії</th>
             </tr>
           </thead>
           <tbody>
             {list.data.slice(0, 50).map((r) => (
-              <tr className="border-t" key={r.id}>
-                <td className="p-2">
-                  <Link className="underline" href={'/receipts/' + r.id}>
+              <tr key={r.id}>
+                <td>
+                  <Link
+                    className="font-semibold underline-offset-4 hover:underline"
+                    href={'/receipts/' + r.id}
+                  >
                     {r.number}
                   </Link>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {dayLabel(r.documentDate)}
+                    {r.receivedDate !== r.documentDate && ' · Прийнято ' + dayLabel(r.receivedDate)}
+                  </p>
                 </td>
-                <td>{r.supplier}</td>
-                <td>{r.documentDate}</td>
-                <td>{r.receivedDate}</td>
-                <td>{statuses[r.status]}</td>
-                <td>{r.total}</td>
+                <td>
+                  <Link className="hover:underline" href={'/suppliers/' + r.supplierId}>
+                    {r.supplier}
+                  </Link>
+                </td>
+                <td>
+                  <DocumentStatus
+                    tone={
+                      r.status === 'posted'
+                        ? 'success'
+                        : r.status === 'cancelled'
+                          ? 'danger'
+                          : 'neutral'
+                    }
+                  >
+                    {statuses[r.status]}
+                  </DocumentStatus>
+                </td>
+                <td className="whitespace-nowrap text-right font-medium">{moneyLabel(r.total)}</td>
                 {finance.read && (
                   <>
-                    <td>{r.status === 'posted' ? (r.paid ?? '—') : '—'}</td>
-                    <td>{r.status === 'posted' ? (r.open ?? '—') : '—'}</td>
-                    <td>{r.due ?? '—'}</td>
+                    <td className="whitespace-nowrap text-right font-semibold">
+                      {r.status === 'posted' && r.open != null ? moneyLabel(r.open) : '—'}
+                    </td>
                     <td>
-                      {labels[r.state]} {r.late && '· Прострочено'}
+                      <span className={r.late ? 'text-destructive' : 'text-muted-foreground'}>
+                        {labels[r.state]}
+                        {r.late && r.state !== 'late' && ' · Прострочено'}
+                      </span>
+                      {r.due && (
+                        <p className="mt-1 text-xs text-muted-foreground">До {dayLabel(r.due)}</p>
+                      )}
                     </td>
                   </>
                 )}
-                <td className="p-2">
-                  <div className="flex items-center gap-3">
+                <td>
+                  <Button asChild variant="outline" size="sm">
                     <Link
-                      className="underline"
                       href={
                         '/receipts/' +
                         r.id +
@@ -136,28 +180,34 @@ export default async function Page({
                     >
                       {r.status === 'draft' && access.create ? 'Редагувати' : 'Переглянути'}
                     </Link>
-                    {finance.read && r.status === 'posted' && r.state !== 'paid' && (
-                      <Link
-                        className="underline"
-                        href={'/settlements?supplier=' + r.supplierId + '&receipt=' + r.id}
-                      >
-                        {r.state === 'unverified' ? 'Звірити' : 'Розрахунки й оплата'}
-                      </Link>
-                    )}
-                    {r.status === 'draft' && access.post && (
-                      <Transition id={r.id} version={r.version} posting />
-                    )}
-                  </div>
+                  </Button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+        {!list.data.length && (
+          <p className="p-12 text-center text-muted-foreground">
+            Накладних за цими умовами немає. Змініть пошук або створіть нову накладну.
+          </p>
+        )}
       </div>
-      {!list.data.length && <p>Накладних за цими умовами ще немає.</p>}
-      <nav className="flex gap-4">
-        {page > 1 && <Link href={pageUrl(page - 1)}>Назад</Link>}
-        {list.data.length > 50 && <Link href={pageUrl(page + 1)}>Далі</Link>}
+      <nav aria-label="Сторінки накладних" className="flex items-center justify-between gap-4">
+        <span className="text-sm text-muted-foreground">
+          Сторінка {page} · Показано {Math.min(list.data.length, 50)}
+        </span>
+        <div className="flex gap-2">
+          {page > 1 && (
+            <Button asChild variant="outline">
+              <Link href={pageUrl(page - 1)}>Назад</Link>
+            </Button>
+          )}
+          {list.data.length > 50 && (
+            <Button asChild variant="outline">
+              <Link href={pageUrl(page + 1)}>Далі</Link>
+            </Button>
+          )}
+        </div>
       </nav>
     </>
   )

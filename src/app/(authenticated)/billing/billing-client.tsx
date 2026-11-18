@@ -1,5 +1,7 @@
 'use client'
 
+import { DocumentHeader } from '@/components/operations/document-ui'
+
 import { DEFAULT_CURRENCY_CODE } from '@/lib/currencies'
 import { useTableKeyboardNav } from '@/hooks/use-table-keyboard-nav'
 import { interactiveRow } from '@/lib/interactive-row'
@@ -117,6 +119,7 @@ export default function BillingClient({
 }: BillingClientProps) {
   const formatCurrency = useFormatCurrency()
   const router = useRouter()
+  const nav = useTranslations('navigation.sidebar')
   const t = useTranslations('billing')
   const tWorkOrders = useTranslations('workOrders.list')
   const { formatDate } = useFormatDate()
@@ -317,7 +320,8 @@ export default function BillingClient({
     )
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-6">
+    <div className="ops-workspace flex min-h-0 flex-1 flex-col gap-6">
+      <DocumentHeader title={nav('billing')} />
       {/* Navigation */}
       <div className="flex shrink-0 items-center gap-3">
         <Button variant="outline" size="sm" disabled>
@@ -332,7 +336,7 @@ export default function BillingClient({
 
       {/* Summary Cards — hidden below md so the invoice list is what a phone
           or portrait tablet opens on. */}
-      <div className="hidden shrink-0 gap-3 md:grid md:grid-cols-3">
+      <div className="grid shrink-0 gap-3 sm:grid-cols-3">
         <Card>
           <CardContent className="flex items-center gap-3 px-4 py-3">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/10">

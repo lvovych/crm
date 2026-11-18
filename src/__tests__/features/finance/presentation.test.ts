@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { moneyLabel, dayLabel, groupMovements } from '@/features/finance/presentation'
+import {
+  moneyLabel,
+  dayLabel,
+  groupMovements,
+  unitPriceLabel,
+} from '@/features/finance/presentation'
 describe('cash presentation', () => {
   it.each([
     ['0', '0,00 грн'],
@@ -17,4 +22,9 @@ describe('cash presentation', () => {
     expect(groupMovements([debit])).toEqual([[debit]])
     expect(groupMovements([debit, { ...credit, documentId: 'different' }])).toHaveLength(2)
   })
+})
+
+it('retains four-decimal purchase prices without rounding or throwing', () => {
+  expect(unitPriceLabel('12.3456')).toBe('12,3456 грн')
+  expect(unitPriceLabel('1000.5')).toBe('1\u00a0000,50 грн')
 })

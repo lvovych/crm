@@ -1,5 +1,7 @@
 'use client'
 
+import { DocumentHeader } from '@/components/operations/document-ui'
+
 import { DEFAULT_CURRENCY_CODE } from '@/lib/currencies'
 import { useRememberedSort } from '@/hooks/use-remembered-sort'
 import { useTableKeyboardNav } from '@/hooks/use-table-keyboard-nav'
@@ -167,6 +169,7 @@ export function InventoryClient({
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const nav = useTranslations('navigation.sidebar')
   const t = useTranslations('inventory')
   const [isPending, startTransition] = useTransition()
   const tableNav = useTableKeyboardNav()
@@ -381,7 +384,8 @@ export function InventoryClient({
   )
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
+    <div className="ops-workspace flex min-h-0 flex-1 flex-col gap-4">
+      <DocumentHeader title={nav('inventory')} />
       {/* Toolbar */}
       <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
         {selected.size > 0 ? (

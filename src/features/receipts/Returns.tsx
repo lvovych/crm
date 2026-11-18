@@ -1,4 +1,6 @@
 'use client'
+import { moneyLabel, dayLabel, unitPriceLabel } from '@/features/finance/presentation'
+import { DocumentStatus } from '@/components/operations/document-ui'
 import Link from 'next/link'
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -23,9 +25,17 @@ export function Returns({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   return (
-    <section className="rounded-xl border-2 border-border p-5 space-y-4">
+    <section className="ops-panel space-y-5">
       <h2 className="text-xl font-semibold">Повернення постачальнику</h2>
-      <p>{data.supplier}</p>
+      <p className="text-sm text-muted-foreground">
+        {data.supplier} · Повернення зменшує борг постачальнику та залишок товарів на складі.
+      </p>
+      {!data.lines.some((l) => Number(l.available) > 0) && data.enabled && (
+        <p className="rounded-lg bg-muted p-4 text-sm" role="status">
+          Немає доступних позицій для повернення: товари вже передані в наряди або повернуті
+          постачальнику.
+        </p>
+      )}
       {canCreate && data.enabled && (
         <details>
           <summary className="cursor-pointer py-3 font-semibold">
@@ -71,7 +81,7 @@ export function Returns({
             <Button
               type="button"
               variant="outline"
-              disabled={busy}
+              disabled={busy || !data.lines.some((l) => Number(l.available) > 0)}
               onClick={() => {
                 setRequestId(undefined)
                 setQuantities(Object.fromEntries(data.lines.map((l) => [l.id, l.available])))
@@ -79,7 +89,7 @@ export function Returns({
             >
               Повернути все доступне з накладної
             </Button>
-            <div className="overflow-x-auto">
+            <div className="ops-table-scroll">
               <table className="w-full text-left">
                 <thead className="bg-muted">
                   <tr>
@@ -93,7 +103,7 @@ export function Returns({
                   {data.lines.map((l) => (
                     <tr key={l.id} className="border-b">
                       <td className="p-3">{l.name}</td>
-                      <td>{l.unitPrice} грн</td>
+                      <td className="text-right">{unitPriceLabel(l.unitPrice)}</td>
                       <td>
                         {l.available} {l.unit}
                       </td>
@@ -118,7 +128,7 @@ export function Returns({
                 </tbody>
               </table>
             </div>
-            <label className="block">
+            <label className="grid gap-2 text-sm font-medium">
               Причина повернення
               <input
                 required
@@ -144,12 +154,12 @@ export function Returns({
         </details>
       )}
       {data.documents.map((d) => (
-        <article key={d.id} id={d.id} className="rounded border p-4 space-y-3">
-          <h3 className="font-semibold">
+        <article key={d.id} id={d.id} className="rounded-xl border bg-muted/20 p-4 space-y-3">
+          <h3 className="flex flex-wrap items-center gap-2 font-semibold">
             <Link className="underline" href={'/receipts/' + receiptId + '/returns/' + d.id}>
               {d.number}
             </Link>{' '}
-            · {d.date} · Проведено
+            · {dayLabel(d.date)} <DocumentStatus tone="success">Проведено</DocumentStatus>
           </h3>
           <p>{d.reason}</p>
           <table className="w-full text-left">
@@ -167,7 +177,7 @@ export function Returns({
                   <td>
                     {l.quantity} {l.unit}
                   </td>
-                  <td>{l.amount} грн</td>
+                  <td className="text-right">{moneyLabel(l.amount)}</td>
                 </tr>
               ))}
             </tbody>

@@ -41,7 +41,7 @@ export default async function SuppliersPage({
     <>
       <PageHeader />
       <ListPage>
-        <div className="flex min-h-0 flex-1 flex-col gap-5">
+        <div className="ops-workspace flex min-h-0 flex-1 flex-col gap-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h1 className="text-2xl font-semibold">{t('title')}</h1>
             <div className="flex flex-wrap gap-4">

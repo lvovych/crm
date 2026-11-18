@@ -12,11 +12,21 @@ export function Lines({ details }: { details: SlipDetails }) {
     else groups.set(key, [line])
   }
   return (
-    <div className="overflow-x-auto">
-      {!Array.isArray(details) && <section className="mb-4">
-        <h3 className="font-semibold">Умови на момент нарахування</h3>
-        {details.conditions.length ? <ul className="list-disc pl-5">{details.conditions.map(c => <li key={c}>{c}</li>)}</ul> : <p>Активних правил немає.</p>}
-      </section>}
+    <div className="ops-workspace overflow-x-auto">
+      {!Array.isArray(details) && (
+        <section className="ops-panel mb-5 space-y-2 text-sm">
+          <h3 className="font-semibold">Умови на момент нарахування</h3>
+          {details.conditions.length ? (
+            <ul className="list-disc pl-5">
+              {details.conditions.map((c) => (
+                <li key={c}>{c}</li>
+              ))}
+            </ul>
+          ) : (
+            <p>Активних правил немає.</p>
+          )}
+        </section>
+      )}
       <table className="w-full text-left text-sm">
         <thead>
           <tr>
@@ -39,8 +49,8 @@ export function Lines({ details }: { details: SlipDetails }) {
                 <tr className="border-b" key={i}>
                   <td className="p-2">{l.name}</td>
                   <td>{l.rate}</td>
-                  <td>{l.base}</td>
-                  <td>{l.amount}</td>
+                  <td className="text-right tabular-nums">{l.base}</td>
+                  <td className="text-right font-semibold tabular-nums">{l.amount}</td>
                 </tr>
               ))}
             </Fragment>

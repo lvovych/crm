@@ -19,12 +19,14 @@ type View = 'customer' | 'supplier' | 'review'
 const PAGE_SIZE = 25
 const zero = '0.00'
 function total(parties: PartyRow[], key: 'debt' | 'advance' | 'overdue' | 'expected') {
-  return decimal(parties.reduce((sum, p) => {
-    const amount = cents(p[key])
-    // A credit with one supplier cannot settle another supplier's bill.
-    if (p.kind === 'supplier' && key === 'debt' && amount < 0) return sum
-    return sum + amount
-  }, BigInt(0)))
+  return decimal(
+    parties.reduce((sum, p) => {
+      const amount = cents(p[key])
+      // A credit with one supplier cannot settle another supplier's bill.
+      if (p.kind === 'supplier' && key === 'debt' && amount < 0) return sum
+      return sum + amount
+    }, BigInt(0))
+  )
 }
 function balance(p: PartyRow) {
   return p.kind === 'supplier' ? cents(p.debt) : cents(p.debt) - cents(p.advance)
@@ -155,7 +157,10 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
   const [customerScope, setCustomerScope] = useState(
     data.trackedParties === undefined ? 'legacy' : 'tracked'
   )
-  const tracked = view === 'customer' && (customerScope === 'tracked' || (data.trackedParties !== undefined && !data.canSwitchCustomerScope))
+  const tracked =
+    view === 'customer' &&
+    (customerScope === 'tracked' ||
+      (data.trackedParties !== undefined && !data.canSwitchCustomerScope))
   const sourceParties = tracked ? (data.trackedParties ?? []) : data.parties
   const reviewMap = new Map<string, PartyRow>()
   for (const p of [...data.parties, ...(data.trackedParties ?? [])]) {
@@ -169,12 +174,16 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
   const debtLabel = view === 'supplier' ? 'Загальний борг' : 'Заборгованість'
   const overdueLabel = view === 'supplier' ? 'Прострочено' : 'Прострочена заборгованість'
   const relevant = sourceParties.filter((p) => p.kind === view)
-  const filtered = view === 'review'
-    ? [...reviewMap.values()].filter((p) => p.documents.some((d) => d.reason))
-    : relevant.filter((p) => balance(p) !== BigInt(0)).sort((a, b) => {
-        const left = balance(a), right = balance(b)
-        return left === right ? a.name.localeCompare(b.name, 'uk') : left > right ? -1 : 1
-      })
+  const filtered =
+    view === 'review'
+      ? [...reviewMap.values()].filter((p) => p.documents.some((d) => d.reason))
+      : relevant
+          .filter((p) => balance(p) !== BigInt(0))
+          .sort((a, b) => {
+            const left = balance(a),
+              right = balance(b)
+            return left === right ? a.name.localeCompare(b.name, 'uk') : left > right ? -1 : 1
+          })
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)),
     currentPage = Math.min(page, pages)
   const shown = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
@@ -190,7 +199,7 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
     review: 'Не враховано в підсумках',
   }
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-5 p-4 pb-24 sm:p-6">
+    <div className="ops-workspace mx-auto w-full max-w-7xl space-y-5 p-4 pb-24 sm:p-6">
       <header className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
         <div>
           <h1 className="text-2xl font-semibold">Взаєморозрахунки</h1>
@@ -303,10 +312,7 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
       {!unavailable && !supplierFailed && (
         <>
           {view !== 'review' && (
-            <section
-              className="flex flex-wrap gap-x-6 gap-y-2 rounded-lg border px-3 py-2"
-              aria-label="Підсумки вибірки"
-            >
+            <section className="grid gap-3 sm:grid-cols-3" aria-label="Підсумки вибірки">
               {[
                 {
                   label:
@@ -332,12 +338,12 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
                   Icon: ArrowUpRight,
                 },
               ].map((m) => (
-                <div key={m.label} className="flex flex-wrap items-baseline gap-x-2">
+                <div key={m.label} className="rounded-xl border bg-card p-4">
                   <p className="flex items-center gap-2 text-sm text-muted-foreground">
                     <m.Icon className="size-4 shrink-0" aria-hidden="true" />
                     {m.label}
                   </p>
-                  <p className="break-words font-semibold">
+                  <p className="mt-2 break-words text-xl font-semibold tabular-nums">
                     <Amount value={m.value} />
                   </p>
                 </div>
@@ -353,7 +359,9 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
           )}
           {!shown.length ? (
             <p className="rounded-xl border p-8 text-center" role="status">
-              {view === 'review' ? 'Документів для звірки немає.' : 'Немає контрагентів із ненульовим сальдо.'}
+              {view === 'review'
+                ? 'Документів для звірки немає.'
+                : 'Немає контрагентів із ненульовим сальдо.'}
             </p>
           ) : view !== 'review' ? (
             <table
@@ -367,11 +375,7 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
                     [debtLabel, 'debt'],
                     [overdueLabel, 'overdue'],
                   ].map(([label, key]) => (
-                    <th
-                      key={key}
-                      scope="col"
-                      className="px-3 py-2 text-right first:text-left"
-                    >
+                    <th key={key} scope="col" className="px-3 py-2 text-right first:text-left">
                       {label}
                     </th>
                   ))}
@@ -388,11 +392,22 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
                     >
                       <td className="min-w-0 break-words font-medium md:px-3 md:py-2">
                         {p.id === 'unassigned' ? (
-                          <button onClick={e => { opener.current = e.currentTarget; setSelected(p) }}>{p.name}</button>
-                        ) : <Link className="text-left underline after:absolute after:inset-0"
-                          href={`/${p.kind === 'supplier' ? 'suppliers' : 'customers'}/${encodeURIComponent(p.id)}?date=${data.asOf}#settlement-documents`}>
-                          {p.name}
-                        </Link>}
+                          <button
+                            onClick={(e) => {
+                              opener.current = e.currentTarget
+                              setSelected(p)
+                            }}
+                          >
+                            {p.name}
+                          </button>
+                        ) : (
+                          <Link
+                            className="text-left underline after:absolute after:inset-0"
+                            href={`/${p.kind === 'supplier' ? 'suppliers' : 'customers'}/${encodeURIComponent(p.id)}?date=${data.asOf}#settlement-documents`}
+                          >
+                            {p.name}
+                          </Link>
+                        )}
                         {p.archived && <small> · Архівний</small>}
                         {excluded > 0 && (
                           <small className="block font-normal text-amber-600">
