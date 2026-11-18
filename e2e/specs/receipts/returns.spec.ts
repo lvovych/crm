@@ -1,3 +1,4 @@
+import { languageState } from '../../support/language'
 import { randomUUID } from 'node:crypto'
 import { expect, test } from '@playwright/test'
 import { settle } from '../../support/hydration'
@@ -116,3 +117,6 @@ test('returns all receipt goods in one document and updates supplier debt and st
     await db.end()
   }
 })
+
+// These operational assertions intentionally exercise the Ukrainian interface.
+test.beforeEach(async ({ context }) => { await context.addCookies(languageState('uk').cookies) })

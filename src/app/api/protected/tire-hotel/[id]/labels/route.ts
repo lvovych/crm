@@ -1,3 +1,4 @@
+import { supportedLocale } from '@/i18n/config'
 import { NextResponse } from 'next/server'
 import React from 'react'
 import { renderToBuffer } from '@react-pdf/renderer'
@@ -64,7 +65,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       : defaultCopies(set.quantity)
 
     const cookieStore = await cookies()
-    const locale = cookieStore.get('locale')?.value || 'en'
+    const locale = supportedLocale(cookieStore.get('locale')?.value)
     // The namespace mixes strings and nested objects, so it is read loosely
     // and each value checked where it is used.
     let messages: Record<string, unknown>

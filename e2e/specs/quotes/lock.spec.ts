@@ -1,3 +1,4 @@
+import { languageState } from '../../support/language'
 import { partRows } from '../../support/work-order'
 import { expect, type Page, test } from '@playwright/test'
 import { settle } from '../../support/hydration'
@@ -155,7 +156,7 @@ test.describe('a locked quote can still become a work order', () => {
       .context()
       .browser()!
       .newContext({
-        storageState: { cookies: [], origins: [] },
+        storageState: languageState('en'),
       })
     const customerPage = await customer.newPage()
     await customerPage.goto(shareUrl)

@@ -76,6 +76,7 @@ const TIMEZONE_OPTIONS = [
   'Europe/Zurich',
   'Europe/Vienna',
   'Europe/Stockholm',
+  'Europe/Bucharest',
   'Europe/Oslo',
   'Europe/Copenhagen',
   'Europe/Helsinki',
@@ -127,8 +128,8 @@ export function LocalizationSettings({ settings }: { settings: Record<string, st
   const [dateFormat, setDateFormat] = useState(
     settings[SETTING_KEYS.DATE_FORMAT] || DEFAULT_DATE_FORMAT
   )
-  const [timeFormat, setTimeFormat] = useState(settings[SETTING_KEYS.TIME_FORMAT] || '12h')
-  const [timezone, setTimezone] = useState(settings[SETTING_KEYS.TIMEZONE] || '')
+  const [timeFormat, setTimeFormat] = useState(settings[SETTING_KEYS.TIME_FORMAT] || '24h')
+  const [timezone, setTimezone] = useState(settings[SETTING_KEYS.TIMEZONE] ?? 'Europe/Bucharest')
   const [weekStartDay, setWeekStartDay] = useState(
     settings[SETTING_KEYS.WORKBOARD_WEEK_START_DAY] || '1'
   )
@@ -137,10 +138,10 @@ export function LocalizationSettings({ settings }: { settings: Record<string, st
     settings[SETTING_KEYS.FORCE_CUSTOMER_LOCALE] === 'true'
   )
 
-  // Default country code (E.164 prefix like "+47") used when normalizing
+  // Default country code (E.164 prefix like "+380") used when normalizing
   // customer phone numbers in the portal SMS sign-in flow.
   const [defaultCountryCode, setDefaultCountryCode] = useState(
-    settings[SETTING_KEYS.WORKSHOP_DEFAULT_COUNTRY_CODE] || ''
+    settings[SETTING_KEYS.WORKSHOP_DEFAULT_COUNTRY_CODE] ?? '+380'
   )
 
   // The setting is invalid when the user has typed something but it can't
@@ -254,7 +255,7 @@ export function LocalizationSettings({ settings }: { settings: Record<string, st
               value={defaultCountryCode}
               onChange={(e) => setDefaultCountryCode(e.target.value)}
               onBlur={handleCountryCodeBlur}
-              placeholder="+47"
+              placeholder="+380"
               inputMode="tel"
               aria-invalid={countryCodeInvalid || undefined}
               className={cn(

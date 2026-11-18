@@ -1,3 +1,4 @@
+import { getOperationText } from '@/i18n/operation-text.server'
 import Link from 'next/link'
 import { listSupplierReturns } from './return-actions'
 import { moneyLabel, dayLabel } from '@/features/finance/presentation'
@@ -8,6 +9,8 @@ export async function ReturnList({
   filters?: Parameters<typeof listSupplierReturns>[0]
   paginationHref?: string
 }) {
+  const ot = await getOperationText()
+
   const r = await listSupplierReturns(filters)
   if (!r.data) return <p role="alert">{r.error}</p>
   function href(page: number) {
@@ -29,12 +32,12 @@ export async function ReturnList({
         <table>
           <thead>
             <tr>
-              <th>Номер</th>
-              <th>Номер документа постачальника</th>
-              <th>Дата</th>
-              <th>Постачальник</th>
-              <th>Статус</th>
-              <th>Сума</th>
+              <th>{ot('Номер')}</th>
+              <th>{ot('Номер документа постачальника')}</th>
+              <th>{ot('Дата')}</th>
+              <th>{ot('Постачальник')}</th>
+              <th>{ot('Статус')}</th>
+              <th>{ot('Сума')}</th>
             </tr>
           </thead>
           <tbody>
@@ -54,32 +57,35 @@ export async function ReturnList({
                 </td>
                 <td>
                   <span className={d.status === 'posted' ? 'text-emerald-500' : 'text-amber-500'}>
-                    {d.status === 'posted' ? 'Проведено' : 'Чернетка'}
+                    {d.status === 'posted' ? ot('Проведено') : ot('Чернетка')}
                   </span>
                 </td>
-                <td className="font-semibold whitespace-nowrap">{moneyLabel(d.amount)}</td>
+                <td className="font-semibold whitespace-nowrap">{moneyLabel(d.amount, ot('грн'))}</td>
               </tr>
             ))}
             {!r.data.documents.length && (
               <tr>
-                <td colSpan={6}>Повернень не знайдено.</td>
+                <td colSpan={6}>{ot('Повернень не знайдено.')}</td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
-      <nav aria-label="Сторінки повернень" className="flex flex-wrap items-center gap-4">
+      <nav aria-label={ot('Сторінки повернень')} className="flex flex-wrap items-center gap-4">
         {r.data.page > 1 && (
           <Link className="underline" href={href(r.data.page - 1)}>
-            Назад
+            {ot('Назад')}
           </Link>
         )}
         <span>
-          Знайдено: {r.data.total} · Сторінка {r.data.page} з {r.data.pages}
+          {ot("Знайдено: ")}
+          {r.data.total} {ot(" · Сторінка ")}
+          {r.data.page} {ot(" з ")}
+          {r.data.pages}
         </span>
         {r.data.page < r.data.pages && (
           <Link className="underline" href={href(r.data.page + 1)}>
-            Далі
+            {ot('Далі')}
           </Link>
         )}
       </nav>

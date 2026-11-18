@@ -1,6 +1,9 @@
+import { getLocale } from 'next-intl/server'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ZodError } from 'zod'
 import { PermissionAction, PermissionSubject } from '@/lib/permissions'
+
+vi.mock('next-intl/server', () => ({ getLocale: vi.fn() }))
 
 // Hoisted mocks
 vi.mock('@/lib/cached-session', () => ({
@@ -34,17 +37,25 @@ const MEMBERSHIP = {
 
 beforeEach(() => {
   vi.resetAllMocks()
+  vi.mocked(getLocale).mockResolvedValue('en')
 })
 
 describe('withAuth', () => {
-  it.each(['owner', 'member', 'admin', 'custom-admin', 'super-admin'])('enforces payroll ownership for %s', async (role) => {
+  it.each([
+    'owner',
+    'member',
+    'admin',
+    'custom-admin',
+    'super-admin',
+  ])('enforces payroll ownership for %s', async (role) => {
     mockGetCachedSession.mockResolvedValue(SESSION as any)
     mockFindUnique.mockResolvedValue({ isSuperAdmin: role === 'super-admin' } as any)
     for (const action of [PermissionAction.READ, PermissionAction.MANAGE]) {
       const permission = { action, subject: PermissionSubject.PAYROLL }
       mockGetCachedMembership.mockResolvedValue({
-        ...MEMBERSHIP, role: role.endsWith('-admin') ? 'member' : role,
-        customRole: { isAdmin: role === 'custom-admin', permissions: [permission] }
+        ...MEMBERSHIP,
+        role: role.endsWith('-admin') ? 'member' : role,
+        customRole: { isAdmin: role === 'custom-admin', permissions: [permission] },
       } as any)
       const handler = vi.fn(async () => 'ok')
       const result = await withAuth(handler, { requiredPermissions: [permission] })
@@ -248,5 +259,34 @@ describe('withAuth', () => {
       success: false,
       error: 'Something went wrong. Please try again.',
     })
+  })
+})
+
+describe('localized action errors', () => {
+  it.each([
+    ['uk', 'Потрібно увійти в систему'],
+    ['ru', 'Необходимо войти в систему'],
+    ['en', 'Unauthorized'],
+  ])('localizes access refusal in %s', async (locale, message) => {
+    vi.mocked(getLocale).mockResolvedValue(locale)
+    mockGetCachedSession.mockResolvedValue(null)
+    const handler = vi.fn()
+    expect(await withAuth(handler)).toEqual({ success: false, error: message })
+    expect(handler).not.toHaveBeenCalled()
+  })
+  it.each([
+    ['uk', 'Сталася помилка. Спробуйте ще раз.'],
+    ['ru', 'Произошла ошибка. Попробуйте ещё раз.'],
+    ['en', 'Something went wrong. Please try again.'],
+  ])('localizes safe runtime errors in %s without exposing internals', async (locale, message) => {
+    vi.mocked(getLocale).mockResolvedValue(locale)
+    mockGetCachedSession.mockResolvedValue(SESSION as any)
+    mockFindUnique.mockResolvedValue({ isSuperAdmin: false } as any)
+    mockGetCachedMembership.mockResolvedValue(MEMBERSHIP as any)
+    expect(
+      await withAuth(async () => {
+        throw new TypeError('private database details')
+      })
+    ).toEqual({ success: false, error: message })
   })
 })

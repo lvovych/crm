@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { interactiveRow } from '@/lib/interactive-row'
 import { useState, useRef, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -105,6 +106,8 @@ export function VehicleForm({
   defaultCustomerId,
   initialLookup,
 }: VehicleFormProps) {
+  const ot = useOperationText()
+
   const serviceType = useServiceType()
   const isMarine = serviceType === 'marine'
   // Only a workshop that switched the type key on sees the two boxes; a hidden
@@ -702,7 +705,7 @@ export function VehicleForm({
                   <Input
                     id="color"
                     name="color"
-                    placeholder="Silver"
+                    placeholder={ot('Silver')}
                     defaultValue={vehicle?.color ?? ''}
                   />
                 </div>

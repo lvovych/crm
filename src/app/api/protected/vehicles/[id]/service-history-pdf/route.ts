@@ -1,3 +1,4 @@
+import { supportedLocale } from '@/i18n/config'
 import { resolveCurrencyCode, resolveCurrencyFormat } from '@/lib/currencies'
 import { NextResponse } from 'next/server'
 import { renderToBuffer } from '@react-pdf/renderer'
@@ -27,7 +28,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
     // Load locale-based PDF translations
     const cookieStore = await cookies()
-    const locale = cookieStore.get('locale')?.value || 'en'
+    const locale = supportedLocale(cookieStore.get('locale')?.value)
     let pdfMessages: Record<string, Record<string, string>>
     try {
       pdfMessages = (await import(`../../../../../../../messages/${locale}/pdf.json`)).default

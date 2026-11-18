@@ -1,3 +1,4 @@
+import { getOperationText } from '@/i18n/operation-text.server'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { PageHeader } from '@/components/page-header'
@@ -12,6 +13,8 @@ export default async function DocumentPage({
 }: {
   params: Promise<{ type: string; id: string }>
 }) {
+  const ot = await getOperationText()
+
   const { type, id } = await params,
     r = await documentDetail(type, id)
   if (!r.success)
@@ -28,8 +31,8 @@ export default async function DocumentPage({
       <main className="ops-workspace mx-auto w-full max-w-7xl space-y-6 p-4 pb-24 sm:p-6 md:pb-6">
         <DocumentHeader
           title={d.label}
-          back={{ href: '/documents', label: 'Журнал документів' }}
-          description={documentTypes[d.type] + ' · ' + dayLabel(d.date)}
+          back={{ href: '/documents', label: ot('Журнал документів') }}
+          description={ot(documentTypes[d.type]) + ' · ' + dayLabel(d.date)}
           status={
             <DocumentStatus
               tone={
@@ -40,34 +43,38 @@ export default async function DocumentPage({
                     : 'neutral'
               }
             >
-              {documentStatus[d.status] ?? d.status}
+              {ot(documentStatus[d.status]) ?? d.status}
             </DocumentStatus>
           }
           actions={
             <Button asChild variant="outline">
               <Link href={d.href}>
-                {d.type === 'finance' ? 'Відкрити каси та рахунки' : 'Відкрити первинний документ'}
+                {d.type === 'finance'
+                  ? ot('Відкрити каси та рахунки')
+                  : ot('Відкрити первинний документ')}
               </Link>
             </Button>
           }
         />
         <div className="grid gap-4 sm:grid-cols-2">
-          <MoneySummary items={[{ label: 'Сума документа', value: d.amount, emphasis: true }]} />
+          <MoneySummary
+            items={[{ label: ot('Сума документа'), value: d.amount, emphasis: true }]}
+          />
           <dl className="ops-panel space-y-3">
             <div>
-              <dt className="text-sm text-muted-foreground">Контрагент / працівник</dt>
+              <dt className="text-sm text-muted-foreground">{ot('Контрагент / працівник')}</dt>
               <dd className="mt-1 font-medium">{d.party || '—'}</dd>
             </div>
             <div>
-              <dt className="text-sm text-muted-foreground">Підстава та реквізити</dt>
+              <dt className="text-sm text-muted-foreground">{ot('Підстава та реквізити')}</dt>
               <dd className="mt-1 whitespace-pre-wrap break-words text-sm">{d.note || '—'}</dd>
             </div>
           </dl>
         </div>
         <section className="ops-panel space-y-4">
-          <h2 className="text-lg font-semibold">Ланцюжок документів</h2>
+          <h2 className="text-lg font-semibold">{ot('Ланцюжок документів')}</h2>
           <p className="text-sm text-muted-foreground">
-            Натисніть документ, щоб переглянути його зв’язки та відкрити оригінал.
+            {ot('Натисніть документ, щоб переглянути його зв’язки та відкрити оригінал.')}
           </p>
           <DocumentConnections
             root={d.key}

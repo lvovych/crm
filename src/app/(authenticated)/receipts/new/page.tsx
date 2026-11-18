@@ -1,8 +1,11 @@
+import { getOperationText } from '@/i18n/operation-text.server'
 import { DocumentHeader } from '@/components/operations/document-ui'
 import { randomUUID } from 'node:crypto'
 import { receiptOptions, receiptAccess } from '@/features/receipts/actions'
 import ReceiptForm from '@/features/receipts/ReceiptForm'
 export default async function Page() {
+  const ot = await getOperationText()
+
   const [r, access] = await Promise.all([receiptOptions(), receiptAccess()])
   if (!r.data) return <p role="alert">{r.error}</p>
   const day = new Intl.DateTimeFormat('en-CA', {
@@ -14,9 +17,11 @@ export default async function Page() {
   return (
     <>
       <DocumentHeader
-        title="Нова накладна"
-        back={{ href: '/receipts', label: 'Надходження' }}
-        description="Оберіть постачальника, додайте позиції та перевірте суму перед проведенням."
+        title={ot('Нова накладна')}
+        back={{ href: '/receipts', label: ot('Надходження') }}
+        description={ot(
+          'Оберіть постачальника, додайте позиції та перевірте суму перед проведенням.'
+        )}
       />
       <ReceiptForm
         options={r.data}
@@ -34,7 +39,7 @@ export default async function Page() {
               article: '',
               partId: null,
               name: '',
-              unit: 'шт',
+              unit: ot('шт'),
               quantity: '1',
               unitPrice: '0',
             },

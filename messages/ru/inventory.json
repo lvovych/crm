@@ -122,7 +122,7 @@
     "supplier": "Поставщик",
     "supplierPlaceholder": "ЗапчастиПро",
     "supplierPhone": "Телефон поставщика",
-    "supplierPhonePlaceholder": "+7 (999) 123-45-67",
+    "supplierPhonePlaceholder": "+380 (67) 123-45-67",
     "supplierEmail": "Эл. почта поставщика",
     "supplierEmailPlaceholder": "orders@autoparts.ru",
     "description": "Описание",
@@ -131,9 +131,9 @@
     "saveChanges": "Сохранить изменения",
     "addPart": "Добавить запчасть",
     "brand": "Бренд",
-    "brandSearch": "Search brands…",
-    "brandNotFound": "Brand not found",
-    "brandLoadError": "Could not load brands"
+    "brandSearch": "Поиск брендов…",
+    "brandNotFound": "Бренд не найден",
+    "brandLoadError": "Не удалось загрузить бренды"
   },
   "openMenu": "Открыть меню",
   "history": {

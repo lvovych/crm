@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { type ComponentProps, type ComponentType, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -261,6 +262,8 @@ export function InspectionPageClient({
   technicians?: TechnicianOption[]
   workshopAddress?: string
 }) {
+  const ot = useOperationText()
+
   const t = useTranslations('inspections.page')
   const router = useRouter()
   const { formatDate } = useFormatDate()
@@ -1087,7 +1090,12 @@ export function InspectionPageClient({
                         </li>
                       ))}
                     </ul>
-                    {blockers.length > 8 && <p>and {blockers.length - 8} more.</p>}
+                    {blockers.length > 8 && (
+                      <p>
+                        {ot("and ")}
+                        {blockers.length - 8} {ot(" more.")}
+                      </p>
+                    )}
                   </>
                 ) : null}
                 <p>{t('completeBody', { result: resultLabel(deriveTestResult(gradedItems)) })}</p>

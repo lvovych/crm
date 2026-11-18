@@ -1,3 +1,4 @@
+import { languageState } from '../../support/language'
 import { randomUUID } from 'node:crypto'
 import { expect, test } from '@playwright/test'
 import { receiptDb, receiptFixture } from '../../support/receipt-fixture'
@@ -149,3 +150,6 @@ test('server pages preserve a multi-receipt draft and list filters', async ({ pa
     await db.end()
   }
 })
+
+// These operational assertions intentionally exercise the Ukrainian interface.
+test.beforeEach(async ({ context }) => { await context.addCookies(languageState('uk').cookies) })

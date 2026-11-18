@@ -1,3 +1,4 @@
+import { languageState } from '../../support/language'
 import { expect, test } from '@playwright/test'
 import { completeOnboarding, expectUpgradeOffered, signUpWithPassword } from '../../support/cloud'
 import {
@@ -46,7 +47,7 @@ test.use({ storageState: STATE })
 test.beforeAll(async ({ browser }) => {
   // Signed up the way a stranger does, sample data and all, and the session
   // kept for the tests below.
-  const context = await browser.newContext({ storageState: { cookies: [], origins: [] } })
+  const context = await browser.newContext({ storageState: languageState('en') })
   const page = await context.newPage()
   await signUpWithPassword(page, { name: 'E2E Free Owner', email: EMAIL, password: PASSWORD })
   await completeOnboarding(page, WORKSHOP, { sampleData: true })

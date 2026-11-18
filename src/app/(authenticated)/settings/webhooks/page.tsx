@@ -1,3 +1,4 @@
+import { getOperationText } from '@/i18n/operation-text.server'
 import { redirect } from 'next/navigation'
 import { getLayoutData } from '@/lib/get-layout-data'
 import { getFeatures, isCloudMode } from '@/lib/features'
@@ -6,6 +7,8 @@ import { getWebhooks } from '@/features/webhooks/Actions/webhookActions'
 import { WebhooksSettings } from './webhooks-settings'
 
 export default async function WebhooksPage() {
+  const ot = await getOperationText()
+
   const data = await getLayoutData()
   if (data.status === 'unauthenticated') redirect('/auth/sign-in')
   if (data.status === 'no-organization') redirect('/onboarding')
@@ -21,7 +24,7 @@ export default async function WebhooksPage() {
   return locked ? (
     <FeatureLocked
       feature="Webhooks"
-      description="Push real-time event notifications to your own systems via HTTPS."
+      description={ot('Push real-time event notifications to your own systems via HTTPS.')}
       isCloud={isCloudMode()}
     >
       {content}

@@ -10,8 +10,8 @@ import {
 import { getPreset, resolvePreset } from '@/features/inspections/Lib/templatePresets'
 import { rankSuggestions } from '@/features/inspections/Lib/defectCatalogue'
 
-const nb = JSON.parse(
-  fs.readFileSync(path.resolve(process.cwd(), 'messages/nb/inspectionLibrary.json'), 'utf-8')
+const translated = JSON.parse(
+  fs.readFileSync(path.resolve(process.cwd(), 'messages/en/inspectionLibrary.json'), 'utf-8')
 )
 
 const byCode = (code: string) =>
@@ -28,11 +28,11 @@ describe('Norway EU-kontroll preset', () => {
   })
 
   it('uses the instruks numbering where it differs from the Annex', () => {
-    expect(resolvePreset(preset, nb).sections.flatMap((s) => s.items)).toEqual(
+    expect(resolvePreset(preset, translated).sections.flatMap((s) => s.items)).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ code: '7.5', name: 'Refleksvest' }),
-        expect.objectContaining({ code: '8.3.1', name: 'Væskelekkasjer' }),
-        expect.objectContaining({ code: '2.1.5', name: 'Servostyring' }),
+        expect.objectContaining({ code: '7.5', name: 'Reflective vest' }),
+        expect.objectContaining({ code: '8.3.1', name: 'Fluid leaks' }),
+        expect.objectContaining({ code: '2.1.5', name: 'Power steering' }),
       ])
     )
     expect(byCode('8.5')).toBeUndefined()
@@ -53,18 +53,18 @@ describe('Norway EU-kontroll preset', () => {
     expect(row('no_m_opacity_euro6').maxValue).toBe(0.7)
   })
 
-  it('has Norwegian and English text for every key it uses', () => {
+  it('has English text for every key it uses', () => {
     for (const section of NO_SECTIONS) {
-      expect(nb.sections[section.key], section.key).toBeTruthy()
+      expect(translated.sections[section.key], section.key).toBeTruthy()
       for (const item of section.items) {
-        expect(nb.checks[item.key], item.key).toBeTruthy()
+        expect(translated.checks[item.key], item.key).toBeTruthy()
         expect(EN_LIBRARY.checks, item.key).toHaveProperty(item.key)
-        if (item.descriptionKey) expect(nb.descriptions[item.descriptionKey]).toBeTruthy()
+        if (item.descriptionKey) expect(translated.descriptions[item.descriptionKey]).toBeTruthy()
       }
     }
     for (const entries of Object.values(NO_DEFECTS_BY_CODE)) {
       for (const [key] of entries) {
-        expect(nb.defects[key], key).toBeTruthy()
+        expect(translated.defects[key], key).toBeTruthy()
         expect(EN_LIBRARY.defects, key).toHaveProperty(key)
       }
     }
@@ -75,12 +75,12 @@ describe('Norwegian defect reasons', () => {
   it('offers the instruks reasons with their grades for a Norwegian check', () => {
     const suggestions = rankSuggestions(
       { name: 'Bremsebånd og bremseklosser', code: '1.1.13', standard: NO_STANDARD },
-      { lib: nb }
+      { lib: translated }
     )
     const regulation = suggestions.filter((s) => s.source === 'regulation')
     expect(regulation).toEqual(
       expect.arrayContaining([
-        { text: 'a) For stor slitasje på bremsebelegg', severity: 'fail', source: 'regulation' },
+        { text: 'a) Excessive wear of brake lining', severity: 'fail', source: 'regulation' },
         expect.objectContaining({ severity: 'dangerous', source: 'regulation' }),
       ])
     )
@@ -89,7 +89,7 @@ describe('Norwegian defect reasons', () => {
 
   it('never mixes in the Annex wording for a code the two number differently', () => {
     // 7.5 is the hi-vis vest in Norway and the first aid kit in the Annex.
-    const suggestions = rankSuggestions({ name: 'Refleksvest', code: '7.5', standard: NO_STANDARD })
+    const suggestions = rankSuggestions({ name: 'Reflective vest', code: '7.5', standard: NO_STANDARD })
     const regulation = suggestions.filter((s) => s.source === 'regulation')
     expect(regulation.length).toBeGreaterThan(0)
     expect(regulation.every((s) => /^[a-z]\) /.test(s.text))).toBe(true)

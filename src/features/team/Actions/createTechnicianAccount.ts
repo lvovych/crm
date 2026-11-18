@@ -312,7 +312,7 @@ export async function getWorkshopDialCode() {
         },
         select: { value: true },
       })
-      return { dialCode: normalizeCountryCode(setting?.value) }
+      return { dialCode: normalizeCountryCode(setting?.value ?? '+380') }
     },
     {
       requiredPermissions: [{ action: PermissionAction.READ, subject: PermissionSubject.SETTINGS }],

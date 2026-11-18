@@ -1,3 +1,4 @@
+import { getOperationText } from '@/i18n/operation-text.server'
 import { directory, saveEmployee } from '@/features/employees/actions'
 import { settlementData, payrollDocuments } from '@/features/payroll/settlements'
 import { cents, decimal } from '@/features/finance/money'
@@ -11,6 +12,8 @@ export default async function Employees({
 }: {
   searchParams: Promise<{ tab?: string; employee?: string; page?: string }>
 }) {
+  const ot = await getOperationText()
+
   const result = await directory()
   if (!result.data) return <p>{result.error}</p>
   const query = await searchParams
@@ -29,35 +32,35 @@ export default async function Employees({
   return (
     <main className="ops-workspace mx-auto w-full max-w-6xl space-y-6 p-4 sm:p-6">
       <Link href="/directories" className="text-sm underline">
-        Довідники
+        {ot('Довідники')}
       </Link>
       <h1 className="flex items-center gap-3 text-3xl font-semibold">
         <UserRound aria-hidden="true" />
-        Працівники
+        {ot('Працівники')}
       </h1>
       <nav className="flex border-b">
         <Link className={tabClass(!docs)} href="/employees">
-          Список працівників
+          {ot('Список працівників')}
         </Link>
         {payroll && (
           <Link className={tabClass(docs)} href="/employees?tab=documents">
-            Документи нарахування
+            {ot('Документи нарахування')}
           </Link>
         )}
       </nav>
       {docs ? (
         <>
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-xl font-semibold">Документи нарахування</h2>
+            <h2 className="text-xl font-semibold">{ot('Документи нарахування')}</h2>
             <Link className={button} href="/payroll?mode=new">
-              Створити документ
+              {ot('Створити документ')}
             </Link>
           </div>
           <div className="overflow-x-auto rounded-lg border">
             <table className="w-full text-left text-sm tabular-nums">
               <thead className="bg-muted">
                 <tr>
-                  {['Працівник', 'Період', 'Статус', 'Нараховано'].map((h) => (
+                  {[ot('Працівник'), ot('Період'), ot('Статус'), ot('Нараховано')].map((h) => (
                     <th className="p-3 last:text-right" key={h}>
                       {h}
                     </th>
@@ -79,43 +82,50 @@ export default async function Employees({
                       {s.start.toLocaleDateString('uk-UA', { timeZone: 'UTC' })} —{' '}
                       {s.end.toLocaleDateString('uk-UA', { timeZone: 'UTC' })}
                     </td>
-                    <td className="p-3">{s.status === 'new' ? 'Новий' : 'Завершено'}</td>
+                    <td className="p-3">{s.status === 'new' ? ot('Новий') : ot('Завершено')}</td>
                     <td className="p-3 text-right font-semibold">
-                      {s.total.toFixed(2).replace('.', ',')} грн
+                      {s.total.toFixed(2).replace('.', ',')} {ot(" грн")}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
             {documents?.data && (
-              <nav className="flex gap-4 p-4" aria-label="Сторінки нарахувань">
+              <nav className="flex gap-4 p-4" aria-label={ot('Сторінки нарахувань')}>
                 {documents.data.page > 1 && (
-                  <Link href={'?tab=documents&page=' + (documents.data.page - 1)}>Назад</Link>
+                  <Link href={'?tab=documents&page=' + (documents.data.page - 1)}>
+                    {ot('Назад')}
+                  </Link>
                 )}
-                <span>Сторінка {documents.data.page}</span>
+                <span>
+                  {ot("Сторінка ")}
+                  {documents.data.page}
+                </span>
                 {documents.data.page * 50 < documents.data.count && (
-                  <Link href={'?tab=documents&page=' + (documents.data.page + 1)}>Далі</Link>
+                  <Link href={'?tab=documents&page=' + (documents.data.page + 1)}>
+                    {ot('Далі')}
+                  </Link>
                 )}
               </nav>
             )}
-            {!slips.length && <p className="p-4">Проведених документів ще немає.</p>}
+            {!slips.length && <p className="p-4">{ot('Проведених документів ще немає.')}</p>}
           </div>
         </>
       ) : (
         <>
           {result.data?.canManage && (
             <details className="rounded border p-4">
-              <summary>Додати працівника</summary>
+              <summary>{ot('Додати працівника')}</summary>
               <form action={saveEmployee} className="mt-4 space-y-3">
                 <input
                   className="rounded border p-2"
                   name="name"
-                  aria-label="Ім’я"
-                  placeholder="Ім’я та прізвище"
+                  aria-label={ot('Ім’я')}
+                  placeholder={ot('Ім’я та прізвище')}
                   required
                 />
                 <RoleFields selected={['mechanic']} />
-                <button>Створити</button>
+                <button>{ot('Створити')}</button>
               </form>
             </details>
           )}
@@ -123,8 +133,10 @@ export default async function Employees({
             <table className="w-full text-sm">
               <thead className="bg-muted">
                 <tr>
-                  <th className="p-3 text-left">Ім’я</th>
-                  <th className="p-3 text-right">{payroll ? 'До виплати' : 'Робочі ролі'}</th>
+                  <th className="p-3 text-left">{ot('Ім’я')}</th>
+                  <th className="p-3 text-right">
+                    {payroll ? ot('До виплати') : ot('Робочі ролі')}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -140,12 +152,12 @@ export default async function Employees({
                         >
                           {p.name}
                         </Link>
-                        {p.dismissedOn && ' · Звільнено'}
+                        {p.dismissedOn && ot(" · Звільнено")}
                       </td>
                       <td className="p-3 text-right font-semibold tabular-nums">
                         {account
-                          ? decimal(balance).replace('.', ',') + ' грн'
-                          : p.workRoles.map((r) => roles[r as keyof typeof roles]).join(', ')}
+                          ? decimal(balance).replace('.', ',') + ot(" грн")
+                          : p.workRoles.map((r) => ot(roles[r as keyof typeof roles])).join(', ')}
                       </td>
                     </tr>
                   )

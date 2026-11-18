@@ -1,3 +1,4 @@
+import { supportedLocale } from '@/i18n/config'
 import { pdfDisposition } from '@/lib/document-filename'
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
@@ -27,7 +28,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     }
 
     const cookieStore = await cookies()
-    const locale = cookieStore.get('locale')?.value || 'en'
+    const locale = supportedLocale(cookieStore.get('locale')?.value)
 
     const result = await buildWorkOrderPdfBuffer(owned.id, locale)
     if (!result) {

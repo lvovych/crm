@@ -1,3 +1,6 @@
+import { beforeEach as beforeLocale, vi as localeMock } from 'vitest'
+import { useLocale as testLocale } from 'next-intl'
+// These scenarios exercise the Ukrainian operational interface.
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { TransferGoods } from '@/features/receipts/TransferGoods'
@@ -46,3 +49,5 @@ describe('receipt transfer controls', () => {
     expect(send.mock.calls[0][0].lines.map((l: { id: string }) => l.id)).toEqual(['a', 'b'])
   })
 })
+
+beforeLocale(() => localeMock.mocked(testLocale).mockReturnValue('uk'))

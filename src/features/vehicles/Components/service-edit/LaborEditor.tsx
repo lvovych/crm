@@ -1,4 +1,5 @@
 'use client'
+import { useOperationText } from '@/i18n/use-operation-text'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { SubcontractReminder } from '@/features/receipts/SubcontractReminder'
@@ -56,6 +57,8 @@ export function LaborEditor({
   primaryTechnicianId,
   locked = false,
 }: LaborEditorProps) {
+  const ot = useOperationText()
+
   const t = useTranslations('service.labor'),
     e = useTranslations('service.lineEditor'),
     format = useFormatCurrency(),
@@ -86,7 +89,7 @@ export function LaborEditor({
     isFee = draft ? isShopFeeLine(draft) : false
   const executor = (l: ServiceLaborInput) =>
     l.supplierId
-      ? suppliers.find((s) => s.id === l.supplierId)?.name || l.executorName || 'Підрядник'
+      ? suppliers.find((s) => s.id === l.supplierId)?.name || l.executorName || ot('Підрядник')
       : isShopFeeLine(l)
         ? '—'
         : l.executorFrozen
@@ -96,7 +99,7 @@ export function LaborEditor({
             e('unassigned')
   const mode = (l: ServiceLaborInput) =>
     l.supplierId
-      ? 'Підрядник'
+      ? ot('Підрядник')
       : isShopFeeLine(l)
         ? ''
         : l.executorLegacy
@@ -110,10 +113,11 @@ export function LaborEditor({
     if (!line.supplierId) return null
     return (
       <div className="text-xs text-muted-foreground">
-        Закупівля: {format(Number(line.purchasePrice), currencyCode)}
+        {ot("Закупівля: ")}
+        {format(Number(line.purchasePrice), currencyCode)}
         {line.receiptId && (
           <Link className="ml-2 underline" href={'/receipts/' + line.receiptId}>
-            {line.receiptStatus === 'posted' ? 'Проведена накладна' : 'Відкрити чернетку'}
+            {line.receiptStatus === 'posted' ? ot('Проведена накладна') : ot('Відкрити чернетку')}
           </Link>
         )}
       </div>
@@ -144,7 +148,7 @@ export function LaborEditor({
       editing.draft.supplierId === '' ||
       (editing.draft.supplierId && !editing.draft.purchasePrice)
     ) {
-      setError('Оберіть підрядника й укажіть закупівельну ціну.')
+      setError(ot('Оберіть підрядника й укажіть закупівельну ціну.'))
       return
     }
     const parsed = serviceLaborSchema.safeParse(editing.draft)
@@ -284,9 +288,13 @@ export function LaborEditor({
       className="@container min-w-0"
       contentClassName="p-3"
     >
-      {!locked && recordId && laborItems.some(line => line.supplierId && !line.receiptId) && (
+      {!locked && recordId && laborItems.some((line) => line.supplierId && !line.receiptId) && (
         <div ref={reminderRef} tabIndex={-1}>
-          <SubcontractReminder recordId={recordId} unsaved={unsaved} count={laborItems.filter(line => line.supplierId && !line.receiptId).length} />
+          <SubcontractReminder
+            recordId={recordId}
+            unsaved={unsaved}
+            count={laborItems.filter((line) => line.supplierId && !line.receiptId).length}
+          />
         </div>
       )}
       {quickAdd && (
@@ -440,7 +448,7 @@ export function LaborEditor({
           {!isFee && (
             <>
               {(suppliers.length > 0 || draft.supplierId != null) && (
-                <LineField label="Тип виконавця">
+                <LineField label={ot('Тип виконавця')}>
                   <select
                     className="min-h-11 rounded-md border bg-background px-2"
                     value={draft.supplierId != null ? 'supplier' : 'staff'}
@@ -463,22 +471,22 @@ export function LaborEditor({
                       )
                     }}
                   >
-                    <option value="staff">Працівник</option>
-                    <option value="supplier">Підрядник</option>
+                    <option value="staff">{ot('Працівник')}</option>
+                    <option value="supplier">{ot('Підрядник')}</option>
                   </select>
                 </LineField>
               )}
               {draft.supplierId != null ? (
                 <>
-                  <LineField label="Підрядник">
+                  <LineField label={ot('Підрядник')}>
                     <select
-                      aria-label="Підрядник"
+                      aria-label={ot('Підрядник')}
                       className="min-h-11 rounded-md border bg-background px-2"
                       disabled={!!draft.receiptId}
                       value={draft.supplierId}
                       onChange={(ev) => change('supplierId', ev.target.value)}
                     >
-                      <option value="">Оберіть постачальника</option>
+                      <option value="">{ot('Оберіть постачальника')}</option>
                       {suppliers.map((s) => (
                         <option key={s.id} value={s.id}>
                           {s.name}
@@ -486,10 +494,16 @@ export function LaborEditor({
                       ))}
                     </select>
                   </LineField>
-                  {!draft.receiptId && <p className="text-sm">Після застосування роботи збережіть наряд і натисніть «Прихід послуг» у секції робіт.</p>}
-                  <LineField label="Ціна закупівлі">
+                  {!draft.receiptId && (
+                    <p className="text-sm">
+                      {ot(
+                        'Після застосування роботи збережіть наряд і натисніть «Прихід послуг» у секції робіт.'
+                      )}
+                    </p>
+                  )}
+                  <LineField label={ot('Ціна закупівлі')}>
                     <Input
-                      aria-label="Ціна закупівлі"
+                      aria-label={ot('Ціна закупівлі')}
                       type="number"
                       min="0"
                       step="0.0001"
@@ -554,7 +568,7 @@ export function LaborEditor({
                 onChange={(v) => change('hours', v.target.value)}
               />
             </LineField>
-            <LineField label={draft.supplierId != null ? 'Ціна продажу' : e('price')}>
+            <LineField label={draft.supplierId != null ? ot('Ціна продажу') : e('price')}>
               <Input
                 type="number"
                 inputMode="decimal"

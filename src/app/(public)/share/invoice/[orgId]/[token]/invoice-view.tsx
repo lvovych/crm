@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { paymentTotal } from '@/features/finance/payment-total'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import {
@@ -268,6 +269,8 @@ export function InvoiceView({
   serviceType?: 'automotive' | 'marine'
   taxLabel?: string
 }) {
+  const ot = useOperationText()
+
   const t = useTranslations('share.invoice')
   const tc = useTranslations('share.common')
   const locale = useLocale()
@@ -836,7 +839,7 @@ export function InvoiceView({
               rel="noopener noreferrer"
               className="text-xs font-semibold text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
             >
-              Torqvoice
+              {ot('Torqvoice')}
             </a>
           </div>
         ) : (

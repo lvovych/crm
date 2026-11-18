@@ -57,7 +57,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ org
     // Normalize the phone using the workshop's default country code as a
     // fallback. Customers don't always type the country code, and existing
     // customer records may not have it stored either.
-    const defaultCountryCode = settingMap.get(SETTING_KEYS.WORKSHOP_DEFAULT_COUNTRY_CODE) ?? null
+    const defaultCountryCode = settingMap.get(SETTING_KEYS.WORKSHOP_DEFAULT_COUNTRY_CODE) ?? '+380'
     const e164 = normalizePortalPhone(phone, defaultCountryCode)
     if (!e164) {
       return NextResponse.json({ success: true })

@@ -1,3 +1,4 @@
+import { getOperationText } from '@/i18n/operation-text.server'
 import Link from 'next/link'
 import { PageHeader } from '@/components/page-header'
 import { withAuth } from '@/lib/with-auth'
@@ -8,7 +9,13 @@ import { supplierDirectoryEnabled } from '@/features/suppliers/Lib/enabled'
 import { getLayoutData } from '@/lib/get-layout-data'
 
 const directories = [
-  { title: 'Працівники', description: 'Картки працівників майстерні.', href: '/employees', subject: 'employees', icon: UserRound },
+  {
+    title: 'Працівники',
+    description: 'Картки працівників майстерні.',
+    href: '/employees',
+    subject: 'employees',
+    icon: UserRound,
+  },
   {
     title: 'Постачальники',
     description: 'Контакти, реквізити та документи постачальників.',
@@ -53,6 +60,7 @@ const directories = [
   },
 ]
 export default async function Page() {
+  const ot = await getOperationText()
   const [t, layout] = await Promise.all([getTranslations('navigation'), getLayoutData()])
   const marine = layout.status === 'ok' && layout.serviceType === 'marine'
   const titles: Record<string, string> = {
@@ -102,14 +110,16 @@ export default async function Page() {
                 )}
                 <h2 className="text-lg font-semibold">{titles[d.href]}</h2>
                 <p className="mt-2 text-muted-foreground">
-                  {d.subject === 'employees' ? d.description : t(
-                    'directoryContent.' +
-                      (d.href === '/vehicles' && marine
-                        ? 'vesselsDescription'
-                        : d.href === '/directories/brands'
-                          ? 'brandsDescription'
-                          : d.subject + 'Description')
-                  )}
+                  {d.subject === 'employees'
+                    ? ot(d.description)
+                    : t(
+                        'directoryContent.' +
+                          (d.href === '/vehicles' && marine
+                            ? 'vesselsDescription'
+                            : d.href === '/directories/brands'
+                              ? 'brandsDescription'
+                              : d.subject + 'Description')
+                      )}
                 </p>
                 <p className="mt-4 text-sm font-medium underline">{t('directoryContent.open')} →</p>
               </Link>

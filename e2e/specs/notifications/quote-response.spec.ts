@@ -1,3 +1,4 @@
+import { languageState } from '../../support/language'
 import { type Browser, expect, type Page, test } from '@playwright/test'
 import { settle } from '../../support/hydration'
 import { addQuotePart, newQuote, quoteShareLink, saveQuote } from '../../support/quote'
@@ -27,7 +28,7 @@ async function sharedQuote(page: Page, title: string) {
 
 /** The customer asks for a change on the public page, signed out. */
 async function requestChanges(browser: Browser, shareUrl: string, request: string) {
-  const customer = await browser.newContext({ storageState: { cookies: [], origins: [] } })
+  const customer = await browser.newContext({ storageState: languageState('en') })
   const customerPage = await customer.newPage()
   await customerPage.goto(shareUrl)
   await expect(async () => {

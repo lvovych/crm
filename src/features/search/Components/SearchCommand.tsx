@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { formatQuantity } from '@/lib/format-quantity'
 import { useTranslations } from 'next-intl'
@@ -214,6 +215,8 @@ type RecentCustomer = {
 }
 
 export function SearchCommand() {
+  const ot = useOperationText()
+
   const router = useRouter()
   const t = useTranslations('search')
   const tNav = useTranslations('navigation.sidebar')
@@ -530,7 +533,9 @@ export function SearchCommand() {
                       <span>
                         {r.title}
                         {r.isCompleted && (
-                          <span className="ml-1.5 text-muted-foreground line-through">(done)</span>
+                          <span className="ml-1.5 text-muted-foreground line-through">
+                            {ot('(done)')}
+                          </span>
                         )}
                       </span>
                       <span className="text-xs text-muted-foreground">

@@ -1,3 +1,4 @@
+import { languageState } from '../../support/language'
 import { expect, test, type Page } from '@playwright/test'
 import { settle } from '../../support/hydration'
 import { receiptDb, receiptFixture } from '../../support/receipt-fixture'
@@ -135,3 +136,6 @@ for (const width of [390, 1280, 1600]) {
     }
   })
 }
+
+// These operational assertions intentionally exercise the Ukrainian interface.
+test.beforeEach(async ({ context }) => { await context.addCookies(languageState('uk').cookies) })

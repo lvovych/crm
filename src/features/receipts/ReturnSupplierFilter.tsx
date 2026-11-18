@@ -1,4 +1,5 @@
 'use client'
+import { useOperationText } from '@/i18n/use-operation-text'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -6,8 +7,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { searchReturnSuppliers } from './return-actions'
 
 export function ReturnSupplierFilter({ initialId = '' }: { initialId?: string }) {
+  const ot = useOperationText()
+
   const [value, setValue] = useState(initialId)
-  const [label, setLabel] = useState(initialId ? 'Обраний постачальник' : 'Усі постачальники')
+  const [label, setLabel] = useState(
+    initialId ? ot('Обраний постачальник') : ot('Усі постачальники')
+  )
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
   const [items, setItems] = useState<{ id: string; name: string }[]>([])
@@ -27,7 +32,7 @@ export function ReturnSupplierFilter({ initialId = '' }: { initialId?: string })
           if (result.data.selected) setLabel(result.data.selected.name)
         })
         .catch(() => {
-          if (active) setError('Не вдалося завантажити постачальників.')
+          if (active) setError(ot('Не вдалося завантажити постачальників.'))
         })
         .finally(() => {
           if (active) setLoading(false)
@@ -45,17 +50,17 @@ export function ReturnSupplierFilter({ initialId = '' }: { initialId?: string })
   }
   return (
     <div className="grid gap-2">
-      <span>Постачальник</span>
+      <span>{ot('Постачальник')}</span>
       <input type="hidden" name="supplier" value={value} />
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button type="button" variant="outline" aria-label={'Постачальник: ' + label}>
+          <Button type="button" variant="outline" aria-label={ot('Постачальник: ') + label}>
             {label}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-80 space-y-2">
           <Input
-            aria-label="Пошук постачальника"
+            aria-label={ot('Пошук постачальника')}
             value={q}
             maxLength={120}
             onChange={(e) => setQ(e.target.value)}
@@ -63,11 +68,11 @@ export function ReturnSupplierFilter({ initialId = '' }: { initialId?: string })
               if (e.key === 'Enter') e.preventDefault()
             }}
           />
-          <Button type="button" variant="ghost" onClick={() => choose('', 'Усі постачальники')}>
-            Усі постачальники
+          <Button type="button" variant="ghost" onClick={() => choose('', ot('Усі постачальники'))}>
+            {ot('Усі постачальники')}
           </Button>
           {loading ? (
-            <p role="status">Пошук…</p>
+            <p role="status">{ot('Пошук…')}</p>
           ) : error ? (
             <p role="alert">{error}</p>
           ) : (
@@ -83,9 +88,11 @@ export function ReturnSupplierFilter({ initialId = '' }: { initialId?: string })
                   {s.name}
                 </Button>
               ))}
-              {!items.length && <p role="status">Постачальників не знайдено.</p>}
+              {!items.length && <p role="status">{ot('Постачальників не знайдено.')}</p>}
               {items.length === 20 && (
-                <p className="text-sm text-muted-foreground">Уточніть назву, щоб звузити пошук.</p>
+                <p className="text-sm text-muted-foreground">
+                  {ot('Уточніть назву, щоб звузити пошук.')}
+                </p>
               )}
             </div>
           )}

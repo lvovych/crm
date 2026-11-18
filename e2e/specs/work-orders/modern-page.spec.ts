@@ -1,3 +1,4 @@
+import { languageState } from '../../support/language'
 import { chooseStatus } from '../../support/work-order'
 import { expect, type Locator, type Page, test } from '@playwright/test'
 import {
@@ -329,7 +330,7 @@ test.describe('the overhauled work order page', () => {
 
     // The phone: another browser, signed in to nothing.
     const phone = await browser.newContext({
-      storageState: { cookies: [], origins: [] },
+      storageState: languageState('en'),
       viewport: { width: 390, height: 844 },
     })
     const phonePage = await phone.newPage()

@@ -1,3 +1,4 @@
+import { languageState } from '../../support/language'
 import { randomUUID } from 'node:crypto'
 import { Client } from 'pg'
 import { test as base, expect } from '@playwright/test'
@@ -18,7 +19,7 @@ const test = base.extend<{ shop: { db: Client; org: string; user: string } }>({
       await page.goto('/auth/sign-in')
       await page.locator('#email').fill(email)
       await page.locator('#password').fill(password)
-      await page.getByRole('button', { name: 'Sign In', exact: true }).click()
+      await page.getByRole('button', { name: 'Увійти', exact: true }).click()
       await page.waitForURL((u) => !u.pathname.startsWith('/auth'))
       await use({ db, org: owner.organizationId, user: owner.userId })
     } finally {
@@ -26,7 +27,7 @@ const test = base.extend<{ shop: { db: Client; org: string; user: string } }>({
     }
   },
 })
-test.use({ storageState: { cookies: [], origins: [] } })
+test.use({ storageState: languageState('uk') })
 
 for (const width of [1440, 360]) {
   test.describe(`settlement amounts at ${width}px`, () => {

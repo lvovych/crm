@@ -1,4 +1,5 @@
 'use client'
+import { useOperationText } from '@/i18n/use-operation-text'
 import { lineCents } from './money'
 import { matchArticle } from './articles'
 import { useState, useTransition, useRef, useEffect } from 'react'
@@ -28,6 +29,8 @@ function DirectorySelect({
   items: { id: string; name: string }[]
   onChange: (id: string) => void
 }) {
+  const ot = useOperationText()
+
   const [open, setOpen] = useState(false)
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -41,16 +44,19 @@ function DirectorySelect({
           className="w-full min-w-0 justify-between border-foreground/25 bg-background font-normal"
         >
           <span className="truncate">
-            {items.find((item) => item.id === value)?.name || 'Оберіть…'}
+            {items.find((item) => item.id === value)?.name || ot('Оберіть…')}
           </span>
           <ChevronDown className="size-4 shrink-0" />
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-[min(360px,85vw)] p-0">
         <Command>
-          <CommandInput aria-label={`Пошук: ${label}`} placeholder="Пошук за назвою…" />
+          <CommandInput
+            aria-label={ot('Пошук: ') + label + ''}
+            placeholder={ot('Пошук за назвою…')}
+          />
           <CommandList>
-            <CommandEmpty>Нічого не знайдено</CommandEmpty>
+            <CommandEmpty>{ot('Нічого не знайдено')}</CommandEmpty>
             {items.map((item) => (
               <CommandItem
                 key={item.id}
@@ -115,6 +121,8 @@ export default function ReceiptForm({
   initial: Draft
   canPost: boolean
 }) {
+  const ot = useOperationText()
+
   const router = useRouter()
   const [doc, setDoc] = useState<Draft>(() => ({
     ...initial,
@@ -161,7 +169,7 @@ export default function ReceiptForm({
       partId: part?.id ?? null,
       brandId: part?.brandId || l.brandId || '',
       name: part?.name ?? (l.partId ? '' : l.name),
-      unit: part?.unit || (l.partId ? 'шт' : l.unit),
+      unit: part?.unit || (l.partId ? ot('шт') : l.unit),
       unitPrice: part
         ? part.id === l.partId
           ? l.unitPrice
@@ -173,9 +181,9 @@ export default function ReceiptForm({
   }
   function save(post: boolean) {
     const missing = !doc.supplierId
-      ? 'Оберіть постачальника.'
+      ? ot('Оберіть постачальника.')
       : doc.lines.some((l) => l.kind === 'part' && !l.brandId)
-        ? 'Оберіть бренд для кожної запчастини.'
+        ? ot('Оберіть бренд для кожної запчастини.')
         : ''
     if (missing) {
       setError(missing)
@@ -195,7 +203,7 @@ export default function ReceiptForm({
         post
       )
       if (!r.data) {
-        setError(r.error || 'Помилка збереження')
+        setError(r.error || ot('Помилка збереження'))
         return
       }
       if (r.data.duplicate) {
@@ -218,22 +226,22 @@ export default function ReceiptForm({
     >
       <fieldset disabled={busy} className="min-w-0 space-y-6">
         <section className="space-y-4 rounded-xl border border-foreground/20 bg-muted/60 p-5">
-          <h2 className="text-lg font-semibold">Дані накладної</h2>
+          <h2 className="text-lg font-semibold">{ot('Дані накладної')}</h2>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-[2fr_1fr_1fr_1fr] [&_label]:space-y-1.5 [&_label]:text-sm [&_label]:font-medium">
             <div className="space-y-1.5 text-sm font-medium">
-              <span>Постачальник</span>
+              <span>{ot('Постачальник')}</span>
               <DirectorySelect
-                label="Постачальник"
+                label={ot('Постачальник')}
                 value={doc.supplierId}
                 items={options.suppliers}
                 onChange={(value) => field('supplierId', value)}
               />
               {error && !doc.supplierId && (
-                <p className="text-destructive">Оберіть постачальника</p>
+                <p className="text-destructive">{ot('Оберіть постачальника')}</p>
               )}
             </div>
             <label>
-              Номер накладної
+              {ot('Номер накладної')}
               <Input
                 required
                 maxLength={100}
@@ -242,7 +250,7 @@ export default function ReceiptForm({
               />
             </label>
             <label>
-              Дата документа
+              {ot('Дата документа')}
               <Input
                 required
                 type="date"
@@ -251,7 +259,7 @@ export default function ReceiptForm({
               />
             </label>
             <label>
-              Дата приймання
+              {ot('Дата приймання')}
               <Input
                 required
                 type="date"
@@ -264,13 +272,15 @@ export default function ReceiptForm({
         <section className="space-y-4">
           <div>
             <h2 className="text-lg font-semibold">
-              Товари та послуги{' '}
+              {ot('Товари та послуги')}{' '}
               <span className="ml-2 rounded-md bg-muted px-2 py-0.5 text-sm">
                 {doc.lines.length}
               </span>
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Введіть артикул — дані товару заповняться автоматично. Перевірте кількість і ціну.
+              {ot(
+                'Введіть артикул — дані товару заповняться автоматично. Перевірте кількість і ціну.'
+              )}
             </p>
           </div>
           <div className="overflow-hidden rounded-xl border border-foreground/20">
@@ -279,14 +289,14 @@ export default function ReceiptForm({
               className="hidden grid-cols-[7rem_1.2fr_1.2fr_2fr_3.5rem_5rem_6rem_6rem_2.5rem] gap-2 bg-muted/80 px-4 py-3 text-xs font-semibold min-[90rem]:grid"
             >
               {[
-                'Тип',
-                'Артикул',
-                'Бренд',
-                'Назва',
-                'Од.',
-                'Кількість',
-                'Ціна, грн',
-                'Сума, грн',
+                ot('Тип'),
+                ot('Артикул'),
+                ot('Бренд'),
+                ot('Назва'),
+                ot('Од.'),
+                ot('Кількість'),
+                ot('Ціна, грн'),
+                ot('Сума, грн'),
                 '',
               ].map((title, i) => (
                 <span key={i}>{title}</span>
@@ -295,16 +305,18 @@ export default function ReceiptForm({
             {doc.lines.map((l, i) => (
               <section
                 key={i}
-                aria-label={`Позиція ${i + 1}`}
+                aria-label={ot('Позиція ') + (i + 1) + ''}
                 className="space-y-2 border-b border-foreground/20 bg-card p-4 last:border-b-0 hover:bg-muted/30 focus-within:bg-muted/30"
               >
                 <div className="grid grid-cols-2 items-start gap-3 sm:grid-cols-6 min-[90rem]:grid-cols-[7rem_1.2fr_1.2fr_2fr_3.5rem_5rem_6rem_6rem_2.5rem] min-[90rem]:gap-2 [&_label]:min-w-0 [&_label]:space-y-1.5 [&_label]:text-sm">
                   <label className="sm:col-span-2 min-[90rem]:col-span-1">
-                    <span className="min-[90rem]:sr-only">Тип</span>
+                    <span className="min-[90rem]:sr-only">{ot('Тип')}</span>
                     <select
                       className={selectClass}
                       value={l.kind}
-                      disabled={doc.lines.length > 1 && doc.lines.every(line => line.kind === l.kind)}
+                      disabled={
+                        doc.lines.length > 1 && doc.lines.every((line) => line.kind === l.kind)
+                      }
                       onChange={(e) =>
                         patch(i, {
                           kind: e.target.value as Line['kind'],
@@ -312,16 +324,16 @@ export default function ReceiptForm({
                           brandId: '',
                           article: '',
                           name: '',
-                          unit: e.target.value === 'service' ? 'посл.' : 'шт',
+                          unit: e.target.value === 'service' ? ot('посл.') : ot('шт'),
                         })
                       }
                     >
-                      <option value="part">Запчастина</option>
-                      <option value="service">Послуга</option>
+                      <option value="part">{ot('Запчастина')}</option>
+                      <option value="service">{ot('Послуга')}</option>
                     </select>
                   </label>
                   <label className="sm:col-span-2 min-[90rem]:col-span-1">
-                    <span className="min-[90rem]:sr-only">Артикул</span>
+                    <span className="min-[90rem]:sr-only">{ot('Артикул')}</span>
                     <Input
                       data-article-index={i}
                       required={l.kind === 'part'}
@@ -341,10 +353,10 @@ export default function ReceiptForm({
                     />
                   </label>
                   <div className="space-y-1.5 text-sm sm:col-span-2 min-[90rem]:col-span-1">
-                    <span className="min-[90rem]:sr-only">Бренд</span>
+                    <span className="min-[90rem]:sr-only">{ot('Бренд')}</span>
                     {l.kind === 'part' ? (
                       <DirectorySelect
-                        label="Бренд"
+                        label={ot('Бренд')}
                         value={l.brandId || ''}
                         items={options.brands.filter((b) => b.isActive || b.id === l.brandId)}
                         onChange={(value) =>
@@ -355,11 +367,11 @@ export default function ReceiptForm({
                       <span className="block py-2">—</span>
                     )}
                     {error && l.kind === 'part' && !l.brandId && (
-                      <p className="text-destructive">Оберіть бренд</p>
+                      <p className="text-destructive">{ot('Оберіть бренд')}</p>
                     )}
                   </div>
                   <label className="col-span-2 sm:col-span-6 min-[90rem]:col-span-1">
-                    <span className="min-[90rem]:sr-only">Назва</span>
+                    <span className="min-[90rem]:sr-only">{ot('Назва')}</span>
                     <Input
                       required
                       value={l.name}
@@ -367,7 +379,7 @@ export default function ReceiptForm({
                     />
                   </label>
                   <label>
-                    <span className="min-[90rem]:sr-only">Одиниця</span>
+                    <span className="min-[90rem]:sr-only">{ot('Одиниця')}</span>
                     <Input
                       required
                       readOnly={!!l.partId}
@@ -376,7 +388,7 @@ export default function ReceiptForm({
                     />
                   </label>
                   <label>
-                    <span className="min-[90rem]:sr-only">Кількість</span>
+                    <span className="min-[90rem]:sr-only">{ot('Кількість')}</span>
                     <Input
                       required
                       type="number"
@@ -387,7 +399,7 @@ export default function ReceiptForm({
                     />
                   </label>
                   <label className="sm:col-span-2 min-[90rem]:col-span-1">
-                    <span className="min-[90rem]:sr-only">Ціна, грн</span>
+                    <span className="min-[90rem]:sr-only">{ot('Ціна, грн')}</span>
                     <Input
                       className="text-right tabular-nums"
                       required
@@ -399,7 +411,7 @@ export default function ReceiptForm({
                     />
                   </label>
                   <div className="text-sm">
-                    <span className="min-[90rem]:sr-only">Сума, грн</span>
+                    <span className="min-[90rem]:sr-only">{ot('Сума, грн')}</span>
                     <p className="py-2 text-right font-semibold tabular-nums">
                       {money(lineCents(l) ?? BigInt(0))}
                     </p>
@@ -409,8 +421,8 @@ export default function ReceiptForm({
                     type="button"
                     variant="outline"
                     size="icon"
-                    title="Видалити позицію"
-                    aria-label={`Видалити позицію ${i + 1}`}
+                    title={ot('Видалити позицію')}
+                    aria-label={ot('Видалити позицію ') + (i + 1) + ''}
                     disabled={doc.lines.length === 1}
                     onClick={() =>
                       setDoc((d) => ({ ...d, lines: d.lines.filter((_, j) => j !== i) }))
@@ -425,10 +437,12 @@ export default function ReceiptForm({
                     aria-live="polite"
                   >
                     {l.partId
-                      ? '✓ Товар знайдено — дані заповнено з картки.'
+                      ? ot('✓ Товар знайдено — дані заповнено з картки.')
                       : matchArticle(parts, doc.supplierId, l.article, l.brandId).length > 1
-                        ? 'Уточніть бренд — знайдено кілька карток. Якщо бренд однаковий, перевірте дублікати в довіднику.'
-                        : 'Новий товар — картка створиться під час збереження.'}
+                        ? ot(
+                            'Уточніть бренд — знайдено кілька карток. Якщо бренд однаковий, перевірте дублікати в довіднику.'
+                          )
+                        : ot('Новий товар — картка створиться під час збереження.')}
                   </p>
                 )}
               </section>
@@ -444,19 +458,23 @@ export default function ReceiptForm({
             }}
           >
             <Plus className="size-4" />
-            Додати позицію
+            {ot('Додати позицію')}
           </Button>
         </section>
       </fieldset>
       <section
-        aria-label="Підсумок і проведення"
+        aria-label={ot('Підсумок і проведення')}
         className="sticky bottom-20 md:bottom-0 z-20 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-foreground/25 bg-background p-4 shadow-[0_-4px_20px_rgba(0,0,0,0.15)]"
       >
         <div>
-          <p className="text-xs text-muted-foreground">Позицій: {doc.lines.length}</p>
+          <p className="text-xs text-muted-foreground">
+            {ot("Позицій: ")}
+            {doc.lines.length}
+          </p>
           <p className="text-xl font-semibold tabular-nums">
-            Разом {money(doc.lines.reduce((s, l) => s + (lineCents(l) ?? BigInt(0)), BigInt(0)))}{' '}
-            грн
+            {ot("Разом ")}
+            {money(doc.lines.reduce((s, l) => s + (lineCents(l) ?? BigInt(0)), BigInt(0)))}{' '}
+            {ot('грн')}
           </p>
         </div>
         <div className="space-y-2">
@@ -468,17 +486,17 @@ export default function ReceiptForm({
               className="border-foreground/30"
               value="draft"
             >
-              {busy ? 'Збереження…' : 'Зберегти чернетку'}
+              {busy ? ot('Збереження…') : ot('Зберегти чернетку')}
             </Button>
             {canPost && (
               <Button disabled={busy} type="submit" value="post">
-                Зберегти й провести
+                {ot('Зберегти й провести')}
               </Button>
             )}
           </div>
           {canPost && (
             <p className="text-xs text-muted-foreground">
-              Після проведення товари надійдуть на склад.
+              {ot('Після проведення товари надійдуть на склад.')}
             </p>
           )}
         </div>
@@ -489,7 +507,7 @@ export default function ReceiptForm({
         )}
         {duplicate && (
           <Link className="w-full underline" href={'/receipts/' + duplicate}>
-            Така накладна вже є. Відкрити документ
+            {ot('Така накладна вже є. Відкрити документ')}
           </Link>
         )}
       </section>

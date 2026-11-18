@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { useId, useMemo, useRef, type KeyboardEvent } from 'react'
 import { useTranslations } from 'next-intl'
 import { ArrowRight, Car, Plus, Search, Ship, ShoppingCart, X } from 'lucide-react'
@@ -39,6 +40,8 @@ export function VehiclePickerSearch({
   onSale?: () => void
   isMarine: boolean
 }) {
+  const ot = useOperationText()
+
   const t = useTranslations('workOrders.vehiclePicker')
   const id = useId()
   const input = useRef<HTMLInputElement>(null)
@@ -193,7 +196,8 @@ export function VehiclePickerSearch({
                       )}
                       {v.vin && match.vin && (
                         <span className="block break-all text-xs text-muted-foreground">
-                          VIN: <Match value={v.vin} matched />
+                          {ot("VIN: ")}
+                          <Match value={v.vin} matched />
                         </span>
                       )}
                     </span>

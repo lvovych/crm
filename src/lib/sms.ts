@@ -201,7 +201,7 @@ export async function normalizeOrgPhone(
     },
     select: { value: true },
   })
-  return normalizePortalPhone(phone, setting?.value ?? null)
+  return normalizePortalPhone(phone, setting?.value ?? '+380')
 }
 
 // ─── Main dispatch ───────────────────────────────────────────────────────────
@@ -243,7 +243,7 @@ export async function sendOrgSms(
 
   // Twilio, Vonage and Telnyx all require strict E.164, so the destination is
   // normalized before any of them sees it.
-  const normalizedTo = normalizePortalPhone(options.to, countryRow?.value ?? null)
+  const normalizedTo = normalizePortalPhone(options.to, countryRow?.value ?? '+380')
   if (!normalizedTo) {
     throw new Error(
       'Invalid phone number format. Must be E.164 format (e.g. +15551234567), ' +

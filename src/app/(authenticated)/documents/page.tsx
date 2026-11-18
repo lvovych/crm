@@ -1,3 +1,4 @@
+import { getOperationText } from '@/i18n/operation-text.server'
 import Link from 'next/link'
 import { PageHeader } from '@/components/page-header'
 import { DocumentHeader, DocumentStatus } from '@/components/operations/document-ui'
@@ -10,6 +11,8 @@ export default async function DocumentsPage({
 }: {
   searchParams: Promise<Record<string, string>>
 }) {
+  const ot = await getOperationText()
+
   const q = await searchParams,
     r = await documentJournal({
       q: q.q || '',
@@ -34,46 +37,48 @@ export default async function DocumentsPage({
       <PageHeader />
       <main className="ops-workspace mx-auto w-full max-w-[1440px] space-y-6 p-4 pb-24 sm:p-6 md:pb-6">
         <DocumentHeader
-          title="Журнал документів"
-          description="Накладні, розрахунки та рух коштів — з переходами до пов’язаних операцій."
+          title={ot('Журнал документів')}
+          description={ot(
+            'Накладні, розрахунки та рух коштів — з переходами до пов’язаних операцій.'
+          )}
         />
         <form className="ops-panel grid items-end gap-3 sm:grid-cols-2 xl:grid-cols-[2fr_1.5fr_1fr_1fr_auto] [&_label]:grid [&_label]:min-w-0 [&_label]:gap-2 [&_label]:text-sm [&_input]:h-11 [&_input]:min-w-0 [&_input]:rounded-md [&_input]:border [&_input]:bg-background [&_input]:px-3">
           <label>
-            Пошук
+            {ot('Пошук')}
             <input
               name="q"
               defaultValue={filters.q}
-              placeholder="Номер, контрагент або примітка"
+              placeholder={ot('Номер, контрагент або примітка')}
               maxLength={120}
             />
           </label>
           <label>
-            Тип документа
+            {ot('Тип документа')}
             <select
               name="type"
               defaultValue={filters.type}
               className="h-11 min-w-0 rounded-md border bg-background px-3"
             >
-              <option value="">Усі доступні</option>
+              <option value="">{ot('Усі доступні')}</option>
               {types.map((t) => (
                 <option key={t} value={t}>
-                  {documentTypes[t]}
+                  {ot(documentTypes[t])}
                 </option>
               ))}
             </select>
           </label>
           <label>
-            Від
+            {ot('Від')}
             <input type="date" name="from" defaultValue={filters.from} />
           </label>
           <label>
-            До
+            {ot('До')}
             <input type="date" name="to" defaultValue={filters.to} />
           </label>
           <div className="flex gap-2">
-            <Button className="h-11">Показати</Button>
+            <Button className="h-11">{ot('Показати')}</Button>
             <Button asChild variant="ghost" className="h-11">
-              <Link href="/documents">Скинути</Link>
+              <Link href="/documents">{ot('Скинути')}</Link>
             </Button>
           </div>
         </form>
@@ -81,11 +86,11 @@ export default async function DocumentsPage({
           <table>
             <thead>
               <tr>
-                <th>Дата</th>
-                <th>Документ</th>
-                <th>Контрагент / працівник</th>
-                <th>Статус</th>
-                <th className="text-right">Сума</th>
+                <th>{ot('Дата')}</th>
+                <th>{ot('Документ')}</th>
+                <th>{ot('Контрагент / працівник')}</th>
+                <th>{ot('Статус')}</th>
+                <th className="text-right">{ot('Сума')}</th>
               </tr>
             </thead>
             <tbody>
@@ -99,7 +104,9 @@ export default async function DocumentsPage({
                     >
                       {d.label}
                     </Link>
-                    <p className="mt-1 text-xs text-muted-foreground">{documentTypes[d.type]}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {ot(documentTypes[d.type])}
+                    </p>
                   </td>
                   <td>{d.party || '—'}</td>
                   <td>
@@ -112,11 +119,11 @@ export default async function DocumentsPage({
                             : 'neutral'
                       }
                     >
-                      {documentStatus[d.status] ?? d.status}
+                      {ot(documentStatus[d.status]) ?? d.status}
                     </DocumentStatus>
                   </td>
                   <td className="whitespace-nowrap text-right font-semibold">
-                    {moneyLabel(d.amount)}
+                    {moneyLabel(d.amount, ot('грн'))}
                   </td>
                 </tr>
               ))}
@@ -124,26 +131,29 @@ export default async function DocumentsPage({
           </table>
           {!rows.length && (
             <p role="status" className="p-10 text-center text-muted-foreground">
-              Документів за цими умовами немає.
+              {ot('Документів за цими умовами немає.')}
             </p>
           )}
         </div>
         <nav
-          aria-label="Сторінки журналу"
+          aria-label={ot('Сторінки журналу')}
           className="flex flex-wrap items-center justify-between gap-3"
         >
           <p className="text-sm text-muted-foreground">
-            Знайдено: {total} · Сторінка {filters.page} з {Math.max(1, Math.ceil(total / 25))}
+            {ot("Знайдено: ")}
+            {total} {ot(" · Сторінка ")}
+            {filters.page} {ot(" з ")}
+            {Math.max(1, Math.ceil(total / 25))}
           </p>
           <div className="flex gap-2">
             {filters.page > 1 && (
               <Button asChild variant="outline">
-                <Link href={url(filters.page - 1)}>Назад</Link>
+                <Link href={url(filters.page - 1)}>{ot('Назад')}</Link>
               </Button>
             )}
             {filters.page * 25 < total && (
               <Button asChild variant="outline">
-                <Link href={url(filters.page + 1)}>Далі</Link>
+                <Link href={url(filters.page + 1)}>{ot('Далі')}</Link>
               </Button>
             )}
           </div>

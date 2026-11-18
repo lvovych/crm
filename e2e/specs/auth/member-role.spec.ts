@@ -1,3 +1,4 @@
+import { languageState } from '../../support/language'
 import { expect, type Page, test } from '@playwright/test'
 import {
   customFieldValue,
@@ -45,7 +46,7 @@ import { saveWorkOrder } from '../../support/work-order'
 test.describe.configure({ mode: 'serial' })
 
 // The colleague starts as a stranger with no session.
-test.use({ storageState: { cookies: [], origins: [] } })
+test.use({ storageState: languageState('en') })
 
 const stamp = Date.now()
 const MEMBER = `e2e-member-${stamp}@example.com`
@@ -71,6 +72,7 @@ async function signInAsMember(page: Page) {
   // The sign-in page sends anyone with a session straight on, so a fresh
   // sign-in has to drop the old cookie first.
   await page.context().clearCookies()
+  await page.context().addCookies(languageState().cookies)
   await page.goto('/auth/sign-in')
   await page.locator('#email').fill(MEMBER)
   await page.locator('#password').fill(PASSWORD)

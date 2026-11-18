@@ -1,3 +1,5 @@
+import { beforeEach as beforeLocale, vi as localeMock } from 'vitest'
+import { useLocale as testLocale } from 'next-intl'
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { BrandDirectory } from '@/features/inventory/Components/BrandDirectory'
@@ -85,3 +87,5 @@ describe('brand directory controls', () => {
     expect(save).not.toHaveBeenCalled()
   })
 })
+
+beforeLocale(() => localeMock.mocked(testLocale).mockReturnValue('uk'))

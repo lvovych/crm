@@ -1,3 +1,4 @@
+import { getOperationText } from '@/i18n/operation-text.server'
 import { Suspense } from 'react'
 import { RelatedDocuments } from '@/features/documents/RelatedDocuments'
 import { DocumentHeader, DocumentStatus, MoneySummary } from '@/components/operations/document-ui'
@@ -25,6 +26,8 @@ export default async function Page({
   params: Promise<{ id: string }>
   searchParams: Promise<{ edit?: string; tab?: string }>
 }) {
+  const ot = await getOperationText()
+
   const { id } = await params
   const [r, access, p] = await Promise.all([receiptDetail(id), receiptAccess(), searchParams])
   if (!r.data) return <p role="alert">{r.error}</p>
@@ -34,7 +37,10 @@ export default async function Page({
     if (o.data)
       return (
         <>
-          <h1>Редагування чернетки {d.number}</h1>
+          <h1>
+            {ot("Редагування чернетки ")}
+            {d.number}
+          </h1>
           <ReceiptForm
             options={o.data}
             canPost={access.post}
@@ -61,15 +67,15 @@ export default async function Page({
   return (
     <>
       <DocumentHeader
-        title={'Накладна № ' + d.number}
-        back={{ href: '/receipts', label: 'Надходження' }}
+        title={ot("Накладна № ") + d.number}
+        back={{ href: '/receipts', label: ot('Надходження') }}
         status={
           <DocumentStatus
             tone={
               d.status === 'posted' ? 'success' : d.status === 'cancelled' ? 'danger' : 'neutral'
             }
           >
-            {statuses[d.status]}
+            {ot(statuses[d.status])}
           </DocumentStatus>
         }
         description={
@@ -80,8 +86,12 @@ export default async function Page({
             >
               {d.supplier.name}
             </Link>
-            <span className="mx-2">·</span>Документ {dayLabel(d.documentDate)}
-            <span className="mx-2">·</span>Прийнято {dayLabel(d.receivedDate)}
+            <span className="mx-2">·</span>
+            {ot("Документ ")}
+            {dayLabel(d.documentDate)}
+            <span className="mx-2">·</span>
+            {ot("Прийнято ")}
+            {dayLabel(d.receivedDate)}
           </>
         }
         actions={
@@ -89,7 +99,7 @@ export default async function Page({
             <>
               {access.create && (
                 <Button asChild variant="outline">
-                  <Link href={'/receipts/' + id + '?edit=1'}>Редагувати накладну</Link>
+                  <Link href={'/receipts/' + id + '?edit=1'}>{ot('Редагувати накладну')}</Link>
                 </Button>
               )}
               {access.post && <Transition id={id} version={d.version} posting />}
@@ -99,19 +109,19 @@ export default async function Page({
       />
       <MoneySummary
         items={[
-          { label: 'Сума накладної', value: receiptTotal(d.lines) },
+          { label: ot('Сума накладної'), value: receiptTotal(d.lines) },
           ...(entry
             ? [
                 {
-                  label: 'До сплати за накладною',
+                  label: ot('До сплати за накладною'),
                   value: entry.open,
                   emphasis: true,
                   hint:
                     Number(entry.open) > 0
                       ? entry.due
-                        ? 'Сплатити до ' + dayLabel(entry.due)
-                        : 'Строк не вказано'
-                      : 'Заборгованості немає',
+                        ? ot("Сплатити до ") + dayLabel(entry.due)
+                        : ot('Строк не вказано')
+                      : ot('Заборгованості немає'),
                 },
               ]
             : []),
@@ -122,23 +132,23 @@ export default async function Page({
         tabs={[
           {
             id: 'items',
-            label: 'Товари та послуги',
+            label: ot('Товари та послуги'),
             content: (
               <>
                 <section className="ops-panel space-y-4">
-                  <h2 className="text-lg font-semibold">Товари та послуги</h2>
+                  <h2 className="text-lg font-semibold">{ot('Товари та послуги')}</h2>
                   <div className="ops-table-scroll">
                     <table className="w-full text-left [&_td]:px-2 [&_td]:py-3 [&_td]:whitespace-nowrap">
                       <thead className="bg-muted">
                         <tr>
                           {[
-                            'Позиція',
-                            'Артикул',
-                            'Бренд',
-                            'Тип',
-                            'Кількість',
-                            'Ціна, грн',
-                            'Сума, грн',
+                            ot('Позиція'),
+                            ot('Артикул'),
+                            ot('Бренд'),
+                            ot('Тип'),
+                            ot('Кількість'),
+                            ot('Ціна, грн'),
+                            ot('Сума, грн'),
                           ].map((s) => (
                             <th className="px-2 py-3" key={s}>
                               {s}
@@ -160,17 +170,17 @@ export default async function Page({
                             </td>
                             <td>{l.article || '—'}</td>
                             <td>{l.part?.brand.name || '—'}</td>
-                            <td>{l.kind === 'part' ? 'Запчастина' : 'Послуга'}</td>
+                            <td>{l.kind === 'part' ? ot('Запчастина') : ot('Послуга')}</td>
                             <td>
                               {l.quantity} {l.unit}
                             </td>
                             <td className="text-right">{unitPriceLabel(l.unitPrice)}</td>
                             <td className="text-right">
-                              {moneyLabel(l.amount)}
+                              {moneyLabel(l.amount, ot('грн'))}
                               {transfers &&
                                 l.kind === 'service' &&
                                 (l.subcontract ? (
-                                  <p>Віднесено на наряд</p>
+                                  <p>{ot('Віднесено на наряд')}</p>
                                 ) : (
                                   <AssignService lineId={l.id} orders={transfers.serviceOrders} />
                                 ))}
@@ -180,7 +190,10 @@ export default async function Page({
                       </tbody>
                     </table>
                   </div>
-                  <p className="text-xl font-semibold">Разом {moneyLabel(receiptTotal(d.lines))}</p>
+                  <p className="text-xl font-semibold">
+                    {ot("Разом ")}
+                    {moneyLabel(receiptTotal(d.lines), ot('грн'))}
+                  </p>
                 </section>
               </>
             ),
@@ -189,7 +202,7 @@ export default async function Page({
             ? [
                 {
                   id: 'payments',
-                  label: 'Оплати й розрахунки',
+                  label: ot('Оплати й розрахунки'),
                   content: <Account account={account} rights={rights} receiptId={id} live={true} />,
                 },
               ]
@@ -198,7 +211,7 @@ export default async function Page({
             ? [
                 {
                   id: 'transfer',
-                  label: 'Передати в наряд',
+                  label: ot('Передати в наряд'),
                   content: <TransferGoods receiptId={id} data={transfers} />,
                 },
               ]
@@ -208,7 +221,7 @@ export default async function Page({
                 {
                   id: 'returns',
                   label:
-                    'Повернення' +
+                    ot('Повернення') +
                     (returns.data.documents.length ? ' · ' + returns.data.documents.length : ''),
                   content: (
                     <Returns
@@ -222,12 +235,12 @@ export default async function Page({
             : []),
           {
             id: 'connections',
-            label: 'Пов’язані документи',
+            label: ot('Пов’язані документи'),
             content: (
               <Suspense
                 fallback={
                   <p role="status" className="ops-panel">
-                    Завантаження пов’язаних документів…
+                    {ot('Завантаження пов’язаних документів…')}
                   </p>
                 }
               >
@@ -238,25 +251,28 @@ export default async function Page({
         ]}
       />
       <details className="ops-panel text-sm text-muted-foreground">
-        <summary>Історія та дії з документом</summary>
+        <summary>{ot('Історія та дії з документом')}</summary>
         <div className="space-y-3 pt-3">
-          <p>Створено · {d.creator}</p>
+          <p>
+            {ot("Створено · ")}
+            {d.creator}
+          </p>
           {d.postedAt && (
             <p>
-              Проведено · {d.poster} ·{' '}
-              {d.postedAt.toLocaleString('uk-UA', { timeZone: 'Europe/Kyiv' })}
+              {ot("Проведено · ")}
+              {d.poster} · {d.postedAt.toLocaleString('uk-UA', { timeZone: 'Europe/Kyiv' })}
             </p>
           )}
           {d.cancelledAt && (
             <p>
-              Скасовано · {d.canceller} ·{' '}
-              {d.cancelledAt.toLocaleString('uk-UA', { timeZone: 'Europe/Kyiv' })} ·{' '}
+              {ot("Скасовано · ")}
+              {d.canceller} · {d.cancelledAt.toLocaleString('uk-UA', { timeZone: 'Europe/Kyiv' })} ·{' '}
               {d.cancelReason}
             </p>
           )}
           {d.status === 'draft' && access.create && (
             <Link className="underline" href={'/receipts/' + id + '?edit=1'}>
-              Редагувати чернетку
+              {ot('Редагувати чернетку')}
             </Link>
           )}
           {access.cancel && d.status === 'posted' && (

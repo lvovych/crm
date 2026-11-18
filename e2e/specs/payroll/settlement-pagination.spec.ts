@@ -1,9 +1,10 @@
+import { languageState } from '../../support/language'
 import { randomUUID } from 'node:crypto'
 import { Client } from 'pg'
 import { test, expect } from '@playwright/test'
 import { plantWorkshop } from '../../support/db'
 import { settle } from '../../support/hydration'
-test.use({ storageState: { cookies: [], origins: [] } })
+test.use({ storageState: languageState('uk') })
 test('payroll keeps all-time balance while paging documents and filtering employee detail', async ({
   page,
 }) => {
@@ -37,7 +38,7 @@ test('payroll keeps all-time balance while paging documents and filtering employ
     await page.goto('/auth/sign-in')
     await page.locator('#email').fill(email)
     await page.locator('#password').fill(password)
-    await page.getByRole('button', { name: 'Sign In', exact: true }).click()
+    await page.getByRole('button', { name: 'Увійти', exact: true }).click()
     await page.waitForURL((u) => !u.pathname.startsWith('/auth'))
     await page.goto('/employees?tab=documents')
     await settle(page)

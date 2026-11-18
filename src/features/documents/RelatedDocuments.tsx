@@ -1,3 +1,5 @@
+import { useOperationText } from '@/i18n/use-operation-text'
+import { getOperationText } from '@/i18n/operation-text.server'
 import Link from 'next/link'
 import { ArrowRight, Link2 } from 'lucide-react'
 import { documentDetail } from './actions'
@@ -22,6 +24,8 @@ export function DocumentConnections({
   edges: DocumentEdge[]
   truncated?: boolean
 }) {
+  const ot = useOperationText()
+
   const byKey = new Map(documents.map((d) => [d.key, d]))
   const grouped = new Map<string, { source: string; target: string; relations: string[] }>()
   for (const edge of edges) {
@@ -34,7 +38,7 @@ export function DocumentConnections({
     <div className="space-y-3">
       {!edges.length && (
         <p className="rounded-lg border border-dashed p-5 text-sm text-muted-foreground">
-          Пов’язаних документів, доступних для вашої ролі, ще немає.
+          {ot('Пов’язаних документів, доступних для вашої ролі, ще немає.')}
         </p>
       )}
       {[...grouped.values()].map((edge) => {
@@ -58,8 +62,8 @@ export function DocumentConnections({
               {dayLabel(d.date)} · {d.party}
             </p>
             <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-              <span className="text-sm font-semibold tabular-nums">{moneyLabel(d.amount)}</span>
-              <DocumentStatus>{documentStatus[d.status] ?? d.status}</DocumentStatus>
+              <span className="text-sm font-semibold tabular-nums">{moneyLabel(d.amount, ot('грн'))}</span>
+              <DocumentStatus>{ot(documentStatus[d.status]) ?? d.status}</DocumentStatus>
             </div>
           </div>
         )
@@ -74,7 +78,7 @@ export function DocumentConnections({
               <span className="space-y-1">
                 {edge.relations.map((relation) => (
                   <span className="block" key={relation}>
-                    {relation.replace(/(\d+\.\d{2}) грн/g, (_, amount) => moneyLabel(amount))}
+                    {relation.replace(/(\d+\.\d{2}) грн/g, (_, amount) => moneyLabel(amount, ot('грн')))}
                   </span>
                 ))}
               </span>
@@ -85,24 +89,28 @@ export function DocumentConnections({
       })}
       {truncated && (
         <p role="status" className="text-sm text-muted-foreground">
-          Показано перші 100 зв’язків. Відкрийте потрібний документ, щоб переглянути його зв’язки.
+          {ot(
+            'Показано перші 100 зв’язків. Відкрийте потрібний документ, щоб переглянути його зв’язки.'
+          )}
         </p>
       )}
     </div>
   )
 }
 export async function RelatedDocuments({ type, id }: { type: DocumentType; id: string }) {
+  const ot = await getOperationText()
+
   const r = await documentDetail(type, id)
   if (!r.success || !r.data) return null
   return (
-    <section className="ops-workspace ops-panel space-y-4" aria-label="Пов’язані документи">
+    <section className="ops-workspace ops-panel space-y-4" aria-label={ot('Пов’язані документи')}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 text-lg font-semibold">
           <Link2 className="size-4" />
-          Пов’язані документи
+          {ot('Пов’язані документи')}
         </h2>
         <Link className="text-sm underline" href={documentUrl(r.data.document)}>
-          Відкрити ланцюжок
+          {ot('Відкрити ланцюжок')}
         </Link>
       </div>
       <DocumentConnections

@@ -43,11 +43,11 @@ describe('inspection print labels', () => {
   })
 
   it('translates the marine wording', () => {
-    const labels = inspectionPrintLabels(pdfMessages('nb'), { 'workshop.serviceType': 'marine' })
-    expect(labels.title).toBe('FARTØYKONTROLL')
-    expect(labels.vehicle).toBe('Fartøy')
+    const labels = inspectionPrintLabels(pdfMessages('uk'), { 'workshop.serviceType': 'marine' })
+    expect(labels.title).toBe('ОГЛЯД СУДНА')
+    expect(labels.vehicle).toBe('Судно')
     expect(labels.vin).toBe('HIN: {vin}')
-    expect(labels.mileage).toBe('Motortimer: {mileage}')
+    expect(labels.mileage).toBe('Мотогодини: {mileage}')
   })
 
   it('does not mutate the translation file it was given', () => {

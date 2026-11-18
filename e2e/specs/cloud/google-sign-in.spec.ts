@@ -1,3 +1,4 @@
+import { languageState } from '../../support/language'
 import { expect, type Page, test } from '@playwright/test'
 import {
   clearGoogleStandin,
@@ -34,7 +35,7 @@ import { settle } from '../../support/hydration'
 test.describe.configure({ mode: 'serial', timeout: 180_000 })
 
 // A stranger's browser, every time.
-test.use({ storageState: { cookies: [], origins: [] } })
+test.use({ storageState: languageState('en') })
 
 const stamp = Date.now()
 const NEWCOMER = `e2e-google-new-${stamp}@example.com`
@@ -52,7 +53,7 @@ test.beforeAll(async ({ browser }) => {
     [RETURNING, `E2E Returning Garage ${stamp}`],
     [OWNER, `E2E Owner Garage ${stamp}`],
   ]) {
-    const context = await browser.newContext({ storageState: { cookies: [], origins: [] } })
+    const context = await browser.newContext({ storageState: languageState('en') })
     const page = await context.newPage()
     await signUpWithPassword(page, { name: 'E2E Password Person', email, password: PASSWORD })
     await completeOnboarding(page, workshop, { sampleData: false })
@@ -64,7 +65,7 @@ test.beforeAll(async ({ browser }) => {
 
   // And a password account somebody opened under an address that is not
   // theirs, never verified, and left at onboarding.
-  const context = await browser.newContext({ storageState: { cookies: [], origins: [] } })
+  const context = await browser.newContext({ storageState: languageState('en') })
   const page = await context.newPage()
   await signUpWithPassword(page, { name: 'Not the owner', email: SQUATTED, password: PASSWORD })
   await context.close()

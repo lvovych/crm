@@ -1,3 +1,4 @@
+import { getOperationText } from '@/i18n/operation-text.server'
 import { PostReturnButton } from './PostReturnButton'
 import { receiptAccess } from './actions'
 import { settlementAccess } from '@/features/settlements/actions'
@@ -12,29 +13,37 @@ export async function SupplierReturnDocument({
 }: {
   document: ReturnType<typeof serializeReturn>
 }) {
+  const ot = await getOperationText()
+
   const [access, finance] = await Promise.all([receiptAccess(), settlementAccess()])
   return (
     <div className="space-y-6">
       <DocumentHeader
-        title={'Повернення постачальнику № ' + d.number}
+        title={ot("Повернення постачальнику № ") + d.number}
         back={{ href: '/suppliers/' + d.supplierId, label: d.supplier }}
-        status={<DocumentStatus>{d.status === 'posted' ? 'Проведено' : 'Чернетка'}</DocumentStatus>}
+        status={
+          <DocumentStatus>
+            {d.status === 'posted' ? ot('Проведено') : ot('Чернетка')}
+          </DocumentStatus>
+        }
         description={d.supplier + ' · ' + dayLabel(d.date)}
         actions={
           <>
             <Button asChild variant="outline">
-              <Link href="/supplier-returns">Усі повернення</Link>
+              <Link href="/supplier-returns">{ot('Усі повернення')}</Link>
             </Button>
             {d.status === 'draft' && access.post && finance.create && (
               <>
                 <Button asChild variant="outline">
-                  <Link href={'/supplier-returns/' + d.id + '/edit'}>Редагувати чернетку</Link>
+                  <Link href={'/supplier-returns/' + d.id + '/edit'}>
+                    {ot('Редагувати чернетку')}
+                  </Link>
                 </Button>
                 <PostReturnButton id={d.id} version={d.version} />
               </>
             )}
             <Button asChild variant="outline">
-              <Link href={'/documents/return/' + d.id}>Пов’язані документи</Link>
+              <Link href={'/documents/return/' + d.id}>{ot('Пов’язані документи')}</Link>
             </Button>
           </>
         }
@@ -42,34 +51,36 @@ export async function SupplierReturnDocument({
       <MoneySummary
         items={[
           {
-            label: 'Сума повернення',
+            label: ot('Сума повернення'),
             value: receiptTotal(d.lines),
             emphasis: true,
             hint:
               d.status === 'posted'
-                ? 'Зменшує загальну заборгованість перед постачальником'
-                : 'Чернетка: склад і борг ще не змінено. Для списання натисніть «Провести повернення».',
+                ? ot('Зменшує загальну заборгованість перед постачальником')
+                : ot(
+                    'Чернетка: склад і борг ще не змінено. Для списання натисніть «Провести повернення».'
+                  ),
           },
         ]}
       />
       <section className="ops-panel space-y-4">
         <div>
-          <h2 className="text-sm text-muted-foreground">Номер документа постачальника</h2>
+          <h2 className="text-sm text-muted-foreground">{ot('Номер документа постачальника')}</h2>
           <p className="mb-4 font-semibold break-words">{d.supplierDocumentNumber || '—'}</p>
-          <h2 className="text-sm text-muted-foreground">Причина повернення</h2>
+          <h2 className="text-sm text-muted-foreground">{ot('Причина повернення')}</h2>
           <p>{d.reason}</p>
         </div>
         <div className="ops-table-scroll">
           <table>
             <thead>
               <tr>
-                <th>Позиція</th>
-                <th>Бренд</th>
-                <th>Артикул</th>
-                <th>Надходження</th>
-                <th>Кількість</th>
-                <th>Ціна закупівлі</th>
-                <th>Сума повернення</th>
+                <th>{ot('Позиція')}</th>
+                <th>{ot('Бренд')}</th>
+                <th>{ot('Артикул')}</th>
+                <th>{ot('Надходження')}</th>
+                <th>{ot('Кількість')}</th>
+                <th>{ot('Ціна закупівлі')}</th>
+                <th>{ot('Сума повернення')}</th>
               </tr>
             </thead>
             <tbody>
@@ -89,7 +100,7 @@ export async function SupplierReturnDocument({
                   </td>
                   <td className="whitespace-nowrap">{unitPriceLabel(l.unitPrice)}</td>
                   <td className="whitespace-nowrap text-right font-semibold">
-                    {moneyLabel(l.amount)}
+                    {moneyLabel(l.amount, ot('грн'))}
                   </td>
                 </tr>
               ))}

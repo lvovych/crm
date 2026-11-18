@@ -16,14 +16,14 @@
     "work_board": "Доска работ",
     "ai_assistant": "ИИ-помощник",
     "settings": "Настройки",
-    "supplier_settlements": "Supplier settlements",
+    "supplier_settlements": "Расчёты с поставщиками",
     "receipts": "Поступления",
-    "suppliers": "Suppliers",
+    "suppliers": "Поставщики",
     "brands": "Бренды (общий справочник)",
-    "finance": "Finance",
-    "finance_backdate": "Finance Backdate",
-    "finance_transfer": "Finance Transfer",
-    "finance_accounts": "Cash account configuration"
+    "finance": "Финансы",
+    "finance_backdate": "Финансовые операции задним числом",
+    "finance_transfer": "Переводы средств",
+    "finance_accounts": "Настройка касс и счетов"
   },
   "actions": {
     "create": "Создание",
@@ -33,11 +33,11 @@
     "manage": "Управление",
     "manage_storage": "Управление структурой склада",
     "deactivate_brand": "Удаление (деактивация)",
-    "finance_read": "View balances and journal",
-    "finance_draft": "Prepare and edit drafts",
-    "finance_post": "Post money operations",
-    "finance_reverse": "Reverse and refund",
-    "finance_reconcile": "Reconcile payments and activate opening balances",
-    "finance_accounts_manage": "Create and edit accounts, categories and account access"
+    "finance_read": "Просмотр остатков и журнала",
+    "finance_draft": "Создание и изменение черновиков",
+    "finance_post": "Проведение денежных операций",
+    "finance_reverse": "Сторнирование и возвраты",
+    "finance_reconcile": "Сверка платежей и активация начальных остатков",
+    "finance_accounts_manage": "Создание и изменение счетов, категорий и доступа к счетам"
   }
 }

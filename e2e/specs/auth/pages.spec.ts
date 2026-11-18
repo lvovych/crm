@@ -1,3 +1,4 @@
+import { languageState } from '../../support/language'
 import { expect, test } from '@playwright/test'
 import { settle } from '../../support/hydration'
 
@@ -12,7 +13,7 @@ import { settle } from '../../support/hydration'
  * switcher, which is theirs as much as anybody's.
  */
 
-test.use({ storageState: { cookies: [], origins: [] } })
+test.use({ storageState: languageState('en') })
 
 test.describe('a self-hosted install', () => {
   test('signs people up without a sales pitch or Google', async ({ page }) => {
@@ -45,17 +46,27 @@ test.describe('a self-hosted install', () => {
 
     await expect(async () => {
       await page.getByRole('combobox', { name: 'Language' }).click()
-      await expect(page.getByRole('option', { name: 'Norsk Bokmål' })).toBeVisible({
+      await expect(page.getByRole('option', { name: 'Русский' })).toBeVisible({
         timeout: 2_000,
       })
     }).toPass({ timeout: 30_000 })
-    await page.getByRole('option', { name: 'Norsk Bokmål' }).click()
+    await page.getByRole('option', { name: 'Русский' }).click()
 
-    // The page re-renders in Norwegian and the choice is kept.
+    // The page re-renders in Russian and the choice is kept.
     await expect(page.getByRole('button', { name: 'Sign In', exact: true })).toHaveCount(0, {
       timeout: 30_000,
     })
     const cookie = (await context.cookies()).find((c) => c.name === 'locale')
-    expect(cookie?.value).toBe('nb')
+    expect(cookie?.value).toBe('ru')
   })
+})
+
+test('a fresh browser defaults to Ukrainian regardless of Accept-Language', async ({
+  page,
+  context,
+}) => {
+  await context.clearCookies()
+  await page.goto('/auth/sign-in')
+  await expect(page.locator('html')).toHaveAttribute('lang', 'uk')
+  await expect(page.getByRole('button', { name: 'Увійти', exact: true })).toBeVisible()
 })

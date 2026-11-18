@@ -78,7 +78,7 @@ vi.mock('next-intl', () => ({
     t.has = (key: string) => resolve(messages, key) !== undefined
     return t
   },
-  useLocale: () => 'en',
+  useLocale: vi.fn(() => 'en'),
   useMessages: () => ({}),
   NextIntlClientProvider: ({ children }: { children: React.ReactNode }) => children,
 }))

@@ -1,3 +1,4 @@
+import { languageState } from '../../support/language'
 import { expect, type Locator, type Page, test } from '@playwright/test'
 import { signInWithPassword } from '../../support/cloud'
 import {
@@ -63,7 +64,7 @@ test.beforeAll(async ({ browser }) => {
   })
   organizationId = planted.organizationId
 
-  const context = await browser.newContext({ storageState: { cookies: [], origins: [] } })
+  const context = await browser.newContext({ storageState: languageState('en') })
   const page = await context.newPage()
   await signInWithPassword(page, { email: EMAIL, password: `E2e-pass-${stamp}` })
   await context.storageState({ path: STATE })

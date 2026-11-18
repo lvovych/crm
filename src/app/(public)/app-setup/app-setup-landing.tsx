@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import { useTranslations } from 'next-intl'
@@ -16,6 +17,8 @@ import { PLAY_STORE_URL } from '@/lib/app-links'
  * rendering it cannot see the code at all.
  */
 export function AppSetupLanding() {
+  const ot = useOperationText()
+
   const t = useTranslations('settings')
   const [code, setCode] = useState<string | null>(null)
 
@@ -39,7 +42,7 @@ export function AppSetupLanding() {
             height={32}
             className="object-contain"
           />
-          <span className="font-bold text-lg uppercase tracking-wider">Torqvoice</span>
+          <span className="font-bold text-lg uppercase tracking-wider">{ot('Torqvoice')}</span>
         </div>
 
         <h1 className="pt-6 font-semibold text-xl">{t('team.setupPageTitle')}</h1>

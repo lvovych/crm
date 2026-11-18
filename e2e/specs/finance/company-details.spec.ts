@@ -1,3 +1,4 @@
+import { languageState } from '../../support/language'
 import { randomUUID } from 'node:crypto'
 import { Client } from 'pg'
 import { test, expect } from '@playwright/test'
@@ -8,7 +9,7 @@ for (const viewport of [
   { name: 'mobile', width: 390, height: 844 },
 ]) {
   test.describe(`company details ${viewport.name}`, () => {
-    test.use({ viewport, storageState: { cookies: [], origins: [] } })
+    test.use({ viewport, storageState: languageState('uk') })
     test('edits the existing entity without activating cash or changing linked accounts', async ({
       page,
     }) => {
@@ -48,7 +49,7 @@ for (const viewport of [
         await page.goto('/auth/sign-in')
         await page.locator('#email').fill(email)
         await page.locator('#password').fill(password)
-        await page.getByRole('button', { name: 'Sign In', exact: true }).click()
+        await page.getByRole('button', { name: 'Увійти', exact: true }).click()
         await page.waitForURL((u) => !u.pathname.startsWith('/auth'))
         await page.goto('/settings/finance')
         await settle(page)

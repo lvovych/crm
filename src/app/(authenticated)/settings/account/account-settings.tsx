@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { AppCard } from '@/components/app-card'
 import { SignedInDevices } from './signed-in-devices'
 import { SignatureCard } from '@/features/signatures/Components/SignatureCard'
@@ -54,6 +55,8 @@ export function AccountSettings({
   /** The caller's saved signature for this workshop, as a data URI. */
   signature: string | null
 }) {
+  const ot = useOperationText()
+
   const { data: session } = useSession()
   const router = useRouter()
   const t = useTranslations('settings')
@@ -490,7 +493,7 @@ export function AccountSettings({
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                  Cancel
+                  {ot('Cancel')}
                 </Button>
                 <Button onClick={handleEnable2FA} disabled={enabling2FA}>
                   {enabling2FA && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
     })),
     presets: IMPORT_PRESETS.map((p) => ({ id: p.id, name: p.name })),
     defaults: {
-      countryCode: normalizeCountryCode(countrySetting?.value ?? null),
+      countryCode: normalizeCountryCode(countrySetting?.value ?? '+380'),
     },
     aiAvailable: features.ai && aiConfigured,
   })

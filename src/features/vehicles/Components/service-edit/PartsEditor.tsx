@@ -1,4 +1,5 @@
 'use client'
+import { useOperationText } from '@/i18n/use-operation-text'
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Package, Plus, ScanBarcode, Pencil, ArrowUp, ArrowDown } from 'lucide-react'
@@ -54,6 +55,8 @@ export function PartsEditor({
   onPendingPartConsumed,
   locked = false,
 }: PartsEditorProps) {
+  const ot = useOperationText()
+
   const t = useTranslations('service.parts'),
     e = useTranslations('service.lineEditor'),
     format = useFormatCurrency()
@@ -364,7 +367,7 @@ export function PartsEditor({
                   name: picked.name,
                   partNumber: picked.partNumber ?? '',
                   brand: picked.brand?.name ?? '---',
-                  unit: picked.unit?.trim() || 'шт.',
+                  unit: picked.unit?.trim() || ot('шт.'),
                   unitCost: picked.unitCost,
                   inventoryPartId: picked.id,
                 }

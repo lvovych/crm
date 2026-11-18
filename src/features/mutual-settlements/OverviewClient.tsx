@@ -1,4 +1,5 @@
 'use client'
+import { useOperationText } from '@/i18n/use-operation-text'
 import { useRef, useState } from 'react'
 import Link from 'next/link'
 import { ArrowDownLeft, ArrowUpRight, ChevronRight, AlertTriangle } from 'lucide-react'
@@ -33,40 +34,49 @@ function balance(p: PartyRow) {
   return p.kind === 'supplier' ? cents(p.debt) : cents(p.debt) - cents(p.advance)
 }
 function Amount({ value }: { value: string | null }) {
-  return <span className="tabular-nums">{value === null ? 'Не визначено' : moneyLabel(value)}</span>
+  const ot = useOperationText()
+
+  return (
+    <span className="tabular-nums">{value === null ? ot('Не визначено') : moneyLabel(value, ot('грн'))}</span>
+  )
 }
 export function SettlementDocument({ row }: { row: DocumentRow }) {
+  const ot = useOperationText()
+
   return (
     <article className="rounded-lg border p-4" aria-label={row.label}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <h3 className="break-words font-semibold">{row.label}</h3>
           <p className="text-sm text-muted-foreground">
-            {row.date ? dayLabel(row.date) : 'Дата уточнюється'} ·{' '}
-            {row.due ? `Оплатити до ${dayLabel(row.due)}` : 'Строк оплати не визначено'}
+            {row.date ? dayLabel(row.date) : ot('Дата уточнюється')} ·{' '}
+            {row.due
+              ? ot('Оплатити до ') + dayLabel(row.due) + ''
+              : ot('Строк оплати не визначено')}
           </p>
         </div>
         <Button asChild variant="outline" className="min-h-11">
           <Link href={row.href}>
-            Відкрити документ <ChevronRight aria-hidden="true" />
+            {ot("Відкрити документ ")}
+            <ChevronRight aria-hidden="true" />
           </Link>
         </Button>
       </div>
       {row.reason ? (
         <p className="my-3 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
-          {row.reason} Не включено до підсумків.
+          {ot(row.reason)} {ot(" Не включено до підсумків.")}
         </p>
       ) : null}
       <dl className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
         <div>
-          <dt className="text-muted-foreground">Сума документа</dt>
+          <dt className="text-muted-foreground">{ot('Сума документа')}</dt>
           <dd>
             <Amount value={row.amount} />
           </dd>
         </div>
         {row.paid !== null && (
           <div>
-            <dt className="text-muted-foreground">Оплати за записами</dt>
+            <dt className="text-muted-foreground">{ot('Оплати за записами')}</dt>
             <dd>
               <Amount value={row.paid} />
             </dd>
@@ -76,21 +86,21 @@ export function SettlementDocument({ row }: { row: DocumentRow }) {
           <>
             <div>
               <dt className="text-muted-foreground">
-                {row.provisional ? 'Попередній борг' : 'Борг'}
+                {row.provisional ? ot('Попередній борг') : ot('Борг')}
               </dt>
               <dd>
                 <Amount value={row.debt} />
               </dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">Аванс / переплата</dt>
+              <dt className="text-muted-foreground">{ot('Аванс / переплата')}</dt>
               <dd>
                 <Amount value={row.advance} />
               </dd>
             </div>
             {row.expected !== zero && (
               <div>
-                <dt className="text-muted-foreground">Очікувана сума в роботі</dt>
+                <dt className="text-muted-foreground">{ot('Очікувана сума в роботі')}</dt>
                 <dd>
                   <Amount value={row.expected} />
                 </dd>
@@ -106,6 +116,8 @@ export function SettlementDocument({ row }: { row: DocumentRow }) {
   )
 }
 export function OverviewClient({ data, initialView }: { data: Overview; initialView?: string }) {
+  const ot = useOperationText()
+
   const available: View[] = [
     ...(data.customersAllowed ? ['customer' as const] : []),
     ...(data.suppliersAllowed ? ['supplier' as const] : []),
@@ -131,8 +143,8 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<PartyRow | null>(null)
   const opener = useRef<HTMLButtonElement | null>(null)
-  const debtLabel = view === 'supplier' ? 'Загальний борг' : 'Заборгованість'
-  const overdueLabel = view === 'supplier' ? 'Прострочено' : 'Прострочена заборгованість'
+  const debtLabel = view === 'supplier' ? ot('Загальний борг') : ot('Заборгованість')
+  const overdueLabel = view === 'supplier' ? ot('Прострочено') : ot('Прострочена заборгованість')
   const relevant = sourceParties.filter((p) => p.kind === view)
   const filtered =
     view === 'review'
@@ -154,21 +166,21 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
   const unavailable = view === 'customer' && !tracked && data.customersHistoricalUnavailable
   const supplierFailed = view === 'supplier' && !!data.supplierError
   const tabs = {
-    customer: 'Клієнти',
-    supplier: 'Постачальники',
-    review: 'Не враховано в підсумках',
+    customer: ot('Клієнти'),
+    supplier: ot('Постачальники'),
+    review: ot('Не враховано в підсумках'),
   }
   return (
     <div className="ops-workspace mx-auto w-full max-w-7xl space-y-5 p-4 pb-24 sm:p-6">
       <header className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
         <div>
-          <h1 className="text-2xl font-semibold">Взаєморозрахунки</h1>
-          <p className="mt-1 text-muted-foreground">Хто винен нам і кому винні ми</p>
+          <h1 className="text-2xl font-semibold">{ot('Взаєморозрахунки')}</h1>
+          <p className="mt-1 text-muted-foreground">{ot('Хто винен нам і кому винні ми')}</p>
         </div>
-        <form className="flex flex-wrap items-end gap-2" aria-label="Дата взаєморозрахунків">
+        <form className="flex flex-wrap items-end gap-2" aria-label={ot('Дата взаєморозрахунків')}>
           <input type="hidden" name="view" value={view} />
           <label className="min-w-0 flex-1 text-sm">
-            Станом на
+            {ot('Станом на')}
             <Input
               className="mt-1 min-h-11"
               type="date"
@@ -179,11 +191,14 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
             />
           </label>
           <Button type="submit" variant="outline" className="min-h-11">
-            Показати
+            {ot('Показати')}
           </Button>
         </form>
       </header>
-      <nav className="flex flex-wrap items-center gap-2" aria-label="Розділи взаєморозрахунків">
+      <nav
+        className="flex flex-wrap items-center gap-2"
+        aria-label={ot('Розділи взаєморозрахунків')}
+      >
         {available.map((v) => (
           <Button
             key={v}
@@ -201,7 +216,7 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
         ))}
       </nav>
       {view === 'customer' && data.canSwitchCustomerScope && data.trackedParties !== undefined && (
-        <section aria-label="Область клієнтського обліку" className="grid grid-cols-2 gap-2">
+        <section aria-label={ot('Область клієнтського обліку')} className="grid grid-cols-2 gap-2">
           <Button
             variant={tracked ? 'default' : 'outline'}
             className="h-auto min-h-11 whitespace-normal"
@@ -212,7 +227,7 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
               setSelected(null)
             }}
           >
-            Новий облік з історією
+            {ot('Новий облік з історією')}
           </Button>
           <Button
             variant={!tracked ? 'default' : 'outline'}
@@ -224,7 +239,7 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
               setSelected(null)
             }}
           >
-            Старі документи · попередні суми
+            {ot('Старі документи · попередні суми')}
           </Button>
         </section>
       )}
@@ -233,67 +248,69 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
           className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm"
           role="note"
         >
-          <strong>Клієнтські суми попередні.</strong>
+          <strong>{ot('Клієнтські суми попередні.')}</strong>
           <details className="mt-2">
             <summary className="cursor-pointer underline underline-offset-4">
-              Як розраховано суми
+              {ot('Як розраховано суми')}
             </summary>
             <p className="mt-2">
-              Розраховано за поточними завершеними нарядами та записами оплат. Наряди в роботі
-              показано окремо. Для авто клієнт може визначатися за поточним власником; історичного
-              підтвердження ще немає. Борг і аванс між різними нарядами не згортаються автоматично.
+              {ot(
+                'Розраховано за поточними завершеними нарядами та записами оплат. Наряди в роботі показано окремо. Для авто клієнт може визначатися за поточним власником; історичного підтвердження ще немає. Борг і аванс між різними нарядами не згортаються автоматично.'
+              )}
             </p>
           </details>
         </aside>
       )}
       {unavailable && (
         <div className="rounded-xl border p-5" role="status">
-          <h2 className="font-semibold">Історичний клієнтський борг поки недоступний</h2>
+          <h2 className="font-semibold">{ot('Історичний клієнтський борг поки недоступний')}</h2>
           <p className="my-2 text-sm text-muted-foreground">
-            Старі наряди не містять повної історії змін сум і клієнтів. Щоб не показувати
-            недостовірний залишок, огляд старих нарядів доступний лише на сьогодні.
+            {ot(
+              'Старі наряди не містять повної історії змін сум і клієнтів. Щоб не показувати недостовірний залишок, огляд старих нарядів доступний лише на сьогодні.'
+            )}
           </p>
           <Button asChild variant="outline">
-            <Link href="/mutual-settlements?view=customer">Показати на сьогодні</Link>
+            <Link href="/mutual-settlements?view=customer">{ot('Показати на сьогодні')}</Link>
           </Button>
         </div>
       )}
       {data.supplierError && view !== 'customer' && (
         <p role="alert" className="rounded-lg border border-destructive p-4">
-          {data.supplierError} Дані постачальників не включено; підсумок неповний.
+          {data.supplierError} {ot(" Дані постачальників не включено; підсумок неповний.")}
         </p>
       )}
       {view === 'review' && data.customersHistoricalUnavailable && (
         <p role="note" className="rounded-lg border p-4">
-          На цю дату старі клієнтські документи недоступні. Тут показано документи нового
-          клієнтського обліку та доступні документи постачальників.
+          {ot(
+            'На цю дату старі клієнтські документи недоступні. Тут показано документи нового клієнтського обліку та доступні документи постачальників.'
+          )}
         </p>
       )}
       {!unavailable && !supplierFailed && (
         <>
           {view !== 'review' && (
-            <section className="grid gap-3 sm:grid-cols-3" aria-label="Підсумки вибірки">
+            <section className="grid gap-3 sm:grid-cols-3" aria-label={ot('Підсумки вибірки')}>
               {[
                 {
                   label:
                     view === 'customer'
                       ? tracked
-                        ? 'Клієнти винні нам'
-                        : 'Попередньо клієнти винні нам'
-                      : 'Ми винні постачальникам',
+                        ? ot('Клієнти винні нам')
+                        : ot('Попередньо клієнти винні нам')
+                      : ot('Ми винні постачальникам'),
                   value: total(relevant, 'debt'),
                   Icon: view === 'customer' ? ArrowDownLeft : ArrowUpRight,
                 },
                 {
-                  label: 'Із них прострочено',
+                  label: ot('Із них прострочено'),
                   value: total(relevant, 'overdue'),
                   Icon: AlertTriangle,
                 },
                 {
                   label:
                     view === 'customer'
-                      ? 'Аванси / переплати клієнтів'
-                      : 'Наші аванси постачальникам',
+                      ? ot('Аванси / переплати клієнтів')
+                      : ot('Наші аванси постачальникам'),
                   value: total(relevant, 'advance'),
                   Icon: ArrowUpRight,
                 },
@@ -312,26 +329,26 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
           )}
           {view === 'review' && (
             <p className="text-sm text-muted-foreground">
-              Тут показано документи, які не включені до підсумків через відсутні або некоректні
-              дані. Причину наведено біля кожного документа. Це не акт звірки: фактичні оплати
-              потрібно перевірити за первинними документами.
+              {ot(
+                'Тут показано документи, які не включені до підсумків через відсутні або некоректні дані. Причину наведено біля кожного документа. Це не акт звірки: фактичні оплати потрібно перевірити за первинними документами.'
+              )}
             </p>
           )}
           {!shown.length ? (
             <p className="rounded-xl border p-8 text-center" role="status">
               {view === 'review'
-                ? 'Документів для звірки немає.'
-                : 'Немає контрагентів із ненульовим сальдо.'}
+                ? ot('Документів для звірки немає.')
+                : ot('Немає контрагентів із ненульовим сальдо.')}
             </p>
           ) : view !== 'review' ? (
             <table
               className="block w-full overflow-hidden rounded-lg border text-sm md:table"
-              aria-label="Взаєморозрахунки за контрагентами"
+              aria-label={ot('Взаєморозрахунки за контрагентами')}
             >
               <thead className="hidden bg-muted/40 text-muted-foreground md:table-header-group">
                 <tr>
                   {[
-                    [view === 'supplier' ? 'Постачальник' : 'Клієнт', 'name'],
+                    [view === 'supplier' ? ot('Постачальник') : ot('Клієнт'), 'name'],
                     [debtLabel, 'debt'],
                     [overdueLabel, 'overdue'],
                   ].map(([label, key]) => (
@@ -368,10 +385,11 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
                             {p.name}
                           </Link>
                         )}
-                        {p.archived && <small> · Архівний</small>}
+                        {p.archived && <small> {ot(" · Архівний")}</small>}
                         {excluded > 0 && (
                           <small className="block font-normal text-amber-600">
-                            Не враховано в підсумках: {excluded}
+                            {ot("Не враховано в підсумках: ")}
+                            {excluded}
                           </small>
                         )}
                       </td>
@@ -400,9 +418,9 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
                     <div className="min-w-0">
                       <h2 className="break-words text-lg font-semibold">{p.name}</h2>
                       <p className="text-sm text-muted-foreground">
-                        {p.kind === 'customer' ? 'Клієнт' : 'Постачальник'}
+                        {p.kind === 'customer' ? ot('Клієнт') : ot('Постачальник')}
                         {p.phone ? ` · ${p.phone}` : ''}
-                        {p.archived ? ' · Архівний' : ''}
+                        {p.archived ? ot(" · Архівний") : ''}
                       </p>
                     </div>
                     <Button
@@ -412,15 +430,17 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
                         opener.current = e.currentTarget
                         setSelected(p)
                       }}
-                      aria-label={`Документи: ${p.name}`}
+                      aria-label={ot('Документи: ') + p.name + ''}
                     >
-                      Документи ({p.documents.length}) <ChevronRight aria-hidden="true" />
+                      {ot('Документи (')}
+                      {p.documents.length}) <ChevronRight aria-hidden="true" />
                     </Button>
                   </div>
                   {p.documents.some((d) => d.reason) && (
                     <p className="mt-3 rounded-md bg-amber-500/10 p-2 text-sm">
-                      Не враховано в підсумках: {p.documents.filter((d) => d.reason).length}{' '}
-                      документів. Не включені до сум.
+                      {ot("Не враховано в підсумках: ")}
+                      {p.documents.filter((d) => d.reason).length}{' '}
+                      {ot('документів. Не включені до сум.')}
                     </p>
                   )}
                   {view === 'review' && (
@@ -430,7 +450,7 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
                         .map((d) => (
                           <li key={d.id} className="border-t pt-2">
                             <strong>{d.label}</strong> · <Amount value={d.amount} />
-                            <p className="text-muted-foreground">{d.reason}</p>
+                            <p className="text-muted-foreground">{ot(d.reason)}</p>
                           </li>
                         ))}
                     </ul>
@@ -442,14 +462,14 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
           {pages > 1 && (
             <nav
               className="flex items-center justify-center gap-3"
-              aria-label="Сторінки контрагентів"
+              aria-label={ot('Сторінки контрагентів')}
             >
               <Button
                 variant="outline"
                 disabled={currentPage === 1}
                 onClick={() => setPage(currentPage - 1)}
               >
-                Назад
+                {ot('Назад')}
               </Button>
               <span>
                 {currentPage} / {pages}
@@ -459,7 +479,7 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
                 disabled={currentPage === pages}
                 onClick={() => setPage(currentPage + 1)}
               >
-                Далі
+                {ot('Далі')}
               </Button>
             </nav>
           )}
@@ -481,12 +501,14 @@ export function OverviewClient({ data, initialView }: { data: Overview; initialV
           <SheetHeader>
             <SheetTitle className="break-words pr-6">{selected?.name}</SheetTitle>
             <SheetDescription>
-              {selected?.phone && `${selected.phone} · `}Документи на {dayLabel(data.asOf)}.{' '}
+              {selected?.phone && `${selected.phone} · `}
+              {ot("Документи на ")}
+              {dayLabel(data.asOf)}.{' '}
               {selected?.kind === 'customer'
                 ? selected.documents.some((d) => d.history || d.historyAsOf)
-                  ? 'Зобов’язання й оплати з історією. Старі документи позначено окремо.'
-                  : 'Попередній розрахунок, без історичного підтвердження.'
-                : 'За даними чинного обліку постачальників.'}
+                  ? ot('Зобов’язання й оплати з історією. Старі документи позначено окремо.')
+                  : ot('Попередній розрахунок, без історичного підтвердження.')
+                : ot('За даними чинного обліку постачальників.')}
             </SheetDescription>
           </SheetHeader>
           <div className="space-y-3">

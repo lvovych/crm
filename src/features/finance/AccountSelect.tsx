@@ -1,4 +1,5 @@
 'use client'
+import { useOperationText } from '@/i18n/use-operation-text'
 import { type ReactNode, useEffect, useState } from 'react'
 import { financeChoices } from './actions'
 export function AccountSelect({
@@ -12,6 +13,8 @@ export function AccountSelect({
   name?: string
   inactiveFallback?: ReactNode
 }) {
+  const ot = useOperationText()
+
   const [state, setState] = useState<Awaited<ReturnType<typeof financeChoices>>['data']>()
   const [failed, setFailed] = useState(false)
   useEffect(() => {
@@ -34,31 +37,31 @@ export function AccountSelect({
     if (state?.accounts.length === 1 && !value) onChange?.(state.accounts[0].id)
   }, [state, value, onChange])
   if (failed)
-    return <p role="alert">Не вдалося завантажити каси. Оновіть сторінку перед оплатою.</p>
+    return <p role="alert">{ot('Не вдалося завантажити каси. Оновіть сторінку перед оплатою.')}</p>
   if (!state)
     return (
       <label className="block space-y-1 text-sm">
-        <span>Каса / рахунок</span>
+        <span>{ot('Каса / рахунок')}</span>
         <select
           name={name}
           required
-          aria-label="Каса / рахунок"
+          aria-label={ot('Каса / рахунок')}
           aria-busy="true"
           defaultValue=""
           className="h-11 w-full rounded-md border bg-background px-3"
         >
-          <option value="">Завантаження рахунків…</option>
+          <option value="">{ot('Завантаження рахунків…')}</option>
         </select>
       </label>
     )
   if (!state.active) return inactiveFallback ?? null
   return (
     <label className="block space-y-1">
-      <span>Каса / рахунок</span>
+      <span>{ot('Каса / рахунок')}</span>
       <select
         key="loaded-accounts"
         name={name}
-        aria-label="Каса / рахунок"
+        aria-label={ot('Каса / рахунок')}
         required
         value={value}
         defaultValue={
@@ -67,7 +70,7 @@ export function AccountSelect({
         onChange={(e) => onChange?.(e.target.value)}
         className="h-11 w-full rounded-md border bg-background px-3"
       >
-        <option value="">Оберіть касу або рахунок</option>
+        <option value="">{ot('Оберіть касу або рахунок')}</option>
         {state.accounts.map((a) => (
           <option key={a.id} value={a.id}>
             {a.name}
@@ -76,7 +79,7 @@ export function AccountSelect({
       </select>
       {state.accounts.length === 0 && (
         <span className="text-sm text-destructive">
-          Немає доступних кас. Зверніться до адміністратора.
+          {ot('Немає доступних кас. Зверніться до адміністратора.')}
         </span>
       )}
     </label>

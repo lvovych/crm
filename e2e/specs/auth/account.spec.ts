@@ -1,3 +1,4 @@
+import { languageState } from '../../support/language'
 import { type Browser, type BrowserContext, expect, type Page, test } from '@playwright/test'
 import { storedTwoFactorSecret } from '../../support/db'
 import { fillSettled } from '../../support/hydration'
@@ -19,7 +20,7 @@ const changed = `E2e-changed-${Date.now()}`
 
 /** A fresh, signed-out browser context: the way a new sign-in would happen. */
 async function signedOut(browser: Browser): Promise<Page> {
-  const context = await browser.newContext({ storageState: { cookies: [], origins: [] } })
+  const context = await browser.newContext({ storageState: languageState('en') })
   return context.newPage()
 }
 

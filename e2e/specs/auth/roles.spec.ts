@@ -1,3 +1,4 @@
+import { languageState } from '../../support/language'
 import { expect, type Page, test } from '@playwright/test'
 import { linkIn, waitForMail } from '../../support/mail'
 import { settle } from '../../support/hydration'
@@ -19,7 +20,7 @@ import { settle } from '../../support/hydration'
 test.describe.configure({ mode: 'serial' })
 
 // The colleague starts as a stranger with no session.
-test.use({ storageState: { cookies: [], origins: [] } })
+test.use({ storageState: languageState('en') })
 
 const stamp = Date.now()
 const COLLEAGUE = `e2e-roleless-${stamp}@example.com`

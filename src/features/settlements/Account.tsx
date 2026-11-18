@@ -1,4 +1,5 @@
 'use client'
+import { useOperationText } from '@/i18n/use-operation-text'
 import { MoneySummary } from '@/components/operations/document-ui'
 import { moneyLabel, dayLabel } from '@/features/finance/presentation'
 import { useState, useTransition, useRef, type ReactNode } from 'react'
@@ -40,6 +41,8 @@ function Operation({
   label: string
   onSaved?: () => void
 }) {
+  const ot = useOperationText()
+
   const router = useRouter(),
     [pending, start] = useTransition(),
     [message, setMessage] = useState(''),
@@ -57,16 +60,16 @@ function Operation({
           try {
             const result = await recordSettlement(supplier, key.current, build(data))
             if (!result.success) {
-              setMessage(result.error || 'Помилка')
+              setMessage(result.error || ot('Помилка'))
               return
             }
             key.current = ''
             form.reset()
             onSaved?.()
-            setMessage('Збережено')
+            setMessage(ot('Збережено'))
             router.refresh()
           } catch {
-            setMessage('Перевірте результат та повторіть за потреби.')
+            setMessage(ot('Перевірте результат та повторіть за потреби.'))
           }
         })
       }}
@@ -91,9 +94,11 @@ function Amount({
   zero?: boolean
   onInput?: (v: string) => void
 }) {
+  const ot = useOperationText()
+
   return (
     <label>
-      Сума, грн
+      {ot('Сума, грн')}
       <input
         className={'block ' + box}
         name={name}
@@ -108,9 +113,11 @@ function Amount({
   )
 }
 function DateField() {
+  const ot = useOperationText()
+
   return (
     <label>
-      Дата операції
+      {ot('Дата операції')}
       <input
         className={'block ' + box}
         type="date"
@@ -129,6 +136,8 @@ function PaymentForm({
   supplierId: string
   selected?: AccountData['rows'][number]
 }) {
+  const ot = useOperationText()
+
   const [typed, setTyped] = useState('')
   const split =
     selected && /^\d{1,18}(\.\d{1,2})?$/.test(typed)
@@ -138,13 +147,13 @@ function PaymentForm({
     <section className="ops-panel space-y-4">
       <h2 className="font-semibold">
         {selected
-          ? 'Оплата за накладною № ' + selected.reference
-          : 'Зареєструвати платіж постачальнику'}
+          ? ot("Оплата за накладною № ") + selected.reference
+          : ot('Зареєструвати платіж постачальнику')}
       </h2>
       <Operation
         supplier={supplierId}
         onSaved={() => setTyped('')}
-        label="Зареєструвати оплату"
+        label={ot('Зареєструвати оплату')}
         build={(f) => ({
           op: 'payment',
           moneyAccountId: field(f, 'moneyAccountId') || undefined,
@@ -162,27 +171,29 @@ function PaymentForm({
         <AccountSelect
           inactiveFallback={
             <label>
-              Спосіб
+              {ot('Спосіб')}
               <select name="method" className={'block ' + box}>
-                <option value="bank">Банк</option>
-                <option value="cash">Готівка</option>
-                <option value="card">Картка</option>
+                <option value="bank">{ot('Банк')}</option>
+                <option value="cash">{ot('Готівка')}</option>
+                <option value="card">{ot('Картка')}</option>
               </select>
             </label>
           }
         />
         <label>
-          Платіжний документ
+          {ot('Платіжний документ')}
           <input name="reference" className={'block ' + box} />
         </label>
         <label>
-          Коментар
+          {ot('Коментар')}
           <input name="note" className={'block ' + box} />
         </label>
       </Operation>
       {split && (
         <p>
-          На накладну {hryvnia(split.applied)} грн · У вільний аванс {hryvnia(split.advance)} грн
+          {ot("На накладну ")}
+          {hryvnia(split.applied)} {ot(" грн · У вільний аванс ")}
+          {hryvnia(split.advance)} {ot(" грн")}
         </p>
       )}
     </section>
@@ -199,6 +210,8 @@ export function Account({
   receiptId?: string
   live: boolean
 }) {
+  const ot = useOperationText()
+
   const target = a.rows.find((r) => r.receiptId === receiptId && r.active)
   const credits = a.rows.filter((r) => isCredit(r.kind) && kopecks(r.open) > 0)
   const debits = a.rows
@@ -215,33 +228,33 @@ export function Account({
         items={
           target
             ? [
-                { label: 'Сума накладної', value: target.amount },
+                { label: ot('Сума накладної'), value: target.amount },
                 {
-                  label: 'Зараховано',
+                  label: ot('Зараховано'),
                   value: hryvnia(kopecks(target.amount) - kopecks(target.open)),
                 },
                 {
-                  label: 'До сплати',
+                  label: ot('До сплати'),
                   value: target.open,
                   emphasis: true,
-                  hint: target.due ? 'Строк оплати: ' + target.due : undefined,
+                  hint: target.due ? ot("Строк оплати: ") + target.due : undefined,
                 },
               ]
             : [
-                { label: 'Сальдо постачальника', value: a.net, emphasis: true },
-                { label: 'Прострочено', value: a.overdue },
-                { label: 'Вільні аванси', value: a.advance },
+                { label: ot('Сальдо постачальника'), value: a.net, emphasis: true },
+                { label: ot('Прострочено'), value: a.overdue },
+                { label: ot('Вільні аванси'), value: a.advance },
               ]
         }
       />
       {live &&
         unknown.map((r) => (
           <section className="ops-panel" key={r.id}>
-            № {r.number} · {r.total} грн · Розрахунки не звірено
+            № {r.number} · {r.total} {ot(" грн · Розрахунки не звірено")}
             {rights.manage && (
               <Operation
                 supplier={a.id}
-                label="Підтвердити відкритий залишок"
+                label={ot('Підтвердити відкритий залишок')}
                 build={(f) => ({
                   op: 'reconcile',
                   receipt: r.id,
@@ -253,7 +266,7 @@ export function Account({
                 <Amount zero />
                 <DateField />
                 <label>
-                  Строк оплати
+                  {ot('Строк оплати')}
                   <input className={box} type="date" name="due" />
                 </label>
               </Operation>
@@ -271,17 +284,17 @@ export function Account({
         <details className="ops-panel">
           <summary>
             {credit.kind === 'return_credit'
-              ? 'Зарахувати повернення'
+              ? ot('Зарахувати повернення')
               : credit.kind === 'adjustment_credit'
-                ? 'Зарахувати коригування'
-                : 'Зарахувати наявний аванс'}
+                ? ot('Зарахувати коригування')
+                : ot('Зарахувати наявний аванс')}
           </summary>
           <label className="grid min-w-0 gap-2 text-sm">
-            Джерело
+            {ot('Джерело')}
             <select className={box} value={credit.id} onChange={(e) => setCredit(e.target.value)}>
               {credits.map((r) => (
                 <option key={r.id} value={r.id}>
-                  {r.date} · {r.reference || kinds[r.kind]} · {r.open} грн
+                  {r.date} · {r.reference || kinds[r.kind]} · {r.open} {ot(" грн")}
                 </option>
               ))}
             </select>
@@ -291,10 +304,10 @@ export function Account({
             supplier={a.id}
             label={
               credit.kind === 'return_credit'
-                ? 'Зарахувати повернення'
+                ? ot('Зарахувати повернення')
                 : credit.kind === 'adjustment_credit'
-                  ? 'Зарахувати коригування'
-                  : 'Зарахувати аванс'
+                  ? ot('Зарахувати коригування')
+                  : ot('Зарахувати аванс')
             }
             build={(f) => ({
               op: 'allocate',
@@ -308,7 +321,8 @@ export function Account({
             <DateField />
             {(selected ? [selected] : debits).map((r) => (
               <label key={r.id}>
-                {r.reference || kinds[r.kind]} · відкрито {r.open}
+                {r.reference || kinds[r.kind]} {ot(" · відкрито ")}
+                {r.open}
                 <input
                   type="number"
                   step=".01"
@@ -325,11 +339,11 @@ export function Account({
       )}
       {live && rights.manage && !receiptId && (
         <details className="ops-panel">
-          <summary>Внести початкове сальдо після звірки</summary>
-          <p>Включайте лише суми, які ще не враховано за окремими накладними.</p>
+          <summary>{ot('Внести початкове сальдо після звірки')}</summary>
+          <p>{ot('Включайте лише суми, які ще не враховано за окремими накладними.')}</p>
           <Operation
             supplier={a.id}
-            label="Зберегти початкове сальдо"
+            label={ot('Зберегти початкове сальдо')}
             build={(f) => ({
               op: 'opening',
               kind: field(f, 'kind'),
@@ -338,14 +352,14 @@ export function Account({
               date: field(f, 'date'),
             })}
           >
-            <select className={box} aria-label="Вид залишку" name="kind">
-              <option value="opening_debt">Наш борг</option>
-              <option value="opening_credit">Наш аванс</option>
+            <select className={box} aria-label={ot('Вид залишку')} name="kind">
+              <option value="opening_debt">{ot('Наш борг')}</option>
+              <option value="opening_credit">{ot('Наш аванс')}</option>
             </select>
             <Amount />
             <DateField />
             <label>
-              Підстава звірки
+              {ot('Підстава звірки')}
               <input required name="note" className={'block ' + box} />
             </label>
           </Operation>
@@ -353,14 +367,15 @@ export function Account({
       )}
       {live && rights.manage && !receiptId && (
         <details className="ops-panel">
-          <summary>Коригування взаєморозрахунків</summary>
+          <summary>{ot('Коригування взаєморозрахунків')}</summary>
           <p className="my-2 text-sm">
-            Вкажіть різницю за звіркою. Коригування змінює сальдо постачальника без руху грошей у
-            касі.
+            {ot(
+              'Вкажіть різницю за звіркою. Коригування змінює сальдо постачальника без руху грошей у касі.'
+            )}
           </p>
           <Operation
             supplier={a.id}
-            label="Провести коригування"
+            label={ot('Провести коригування')}
             build={(f) => ({
               op: 'adjustment',
               kind: field(f, 'kind'),
@@ -370,22 +385,22 @@ export function Account({
             })}
           >
             <label>
-              Дія
+              {ot('Дія')}
               <select name="kind" className={box}>
-                <option value="adjustment_credit">Зменшити наш борг</option>
-                <option value="adjustment_debt">Збільшити наш борг</option>
+                <option value="adjustment_credit">{ot('Зменшити наш борг')}</option>
+                <option value="adjustment_debt">{ot('Збільшити наш борг')}</option>
               </select>
             </label>
             <Amount />
             <DateField />
             <label>
-              Підстава коригування
+              {ot('Підстава коригування')}
               <input name="note" className={box} required maxLength={500} />
             </label>
           </Operation>
         </details>
       )}
-      <h2 className="font-semibold">Історія розрахунків</h2>
+      <h2 className="font-semibold">{ot('Історія розрахунків')}</h2>
       {a.rows
         .filter(
           (r) =>
@@ -402,36 +417,37 @@ export function Account({
                   {kinds[r.kind]} {r.reference}
                 </span>
                 <span className="sm:text-right">
-                  {moneyLabel(r.amount)}
+                  {moneyLabel(r.amount, ot('грн'))}
                   <span className="block text-xs font-normal text-muted-foreground">
-                    {r.active ? 'Залишок ' + moneyLabel(r.open) : 'Скасовано'}
+                    {r.active ? ot("Залишок ") + moneyLabel(r.open, ot('грн')) : ot('Скасовано')}
                   </span>
                 </span>
               </span>
             </summary>
             <p>
-              {r.note} {r.reason} · Вніс {r.createdBy} ·{' '}
+              {r.note} {r.reason} {ot(" · Вніс ")}
+              {r.createdBy} ·{' '}
               {new Date(r.createdAt).toLocaleString('uk-UA', { timeZone: 'Europe/Kyiv' })}{' '}
-              {r.reversedBy && '· Скасував ' + r.reversedBy}
+              {r.reversedBy && ot("· Скасував ") + r.reversedBy}
             </p>
             {r.returnUrl && (
               <Link className="underline" href={r.returnUrl}>
-                Відкрити повернення
+                {ot('Відкрити повернення')}
               </Link>
             )}
             {r.receiptId && (
               <Link className="underline" href={'/receipts/' + r.receiptId}>
-                Відкрити накладну
+                {ot('Відкрити накладну')}
               </Link>
             )}
             {live && rights.manage && r.kind === 'receipt' && r.active && (
               <Operation
                 supplier={a.id}
-                label="Змінити строк оплати"
+                label={ot('Змінити строк оплати')}
                 build={(f) => ({ op: 'due', entry: r.id, due: field(f, 'due') })}
               >
                 <input
-                  aria-label="Строк оплати"
+                  aria-label={ot('Строк оплати')}
                   className={box}
                   required
                   type="date"
@@ -442,13 +458,14 @@ export function Account({
             )}
             {r.links.map((l) => (
               <div className="ml-4" key={l.id}>
-                Зарахування · {l.date} · {l.amount} грн ·{' '}
+                {ot("Зарахування · ")}
+                {l.date} · {l.amount} {ot(" грн ·")}{' '}
                 {a.rows.find((x) => x.id === (isCredit(r.kind) ? l.debit : l.credit))?.reference} ·{' '}
-                {l.createdBy} {l.active ? '' : 'Скасовано · ' + l.reason}
+                {l.createdBy} {l.active ? '' : ot("Скасовано · ") + l.reason}
                 {live && rights.reverse && l.active && (
                   <Operation
                     supplier={a.id}
-                    label="Скасувати зарахування"
+                    label={ot('Скасувати зарахування')}
                     build={(f) => ({
                       op: 'reverse',
                       kind: 'allocation',
@@ -457,11 +474,11 @@ export function Account({
                     })}
                   >
                     <input
-                      aria-label="Причина"
+                      aria-label={ot('Причина')}
                       className={box}
                       name="reason"
                       required
-                      placeholder="Причина"
+                      placeholder={ot('Причина')}
                     />
                   </Operation>
                 )}
@@ -474,7 +491,7 @@ export function Account({
               r.kind !== 'return_credit' && (
                 <Operation
                   supplier={a.id}
-                  label="Скасувати запис"
+                  label={ot('Скасувати запис')}
                   build={(f) => ({
                     op: 'reverse',
                     kind: 'entry',
@@ -483,11 +500,11 @@ export function Account({
                   })}
                 >
                   <input
-                    aria-label="Причина"
+                    aria-label={ot('Причина')}
                     className={box}
                     name="reason"
                     required
-                    placeholder="Причина"
+                    placeholder={ot('Причина')}
                   />
                 </Operation>
               )}

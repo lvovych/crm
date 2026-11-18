@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { safeRedirectPath } from '@/lib/safe-redirect'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -30,6 +31,8 @@ function SignInFormInner({
   pitch: boolean
   googleEnabled?: boolean
 }) {
+  const ot = useOperationText()
+
   const t = useTranslations('auth.signIn')
   const tc = useTranslations('common')
   const tSocial = useTranslations('auth.social')
@@ -239,10 +242,11 @@ function SignInFormInner({
             ) : (
               <PlayCircle className="mr-2 h-4 w-4" />
             )}
-            Try the demo
+            {ot('Try the demo')}
           </Button>
           <p className="mt-2 text-center text-xs text-muted-foreground">
-            Or sign in manually with <code className="rounded bg-muted px-1">{DEMO_EMAIL}</code> /{' '}
+            {ot("Or sign in manually with ")}
+            <code className="rounded bg-muted px-1">{DEMO_EMAIL}</code> /{' '}
             <code className="rounded bg-muted px-1">{DEMO_PASSWORD}</code>
           </p>
           <div className="relative my-4">

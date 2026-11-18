@@ -1,3 +1,4 @@
+import { languageState } from '../../support/language'
 import { expect, type Page, test } from '@playwright/test'
 import { clearMailbox, linkIn, waitForMail } from '../../support/mail'
 
@@ -12,7 +13,7 @@ import { clearMailbox, linkIn, waitForMail } from '../../support/mail'
  * mailbox.
  */
 
-test.use({ storageState: { cookies: [], origins: [] } })
+test.use({ storageState: languageState('en') })
 
 const email = process.env.E2E_USER_EMAIL ?? 'demo@torqvoice.com'
 const password = process.env.E2E_USER_PASSWORD ?? 'demo-e2e-pass'
@@ -123,7 +124,7 @@ test.describe('forgotten password', () => {
   // included; that is the protection. The rest of the suite still signs in
   // with the saved state, so a fresh session is saved over it afterwards.
   test.afterAll(async ({ browser }) => {
-    const context = await browser.newContext({ storageState: { cookies: [], origins: [] } })
+    const context = await browser.newContext({ storageState: languageState('en') })
     const page = await context.newPage()
     await signIn(page, email, password)
     await expectSignedIn(page)

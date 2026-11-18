@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { AppCard } from '@/components/app-card'
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
@@ -24,6 +25,8 @@ export function AdminSettings({
   initial: SystemSettingsMap
   mode: 'cloud' | 'self-hosted'
 }) {
+  const ot = useOperationText()
+
   const router = useRouter()
   const t = useTranslations('admin')
   const [isPending, startTransition] = useTransition()
@@ -308,7 +311,7 @@ export function AdminSettings({
                 <Label htmlFor="smtp-host">{t('adminSettings.smtpHost')}</Label>
                 <Input
                   id="smtp-host"
-                  placeholder="smtp.example.com"
+                  placeholder={ot('smtp.example.com')}
                   value={smtpHost}
                   onChange={(e) => setSmtpHost(e.target.value)}
                 />
@@ -329,7 +332,7 @@ export function AdminSettings({
                 <Label htmlFor="smtp-user">{t('adminSettings.username')}</Label>
                 <Input
                   id="smtp-user"
-                  placeholder="user@example.com"
+                  placeholder={ot('user@example.com')}
                   value={smtpUser}
                   onChange={(e) => setSmtpUser(e.target.value)}
                 />
@@ -351,7 +354,7 @@ export function AdminSettings({
                 <Label htmlFor="smtp-from-email">{t('adminSettings.fromEmail')}</Label>
                 <Input
                   id="smtp-from-email"
-                  placeholder="noreply@example.com"
+                  placeholder={ot('noreply@example.com')}
                   value={smtpFromEmail}
                   onChange={(e) => setSmtpFromEmail(e.target.value)}
                 />
@@ -360,7 +363,7 @@ export function AdminSettings({
                 <Label htmlFor="smtp-from-name">{t('adminSettings.fromName')}</Label>
                 <Input
                   id="smtp-from-name"
-                  placeholder="Torqvoice"
+                  placeholder={ot('Torqvoice')}
                   value={smtpFromName}
                   onChange={(e) => setSmtpFromName(e.target.value)}
                 />
@@ -428,7 +431,7 @@ export function AdminSettings({
                 <Label htmlFor="resend-from-email">{t('adminSettings.fromEmail')}</Label>
                 <Input
                   id="resend-from-email"
-                  placeholder="noreply@yourdomain.com"
+                  placeholder={ot('noreply@yourdomain.com')}
                   value={resendFromEmail}
                   onChange={(e) => setResendFromEmail(e.target.value)}
                 />
@@ -437,7 +440,7 @@ export function AdminSettings({
                 <Label htmlFor="resend-from-name">{t('adminSettings.fromName')}</Label>
                 <Input
                   id="resend-from-name"
-                  placeholder="Torqvoice"
+                  placeholder={ot('Torqvoice')}
                   value={resendFromName}
                   onChange={(e) => setResendFromName(e.target.value)}
                 />
@@ -467,7 +470,7 @@ export function AdminSettings({
                 <Label htmlFor="postmark-from-email">{t('adminSettings.fromEmail')}</Label>
                 <Input
                   id="postmark-from-email"
-                  placeholder="noreply@yourdomain.com"
+                  placeholder={ot('noreply@yourdomain.com')}
                   value={postmarkFromEmail}
                   onChange={(e) => setPostmarkFromEmail(e.target.value)}
                 />
@@ -476,7 +479,7 @@ export function AdminSettings({
                 <Label htmlFor="postmark-from-name">{t('adminSettings.fromName')}</Label>
                 <Input
                   id="postmark-from-name"
-                  placeholder="Torqvoice"
+                  placeholder={ot('Torqvoice')}
                   value={postmarkFromName}
                   onChange={(e) => setPostmarkFromName(e.target.value)}
                 />
@@ -506,7 +509,7 @@ export function AdminSettings({
                 <Label htmlFor="mailgun-domain">{t('adminSettings.domain')}</Label>
                 <Input
                   id="mailgun-domain"
-                  placeholder="mg.yourdomain.com"
+                  placeholder={ot('mg.yourdomain.com')}
                   value={mailgunDomain}
                   onChange={(e) => setMailgunDomain(e.target.value)}
                 />
@@ -541,7 +544,7 @@ export function AdminSettings({
                 <Label htmlFor="mailgun-from-email">{t('adminSettings.fromEmail')}</Label>
                 <Input
                   id="mailgun-from-email"
-                  placeholder="noreply@yourdomain.com"
+                  placeholder={ot('noreply@yourdomain.com')}
                   value={mailgunFromEmail}
                   onChange={(e) => setMailgunFromEmail(e.target.value)}
                 />
@@ -550,7 +553,7 @@ export function AdminSettings({
                 <Label htmlFor="mailgun-from-name">{t('adminSettings.fromName')}</Label>
                 <Input
                   id="mailgun-from-name"
-                  placeholder="Torqvoice"
+                  placeholder={ot('Torqvoice')}
                   value={mailgunFromName}
                   onChange={(e) => setMailgunFromName(e.target.value)}
                 />
@@ -580,7 +583,7 @@ export function AdminSettings({
                 <Label htmlFor="sendgrid-from-email">{t('adminSettings.fromEmail')}</Label>
                 <Input
                   id="sendgrid-from-email"
-                  placeholder="noreply@yourdomain.com"
+                  placeholder={ot('noreply@yourdomain.com')}
                   value={sendgridFromEmail}
                   onChange={(e) => setSendgridFromEmail(e.target.value)}
                 />
@@ -589,7 +592,7 @@ export function AdminSettings({
                 <Label htmlFor="sendgrid-from-name">{t('adminSettings.fromName')}</Label>
                 <Input
                   id="sendgrid-from-name"
-                  placeholder="Torqvoice"
+                  placeholder={ot('Torqvoice')}
                   value={sendgridFromName}
                   onChange={(e) => setSendgridFromName(e.target.value)}
                 />
@@ -627,7 +630,7 @@ export function AdminSettings({
               <Label htmlFor="ses-region">{t('adminSettings.awsRegion')}</Label>
               <Input
                 id="ses-region"
-                placeholder="us-east-1"
+                placeholder={ot('us-east-1')}
                 value={sesRegion}
                 onChange={(e) => setSesRegion(e.target.value)}
               />
@@ -639,7 +642,7 @@ export function AdminSettings({
                 <Label htmlFor="ses-from-email">{t('adminSettings.fromEmail')}</Label>
                 <Input
                   id="ses-from-email"
-                  placeholder="noreply@yourdomain.com"
+                  placeholder={ot('noreply@yourdomain.com')}
                   value={sesFromEmail}
                   onChange={(e) => setSesFromEmail(e.target.value)}
                 />
@@ -648,7 +651,7 @@ export function AdminSettings({
                 <Label htmlFor="ses-from-name">{t('adminSettings.fromName')}</Label>
                 <Input
                   id="ses-from-name"
-                  placeholder="Torqvoice"
+                  placeholder={ot('Torqvoice')}
                   value={sesFromName}
                   onChange={(e) => setSesFromName(e.target.value)}
                 />

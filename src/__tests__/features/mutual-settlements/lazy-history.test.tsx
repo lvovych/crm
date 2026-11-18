@@ -1,3 +1,6 @@
+import { beforeEach as beforeLocale, vi as localeMock } from 'vitest'
+import { useLocale as testLocale } from 'next-intl'
+// These scenarios exercise the Ukrainian operational interface.
 import { beforeEach, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { LedgerHistory } from '@/features/mutual-settlements/LedgerHistory'
@@ -45,3 +48,5 @@ it('renders already supplied history without a request', () => {
   details.open = true
   expect(load).not.toHaveBeenCalled()
 })
+
+beforeLocale(() => localeMock.mocked(testLocale).mockReturnValue('uk'))

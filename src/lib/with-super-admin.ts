@@ -1,3 +1,4 @@
+import { getOperationText } from '@/i18n/operation-text.server'
 import { getCachedSession } from './cached-session'
 import { db } from './db'
 import type { ActionResult } from './with-auth'
@@ -10,11 +11,12 @@ type SuperAdminContext = {
 export async function withSuperAdmin<T>(
   action: (ctx: SuperAdminContext) => Promise<T>
 ): Promise<ActionResult<T>> {
+  const translateError = await getOperationText()
   try {
     const session = await getCachedSession()
 
     if (!session?.user?.id) {
-      return { success: false, error: 'Unauthorized' }
+      return { success: false, error: translateError('Unauthorized') }
     }
 
     const user = await db.user.findUnique({
@@ -23,7 +25,7 @@ export async function withSuperAdmin<T>(
     })
 
     if (!user?.isSuperAdmin) {
-      return { success: false, error: 'Forbidden' }
+      return { success: false, error: translateError('Forbidden') }
     }
 
     const data = await action({ userId: session.user.id })
@@ -31,6 +33,6 @@ export async function withSuperAdmin<T>(
   } catch (error) {
     // See withAuth: logged in full, shown only when it is the action's own.
     console.error('[withSuperAdmin] Error:', error)
-    return { success: false, error: publicErrorMessage(error) }
+    return { success: false, error: translateError(publicErrorMessage(error)) }
   }
 }

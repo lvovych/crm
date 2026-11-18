@@ -1,3 +1,4 @@
+import { getOperationText } from '@/i18n/operation-text.server'
 import { ZodError } from 'zod'
 import { headers } from 'next/headers'
 import { getCachedSession, getCachedMembership } from './cached-session'
@@ -60,11 +61,12 @@ export async function withAuth<T>(
   action: (ctx: AuthContext) => Promise<T>,
   options: WithAuthOptions<T> = {}
 ): Promise<ActionResult<T>> {
+  const translateError = await getOperationText()
   try {
     const session = await getCachedSession()
 
     if (!session?.user?.id) {
-      return { success: false, error: 'Unauthorized' }
+      return { success: false, error: translateError('Unauthorized') }
     }
 
     const user = await db.user.findUnique({
@@ -77,7 +79,7 @@ export async function withAuth<T>(
     const membership = await getCachedMembership(session.user.id)
 
     if (!membership?.organizationId) {
-      return { success: false, error: 'No organization found' }
+      return { success: false, error: translateError('No organization found') }
     }
 
     const isOwnerOrAdmin = membership?.role === 'owner' || membership?.role === 'admin'
@@ -92,8 +94,11 @@ export async function withAuth<T>(
       isAdmin: isSuperAdmin || isOwnerOrAdmin || roleIsAdmin,
     }
 
-    if (!ctx.isOrganizationOwner && options.requiredPermissions?.some(p => p.subject === PermissionSubject.PAYROLL)) {
-      return { success: false, error: 'Insufficient permissions', forbidden: true }
+    if (
+      !ctx.isOrganizationOwner &&
+      options.requiredPermissions?.some((p) => p.subject === PermissionSubject.PAYROLL)
+    ) {
+      return { success: false, error: translateError('Insufficient permissions'), forbidden: true }
     }
 
     // Check permissions if required (super admins bypass all permission checks)
@@ -133,7 +138,7 @@ export async function withAuth<T>(
           }).catch(() => {
             /* best-effort */
           })
-          return { success: false, error: 'Insufficient permissions', forbidden: true }
+          return { success: false, error: translateError('Insufficient permissions'), forbidden: true }
         }
       }
     }
@@ -175,7 +180,7 @@ export async function withAuth<T>(
     if (error instanceof ZodError) {
       const messages = error.issues.map((e) => {
         const field = e.path.join('.')
-        return field ? `${field}: ${e.message}` : e.message
+        return field ? `${field}: ${translateError(e.message)}` : translateError(e.message)
       })
       const message = messages.join('. ')
       console.error('[withAuth] Validation error:', message)
@@ -189,7 +194,7 @@ export async function withAuth<T>(
       // offer the upgrade instead of an error box.
       return {
         success: false,
-        error: error.message,
+        error: translateError(error.message),
         gated: { feature: gated.feature, limit: gated.limit },
       }
     }
@@ -197,6 +202,6 @@ export async function withAuth<T>(
     // own words, or a plain sentence when the error came from the database or
     // the runtime: a raw query error once filled the vehicle list.
     console.error('[withAuth] Error:', error)
-    return { success: false, error: publicErrorMessage(error) }
+    return { success: false, error: translateError(publicErrorMessage(error)) }
   }
 }

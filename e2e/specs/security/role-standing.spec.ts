@@ -1,3 +1,4 @@
+import { languageState } from '../../support/language'
 import { expect, type Browser, type Page, test } from '@playwright/test'
 import {
   createAdminRole,
@@ -28,7 +29,7 @@ import { linkIn, waitForMail } from '../../support/mail'
 test.describe.configure({ mode: 'serial' })
 
 // Everybody starts as a stranger with no session.
-test.use({ storageState: { cookies: [], origins: [] } })
+test.use({ storageState: languageState('en') })
 
 const stamp = Date.now()
 const COLLEAGUE = `e2e-standing-${stamp}@example.com`
@@ -67,7 +68,7 @@ async function joinTeam(browser: Browser, email: string, name: string) {
   await owner.close()
 
   const invitation = await waitForMail(email)
-  const person = await browser.newContext({ storageState: { cookies: [], origins: [] } })
+  const person = await browser.newContext({ storageState: languageState('en') })
   const signup = await person.newPage()
   await signup.goto(linkIn(invitation, /\/auth\/sign-up\?invite=/))
   await signup.locator('#name').fill(name)

@@ -1,37 +1,13 @@
-export const locales = [
-  'en',
-  'de',
-  'es',
-  'fr',
-  'nb',
-  'pt-BR',
-  'pt-PT',
-  'pl',
-  'nl',
-  'it',
-  'tr',
-  'ru',
-  'uk',
-  'lt',
-] as const
+export const locales = ['uk', 'ru', 'en'] as const
 
 export type Locale = (typeof locales)[number]
-
-export const defaultLocale: Locale = 'en'
-
+export const defaultLocale: Locale = 'uk'
 export const localeNames: Record<Locale, string> = {
-  en: 'English',
-  de: 'Deutsch',
-  es: 'Español',
-  fr: 'Français',
-  nb: 'Norsk Bokmål',
-  'pt-BR': 'Português (Brasil)',
-  'pt-PT': 'Português (Portugal)',
-  pl: 'Polski',
-  nl: 'Nederlands',
-  it: 'Italiano',
-  tr: 'Türkçe',
-  ru: 'Русский',
   uk: 'Українська',
-  lt: 'Lietuvių',
+  ru: 'Русский',
+  en: 'English',
+}
+
+export function supportedLocale(value: string | null | undefined): Locale {
+  return locales.includes(value as Locale) ? (value as Locale) : defaultLocale
 }

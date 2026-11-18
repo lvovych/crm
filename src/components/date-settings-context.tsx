@@ -14,7 +14,7 @@ interface DateSettings {
 const defaultSettings: DateSettings = {
   dateFormat: DEFAULT_DATE_FORMAT,
   timeFormat: DEFAULT_TIME_FORMAT,
-  timezone: '',
+  timezone: 'Europe/Bucharest',
   weekStartDay: 1,
 }
 
@@ -35,8 +35,8 @@ export function DateSettingsProvider({
 }) {
   const value: DateSettings = {
     dateFormat: dateFormat || DEFAULT_DATE_FORMAT,
-    timeFormat: timeFormat === '24h' ? '24h' : '12h',
-    timezone: timezone || '',
+    timeFormat: timeFormat === '12h' ? '12h' : '24h',
+    timezone: timezone ?? 'Europe/Bucharest',
     weekStartDay:
       weekStartDay != null &&
       Number.isInteger(weekStartDay) &&

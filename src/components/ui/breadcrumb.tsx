@@ -1,3 +1,4 @@
+import { useOperationText } from '@/i18n/use-operation-text'
 import * as React from 'react'
 import { ChevronRight, MoreHorizontal } from 'lucide-react'
 import { Slot } from 'radix-ui'
@@ -5,7 +6,9 @@ import { Slot } from 'radix-ui'
 import { cn } from '@/lib/utils'
 
 function Breadcrumb({ ...props }: React.ComponentProps<'nav'>) {
-  return <nav aria-label="breadcrumb" data-slot="breadcrumb" {...props} />
+  const ot = useOperationText()
+
+  return <nav aria-label={ot('breadcrumb')} data-slot="breadcrumb" {...props} />
 }
 
 function BreadcrumbList({ className, ...props }: React.ComponentProps<'ol'>) {
@@ -77,6 +80,8 @@ function BreadcrumbSeparator({ children, className, ...props }: React.ComponentP
 }
 
 function BreadcrumbEllipsis({ className, ...props }: React.ComponentProps<'span'>) {
+  const ot = useOperationText()
+
   return (
     <span
       data-slot="breadcrumb-ellipsis"
@@ -86,7 +91,7 @@ function BreadcrumbEllipsis({ className, ...props }: React.ComponentProps<'span'
       {...props}
     >
       <MoreHorizontal className="size-4" />
-      <span className="sr-only">More</span>
+      <span className="sr-only">{ot('More')}</span>
     </span>
   )
 }

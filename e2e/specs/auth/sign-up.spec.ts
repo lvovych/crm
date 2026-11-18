@@ -1,3 +1,4 @@
+import { languageState } from '../../support/language'
 import { expect, type Page, test } from '@playwright/test'
 import { linkIn, waitForMail } from '../../support/mail'
 
@@ -15,7 +16,7 @@ import { linkIn, waitForMail } from '../../support/mail'
  * writes into that mail is under test as much as the sign-up page is.
  */
 
-test.use({ storageState: { cookies: [], origins: [] } })
+test.use({ storageState: languageState('en') })
 
 const stamp = Date.now()
 

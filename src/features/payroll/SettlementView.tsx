@@ -1,3 +1,4 @@
+import { getOperationText } from '@/i18n/operation-text.server'
 import { randomUUID } from 'node:crypto'
 import { Lines } from './Lines'
 import type { SlipDetails } from './Lines'
@@ -10,6 +11,8 @@ export default async function SettlementView({
 }: {
   searchParams: Promise<{ employee?: string; slip?: string; from?: string; to?: string }>
 }) {
+  const ot = await getOperationText()
+
   const query = await searchParams
   const r = await settlementData(query)
   if (!r.data) return <p>{r.error}</p>
@@ -18,13 +21,13 @@ export default async function SettlementView({
   const format = (value: bigint) => decimal(value).replace('.', ',')
   return (
     <main className="ops-workspace mx-auto w-full max-w-6xl space-y-6 p-4 sm:p-6">
-      <h1 className="text-3xl font-semibold">Взаєморозрахунки з працівниками</h1>
+      <h1 className="text-3xl font-semibold">{ot('Взаєморозрахунки з працівниками')}</h1>
       {!person && (
         <table className="w-full tabular-nums">
           <thead>
             <tr>
-              <th className="py-2 text-left">Ім’я</th>
-              <th className="text-right">До виплати</th>
+              <th className="py-2 text-left">{ot('Ім’я')}</th>
+              <th className="text-right">{ot('До виплати')}</th>
             </tr>
           </thead>
           <tbody>
@@ -37,7 +40,9 @@ export default async function SettlementView({
                       {p.name}
                     </Link>
                   </td>
-                  <td className="text-right">{format(balance)} грн</td>
+                  <td className="text-right">
+                    {format(balance)} {ot(" грн")}
+                  </td>
                 </tr>
               )
             })}
@@ -47,29 +52,31 @@ export default async function SettlementView({
       {person && (
         <section className="space-y-3">
           <Link className="underline" href="/employee-settlements">
-            Усі працівники
+            {ot('Усі працівники')}
           </Link>
           <h2 className="text-xl font-semibold">{person.name}</h2>
           <Link className="underline" href={'/payroll?employee=' + person.id}>
-            Нарахувати зарплату
+            {ot('Нарахувати зарплату')}
           </Link>
           <form className="flex flex-wrap gap-3">
             <input type="hidden" name="employee" value={person.id} />
             <label>
-              Від <input type="date" name="from" defaultValue={period.from} required />
+              {ot("Від ")}
+              <input type="date" name="from" defaultValue={period.from} required />
             </label>
             <label>
-              До <input type="date" name="to" defaultValue={period.to} required />
+              {ot("До ")}
+              <input type="date" name="to" defaultValue={period.to} required />
             </label>
-            <button className="underline">Показати період</button>
+            <button className="underline">{ot('Показати період')}</button>
           </form>
           <p>
-            Загальний залишок:{' '}
-            {format(cents(people.find((p) => p.id === person.id)?.balance ?? '0'))} грн. Нижче —
-            документи за обраний період.
+            {ot('Загальний залишок:')}{' '}
+            {format(cents(people.find((p) => p.id === person.id)?.balance ?? '0'))}{' '}
+            {ot(" грн. Нижче — документи за обраний період.")}
           </p>
-          <h3 className="font-semibold">Розрахункові листки</h3>
-          {!person.paySlips.length && <p>Проведених листків ще немає.</p>}
+          <h3 className="font-semibold">{ot('Розрахункові листки')}</h3>
+          {!person.paySlips.length && <p>{ot('Проведених листків ще немає.')}</p>}
           {person.paySlips
             .filter((s) => s.status === 'completed')
             .reverse()
@@ -83,12 +90,12 @@ export default async function SettlementView({
                   <summary className="cursor-pointer">
                     {s.start.toLocaleDateString('uk-UA', { timeZone: 'UTC' })} —{' '}
                     {s.end.toLocaleDateString('uk-UA', { timeZone: 'UTC' })}
-                    {' · Нараховано '}
-                    {format(cents(s.total.toFixed(2)))} грн
-                    {' · Зараховано виплат '}
-                    {format(credited)} грн
-                    {' · Залишок '}
-                    {format(cents(s.total.toFixed(2)) - credited)} грн
+                    {ot(" · Нараховано ")}
+                    {format(cents(s.total.toFixed(2)))} {ot(" грн")}
+                    {ot(" · Зараховано виплат ")}
+                    {format(credited)} {ot(" грн")}
+                    {ot(" · Залишок ")}
+                    {format(cents(s.total.toFixed(2)) - credited)} {ot(" грн")}
                   </summary>
                   <Lines details={s.lines as unknown as SlipDetails} />
                   {s.allocations.map((a) => {
@@ -97,25 +104,29 @@ export default async function SettlementView({
                       <p key={a.id}>
                         {payment.document.date.toLocaleDateString('uk-UA', { timeZone: 'UTC' })}
                         {' · '}
-                        {payment.advance ? 'Аванс' : 'Виплата'} ·{' '}
-                        {format(cents(a.amount.toFixed(2)))} грн
+                        {payment.advance ? ot('Аванс') : ot('Виплата')} ·{' '}
+                        {format(cents(a.amount.toFixed(2)))} {ot(" грн")}
                       </p>
                     )
                   })}
                 </details>
               )
             })}
-          <h3 className="font-semibold">Історія виплат та авансів</h3>
+          <h3 className="font-semibold">{ot('Історія виплат та авансів')}</h3>
           {person.staffPayments.map((p) => (
             <details key={p.id}>
               <summary>
-                {p.document.date.toISOString().slice(0, 10)} · {p.advance ? 'Аванс' : 'Виплата'} ·{' '}
-                {p.document.amount.toFixed(2)} грн {p.document.reversal ? '· Сторновано' : ''}
+                {p.document.date.toISOString().slice(0, 10)} ·{' '}
+                {p.advance ? ot('Аванс') : ot('Виплата')} · {p.document.amount.toFixed(2)}{' '}
+                {ot(" грн ")}
+                {p.document.reversal ? ot('· Сторновано') : ''}
               </summary>
-              Документ {p.documentId}
+              {ot("Документ ")}
+              {p.documentId}
               {p.allocations.map((a) => (
                 <p key={a.id}>
-                  Листок {a.slip.start.toISOString().slice(0, 10)} · {a.amount.toFixed(2)} грн
+                  {ot("Листок ")}
+                  {a.slip.start.toISOString().slice(0, 10)} · {a.amount.toFixed(2)} {ot(" грн")}
                 </p>
               ))}
             </details>
@@ -125,18 +136,18 @@ export default async function SettlementView({
               <input type="hidden" name="employee" value={person.id} />
               <input type="hidden" name="requestId" value={randomUUID()} />
               <label>
-                Операція
-                <select name="type" aria-label="Операція">
-                  <option value="payment">Виплата</option>
-                  <option value="advance">Аванс</option>
+                {ot('Операція')}
+                <select name="type" aria-label={ot('Операція')}>
+                  <option value="payment">{ot('Виплата')}</option>
+                  <option value="advance">{ot('Аванс')}</option>
                 </select>
               </label>
               <label>
-                Сума, грн
+                {ot('Сума, грн')}
                 <input
                   name="amount"
-                  aria-label="Сума"
-                  placeholder="Сума, грн"
+                  aria-label={ot('Сума')}
+                  placeholder={ot('Сума, грн')}
                   type="number"
                   min=".01"
                   step=".01"
@@ -144,19 +155,19 @@ export default async function SettlementView({
                 />
               </label>
               <label>
-                Дата операції
+                {ot('Дата операції')}
                 <input
                   name="date"
                   defaultValue={r.data.today}
                   type="date"
-                  aria-label="Дата"
+                  aria-label={ot('Дата')}
                   required
                 />
               </label>
               <label>
-                Каса / рахунок
+                {ot('Каса / рахунок')}
                 <select name="account" required>
-                  <option value="">Каса / банк</option>
+                  <option value="">{ot('Каса / банк')}</option>
                   {accounts
                     .filter((a) => !a.isArchived)
                     .map((a) => (
@@ -167,9 +178,9 @@ export default async function SettlementView({
                 </select>
               </label>
               <label>
-                Стаття витрат
+                {ot('Стаття витрат')}
                 <select name="category" required>
-                  <option value="">Стаття витрат</option>
+                  <option value="">{ot('Стаття витрат')}</option>
                   {categories.map((c) => (
                     <option value={c.id} key={c.id}>
                       {c.name}
@@ -178,7 +189,7 @@ export default async function SettlementView({
                 </select>
               </label>
               <button className="min-h-11 rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground">
-                Провести виплату
+                {ot('Провести виплату')}
               </button>
             </form>
           )}

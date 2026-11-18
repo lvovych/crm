@@ -1,5 +1,6 @@
 'use client'
 
+import { useOperationText } from '@/i18n/use-operation-text'
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
@@ -149,6 +150,8 @@ export function TeamSettings({
   standaloneTechnicians?: { id: string; name: string; color: string }[]
   pendingInvitations?: PendingInvitation[]
 }) {
+  const ot = useOperationText()
+
   const router = useRouter()
   const t = useTranslations('settings')
   const tPerm = useTranslations('permissions')
@@ -934,7 +937,7 @@ export function TeamSettings({
                   {editingRole ? t('team.updateRole') : t('team.createRole')}
                 </Button>
                 <Button variant="outline" size="sm" onClick={closeRoleForm}>
-                  Cancel
+                  {ot('Cancel')}
                 </Button>
               </div>
             </div>

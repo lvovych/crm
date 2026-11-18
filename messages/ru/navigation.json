@@ -1,16 +1,16 @@
 {
   "directoryContent": {
-    "inventory": "Product cards",
-    "brands": "Brands",
-    "intro": "Choose a directory to find, create or edit a record.",
-    "open": "Open directory",
-    "noAccess": "No directories are available. Contact an administrator about access.",
-    "customersDescription": "Contact details and customer history.",
-    "vehiclesDescription": "Vehicle details and service history.",
-    "vesselsDescription": "Vessel details and service history.",
-    "labor_presetsDescription": "Reusable jobs and parts for work orders.",
-    "inventoryDescription": "Names, articles, units and prices.",
-    "brandsDescription": "Product manufacturers and their availability.",
+    "inventory": "Карточки товаров",
+    "brands": "Бренды",
+    "intro": "Выберите справочник, чтобы найти, создать или изменить запись.",
+    "open": "Открыть справочник",
+    "noAccess": "Нет доступных справочников. Обратитесь к администратору для получения доступа.",
+    "customersDescription": "Контактные данные и история клиента.",
+    "vehiclesDescription": "Данные автомобилей и история обслуживания.",
+    "vesselsDescription": "Данные судна и история обслуживания.",
+    "labor_presetsDescription": "Типовые работы и запчасти для заказ-нарядов.",
+    "inventoryDescription": "Названия, артикулы, единицы измерения и цены.",
+    "brandsDescription": "Производители товаров и их доступность.",
     "suppliersDescription": "Контакты, реквизиты и документы поставщиков."
   },
   "breadcrumbs": {
@@ -80,8 +80,8 @@
     "tireForecast": "Следующий сезон",
     "whatsapp": "WhatsApp",
     "inspectionReminders": "Напоминания о техосмотре",
-    "documents": "Document journal",
-    "documentDetails": "Document connections"
+    "documents": "Журнал документов",
+    "documentDetails": "Связи документов"
   },
   "search": "Поиск...",
   "shortcut": "Ctrl+K",
@@ -159,14 +159,14 @@
       "reminders": "{count} напоминаний просрочено"
     },
     "receipts": "Поступления",
-    "suppliers": "Suppliers",
+    "suppliers": "Поставщики",
     "directories": "Справочники",
-    "finance": "Cash accounts",
-    "myPay": "My pay",
-    "payroll": "Payroll",
-    "staffSettlements": "Employee settlements",
-    "employees": "Employees",
-    "mutualSettlements": "Settlements",
-    "documents": "Document journal"
+    "finance": "Кассы и счета",
+    "myPay": "Моя зарплата",
+    "payroll": "Зарплата",
+    "staffSettlements": "Взаиморасчёты с сотрудниками",
+    "employees": "Сотрудники",
+    "mutualSettlements": "Взаиморасчёты",
+    "documents": "Журнал документов"
   }
 }

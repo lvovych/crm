@@ -1,3 +1,4 @@
+import { languageState } from './support/language'
 import { test as setup, expect } from '@playwright/test'
 
 /**
@@ -12,6 +13,7 @@ const email = process.env.E2E_USER_EMAIL ?? 'demo@torqvoice.com'
 const password = process.env.E2E_USER_PASSWORD ?? 'demo-e2e-pass'
 
 setup('sign in as the workshop owner', async ({ page, context }) => {
+  await context.addCookies(languageState().cookies)
   await page.goto('/auth/sign-in')
 
   await page.locator('#email').fill(email)

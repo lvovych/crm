@@ -1,3 +1,4 @@
+import { getOperationText } from '@/i18n/operation-text.server'
 import Link from 'next/link'
 import { resolveCurrencyCode } from '@/lib/currencies'
 import { parseTaxComponents } from '@/lib/tax-components'
@@ -64,6 +65,8 @@ export async function ServiceRecordPage({
   serviceId: string
   initialTab?: string
 }) {
+  const ot = await getOperationText()
+
   const [
     result,
     settingsResult,
@@ -414,7 +417,7 @@ export async function ServiceRecordPage({
       <PageHeader />
       <div className="shrink-0 px-4 py-2 text-right text-sm">
         <Link className="underline underline-offset-4" href={'/documents/order/' + serviceId}>
-          Пов’язані накладні та оплати
+          {ot('Пов’язані накладні та оплати')}
         </Link>
       </div>
       <ServicePageClient

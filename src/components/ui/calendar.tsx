@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 import { DayPicker, getDefaultClassNames, type DayButton } from 'react-day-picker'
-import { uk } from 'date-fns/locale'
+import { uk, ru, enUS } from 'date-fns/locale'
 import { useLocale } from 'next-intl'
 
 import { cn } from '@/lib/utils'
@@ -29,7 +29,7 @@ function Calendar({
 
   return (
     <DayPicker
-      locale={locale ?? (interfaceLocale === 'uk' ? uk : undefined)}
+      locale={locale ?? (interfaceLocale === 'uk' ? uk : interfaceLocale === 'ru' ? ru : enUS)}
       showOutsideDays={showOutsideDays}
       className={cn(
         'bg-background group/calendar p-3 [--cell-size:--spacing(8)] [[data-slot=card-content]_&]:bg-transparent [[data-slot=popover-content]_&]:bg-transparent',
@@ -40,7 +40,7 @@ function Calendar({
       captionLayout={captionLayout}
       formatters={{
         formatMonthDropdown: (date) =>
-          date.toLocaleString(interfaceLocale === 'uk' ? 'uk-UA' : 'default', { month: 'short' }),
+          date.toLocaleString(interfaceLocale, { month: 'short' }),
         ...formatters,
       }}
       classNames={{

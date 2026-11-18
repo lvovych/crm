@@ -1,3 +1,4 @@
+import { getOperationText } from '@/i18n/operation-text.server'
 import Link from 'next/link'
 import { PageHeader } from '@/components/page-header'
 import { mutualSettlementsReport } from '@/features/mutual-settlements/actions'
@@ -7,6 +8,8 @@ export default async function Page({
 }: {
   searchParams: Promise<{ date?: string; view?: string }>
 }) {
+  const ot = await getOperationText()
+
   const p = await searchParams
   const result = await mutualSettlementsReport(p.date)
   return (
@@ -17,10 +20,10 @@ export default async function Page({
           <OverviewClient key={result.data.asOf} data={result.data} initialView={p.view} />
         ) : (
           <div className="space-y-3 p-6" role="alert">
-            <h1 className="text-2xl font-semibold">Взаєморозрахунки</h1>
-            <p>{result.error || 'Не вдалося завантажити дані.'}</p>
+            <h1 className="text-2xl font-semibold">{ot('Взаєморозрахунки')}</h1>
+            <p>{result.error || ot('Не вдалося завантажити дані.')}</p>
             <Link className="underline" href="/mutual-settlements">
-              Повернутися до огляду на сьогодні
+              {ot('Повернутися до огляду на сьогодні')}
             </Link>
           </div>
         )}

@@ -1,6 +1,8 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { supportedLocale } from '@/i18n/config'
+import { operationText } from '@/i18n/operations'
 
 export default function GlobalError({
   error,
@@ -9,12 +11,22 @@ export default function GlobalError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  const [locale, setLocale] = useState('uk')
+  const ot = operationText(locale)
   useEffect(() => {
+    setLocale(
+      supportedLocale(
+        document.cookie
+          .split('; ')
+          .find((v) => v.startsWith('locale='))
+          ?.slice(7)
+      )
+    )
     console.error(error)
   }, [error])
 
   return (
-    <html lang="en">
+    <html lang={locale}>
       <body
         style={{
           margin: 0,
@@ -64,9 +76,11 @@ export default function GlobalError({
           >
             500
           </p>
-          <h1 style={{ fontSize: 20, fontWeight: 600, margin: '0 0 8px' }}>Critical Error</h1>
+          <h1 style={{ fontSize: 20, fontWeight: 600, margin: '0 0 8px' }}>
+            {ot('Critical Error')}
+          </h1>
           <p style={{ fontSize: 14, color: '#a1a1aa', margin: '0 0 32px' }}>
-            The application encountered a fatal error. Please try refreshing the page.
+            {ot('The application encountered a fatal error. Please try refreshing the page.')}
           </p>
           <button
             onClick={reset}
@@ -81,7 +95,7 @@ export default function GlobalError({
               cursor: 'pointer',
             }}
           >
-            Try Again
+            {ot('Try Again')}
           </button>
         </div>
       </body>

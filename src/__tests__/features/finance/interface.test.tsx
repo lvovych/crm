@@ -1,3 +1,6 @@
+import { beforeEach as beforeLocale, vi as localeMock } from 'vitest'
+import { useLocale as testLocale } from 'next-intl'
+// These scenarios exercise the Ukrainian operational interface.
 import { act, render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 const api = vi.hoisted(() => ({
@@ -592,3 +595,5 @@ it('does not show IBAN when editing a cash account', () => {
   fireEvent.click(screen.getByRole('button', { name: 'Редагувати реквізити рахунку' }))
   expect(screen.queryByLabelText('IBAN')).not.toBeInTheDocument()
 })
+
+beforeLocale(() => localeMock.mocked(testLocale).mockReturnValue('uk'))
