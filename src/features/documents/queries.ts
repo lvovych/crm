@@ -68,9 +68,9 @@ export function visibleDocuments(s: DocumentScope): Prisma.Sql {
       AND (${s.payroll} OR d.id NOT IN (
         WITH RECURSIVE payroll_documents(id) AS (
           SELECT sp."documentId" FROM "public"."StaffPayment" sp JOIN "public"."financial_documents" f ON f.id=sp."documentId" WHERE f."organizationId"=${org}
-          UNION SELECT child.id FROM "public"."financial_documents" child JOIN "public"."payroll_documents" parent
+          UNION SELECT child.id FROM "public"."financial_documents" child JOIN payroll_documents parent
           ON child."reversalOfId"=parent.id OR child."originalId"=parent.id WHERE child."organizationId"=${org}
-        ) SELECT id FROM "public"."payroll_documents"
+        ) SELECT id FROM payroll_documents
       ))`)
   }
   if (s.settlements)
