@@ -56,7 +56,7 @@ export async function deleteContent(input: unknown) {
 
       // --- Vehicles ---
       // Cascades: ServiceRecord (-> PartItem, LaborItem, ServiceAttachment, Payment),
-      //           Note, FuelLog, Reminder, Quote (vehicle-linked), RecurringInvoice
+      //           Note, FuelLog, Reminder, Quote (vehicle-linked)
       if (selections.vehicles) {
         // Every vehicle's files (its image, jobs, status reports, inspections,
         // findings), and the counter sales' files, which no vehicle holds.
