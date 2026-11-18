@@ -187,9 +187,9 @@ test('the customer copy and the PDF print both taxes and both registration numbe
   for (const text of [
     'GST (5%)',
     'QST (9.975%)',
-    '40.50',
-    '80.80',
-    '931.30',
+    '40,50 UAH',
+    '80,80 UAH',
+    '931,30 UAH',
     'GST No.',
     GST_NUMBER,
     'QST No.',
