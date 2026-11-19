@@ -20,6 +20,7 @@ import {
   Loader2,
   Menu,
   Package,
+  PackageOpen,
   Pencil,
   Plus,
   Scale,
@@ -85,8 +86,10 @@ const mutualItem = {
   labelKey: 'mutualSettlements',
 } as const
 const financeItem = { href: '/finance', icon: DollarSign, labelKey: 'finance' } as const
+const receiptsItem = { href: '/receipts', icon: PackageOpen, labelKey: 'receipts' } as const
 const documentsItem = { href: '/documents', icon: FileText, labelKey: 'documents' } as const
 const allDrawerItems = [
+  receiptsItem,
   documentsItem,
   financeItem,
   mutualItem,
@@ -104,10 +107,12 @@ export function MobileBottomNav({
   mutualSettlementsEnabled = false,
   financeEnabled = false,
   documentsEnabled = false,
+  receiptsEnabled = false,
 }: {
   isSuperAdmin?: boolean
   financeEnabled?: boolean
   documentsEnabled?: boolean
+  receiptsEnabled?: boolean
   mutualSettlementsEnabled?: boolean
   tireHotelEnabled?: boolean
 }) {
@@ -118,6 +123,7 @@ export function MobileBottomNav({
     ? [isMarine ? vesselsItem : vehiclesItem, ...workshopItems, tireHotelItem]
     : [isMarine ? vesselsItem : vehiclesItem, ...workshopItems]
   const visibleBusinessItems = [
+    ...(receiptsEnabled ? [receiptsItem] : []),
     ...(documentsEnabled ? [documentsItem] : []),
     ...(mutualSettlementsEnabled ? [mutualItem] : []),
     ...(financeEnabled ? [financeItem] : []),
@@ -202,7 +208,7 @@ export function MobileBottomNav({
           <DrawerHeader className="sr-only">
             <DrawerTitle>{t('more')}</DrawerTitle>
           </DrawerHeader>
-          <div className="px-4 pb-4 space-y-4">
+          <div className="min-h-0 overflow-y-auto px-4 pb-4 space-y-4">
             {/* Quick action */}
             <button
               type="button"
