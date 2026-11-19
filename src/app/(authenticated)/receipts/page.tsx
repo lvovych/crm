@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { DocumentHeader, DocumentStatus } from '@/components/operations/document-ui'
 import { dayLabel, moneyLabel } from '@/features/finance/presentation'
 import { statuses } from '@/features/receipts/status'
+import { ImportReceipts } from '@/features/receipts/ImportReceipts'
 export default async function Page({
   searchParams,
 }: {
@@ -54,6 +55,7 @@ export default async function Page({
           </>
         }
       />
+      {access.create && <ImportReceipts />}
       <form className="ops-panel grid items-end gap-3 sm:grid-cols-2 xl:grid-cols-[2fr_1fr_1fr_1fr_auto] [&_label]:grid [&_label]:gap-2 [&_label]:text-sm">
         <label>
           {ot('Номер або постачальник')}

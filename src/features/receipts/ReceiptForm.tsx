@@ -80,6 +80,7 @@ function DirectorySelect({
 
 type Options = NonNullable<Awaited<ReturnType<typeof receiptOptions>>['data']>
 type Line = {
+  brandSnapshot?: string | null
   brandId?: string
   article: string
   kind: 'part' | 'service'
@@ -90,6 +91,7 @@ type Line = {
   unit: string
 }
 type Draft = {
+  source?: string
   id: string
   version: number
   supplierId: string
@@ -128,7 +130,7 @@ export default function ReceiptForm({
     ...initial,
     lines: initial.lines.map((l) => ({
       ...l,
-      brandId: l.brandId || options.parts.find((p) => p.id === l.partId)?.brandId || '',
+      brandId: l.brandId || options.parts.find((p) => p.id === l.partId)?.brandId || options.brands.find(b => b.name.toUpperCase() === l.brandSnapshot?.toUpperCase())?.id || '',
     })),
   }))
   const formRef = useRef<HTMLFormElement>(null)
@@ -246,6 +248,7 @@ export default function ReceiptForm({
                 required
                 maxLength={100}
                 value={doc.number}
+                readOnly={doc.source === 'ukrcar'}
                 onChange={(e) => field('number', e.target.value)}
               />
             </label>
@@ -369,6 +372,7 @@ export default function ReceiptForm({
                     {error && l.kind === 'part' && !l.brandId && (
                       <p className="text-destructive">{ot('Оберіть бренд')}</p>
                     )}
+                    {l.brandSnapshot && !l.brandId && <p className="text-muted-foreground">{l.brandSnapshot}</p>}
                   </div>
                   <label className="col-span-2 sm:col-span-6 min-[90rem]:col-span-1">
                     <span className="min-[90rem]:sr-only">{ot('Назва')}</span>

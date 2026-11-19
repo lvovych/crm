@@ -710,7 +710,7 @@ export async function backfillIntegrationAccounting(connectorId: string) {
       await requireConnectorPlan(organizationId, connectorId)
       demoGuard()
       const manifest = getManifest(connectorId)
-      if (manifest?.category !== 'accounting') throw new Error('Unknown integration')
+      if (!manifest?.capabilities.includes('accounting.invoices')) throw new Error('Unknown integration')
       const row = await db.integrationConnection.findUnique({
         where: { organizationId_connectorId: { organizationId, connectorId } },
         select: { id: true, status: true, settings: true },

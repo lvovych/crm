@@ -70,6 +70,9 @@
       "invoices": "Invoices to the ledger",
       "customers": "Customers to the ledger",
       "payments": "Payments both ways"
+    },
+    "supplier": {
+      "receipts": "Supplier receipts"
     }
   },
   "statuses": {
@@ -636,6 +639,17 @@
         "modeAi": "Always the speech model",
         "modeChoice": "Each person chooses: speech model or browser"
       }
+    },
+    "ukrcar": {
+      "description": "UkrCar · last 14 days · create drafts",
+      "fields": {
+        "username": "Phone or email",
+        "password": "Password"
+      },
+      "settings": {
+        "supplier": "Supplier in CRM",
+        "supplierHelp": "After connecting, choose the supplier. Start imports from the receipts page."
+      }
     }
   },
   "jobKinds": {
@@ -658,6 +672,23 @@
     "safety": {
       "refresh": "Recall data refresh",
       "vehicle": "Recall check for a new vehicle"
+    },
+    "supplier": {
+      "receipts": {
+        "import": "Receipt import"
+      }
     }
+  },
+  "receiptImport": {
+    "button": "Download receipts",
+    "working": "Downloading receipts…",
+    "connect": "Configure UkrCar",
+    "period": "UkrCar · last 14 days · create drafts",
+    "queued": "Import queued. You can continue working.",
+    "retry": "Waiting to retry. Created drafts are saved.",
+    "done": "Import completed.",
+    "failed": "Import interrupted. Created drafts are saved; you can retry.",
+    "counts": "Created: {created} · Already exist: {skipped} · Processed: {processed}",
+    "error": "Could not retrieve import status."
   }
 }

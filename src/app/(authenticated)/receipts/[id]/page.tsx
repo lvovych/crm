@@ -169,7 +169,7 @@ export default async function Page({
                               )}
                             </td>
                             <td>{l.article || '—'}</td>
-                            <td>{l.part?.brand.name || '—'}</td>
+                            <td>{l.part?.brand.name || l.brandSnapshot || '—'}</td>
                             <td>{l.kind === 'part' ? ot('Запчастина') : ot('Послуга')}</td>
                             <td>
                               {l.quantity} {l.unit}
