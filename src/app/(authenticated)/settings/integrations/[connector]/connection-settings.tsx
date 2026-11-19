@@ -156,7 +156,7 @@ export function ConnectionSettings({
           ? 'connection.disconnectDescriptionCalendar'
           : manifest.category === 'conferencing'
             ? 'connection.disconnectDescriptionConferencing'
-            : manifest.category === 'accounting'
+            : manifest.capabilities.includes('accounting.invoices')
               ? 'connection.disconnectDescriptionAccounting'
               : 'connection.disconnectDescription',
         { name: manifest.name }
@@ -197,7 +197,7 @@ export function ConnectionSettings({
   const firstSchedule = manifest.schedules?.[0]?.job
   const hasSync = Boolean(firstSchedule)
   const isCalendar = manifest.category === 'calendar'
-  const isAccounting = manifest.category === 'accounting'
+  const isAccounting = manifest.capabilities.includes('accounting.invoices')
   // Mail vendors can prove themselves by delivering a message to the person
   // looking at the page, which a key check cannot.
   const canSendTestEmail = manifest.capabilities.includes('email.send')

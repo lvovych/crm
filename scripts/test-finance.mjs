@@ -16,6 +16,7 @@ const result = spawnSync(
     'src/__tests__/features/customer-ledger',
     'src/__tests__/features/documents',
     'src/__tests__/features/payroll',
+    'src/__tests__/features/receipts/ukrcar-import.integration.test.ts',
     '--maxWorkers=2',
     ...process.argv.slice(2),
   ],

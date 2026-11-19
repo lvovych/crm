@@ -26,6 +26,11 @@ export async function saveReceiptDraft(
     },
   })
   if (!supplier) throw new Error('Оберіть активного постачальника.')
+  if (d.version > 0) {
+    const original = await tx.supplierReceipt.findFirst({ where: { id: d.id, organizationId }, select: { source: true, number: true } })
+    if (original?.source === 'ukrcar' && original.number !== d.number)
+      throw new Error('Номер імпортованої накладної Укркар змінювати не можна.')
+  }
   const fields = {
     supplierId: d.supplierId,
     number: d.number,
@@ -35,11 +40,11 @@ export async function saveReceiptDraft(
   const existing = await tx.supplierReceipt.findFirst({
     where: {
       organizationId,
-      supplierId: d.supplierId,
       number: d.number,
-      documentDate: d.documentDate,
     },
   })
+  if (existing && existing.supplierId !== d.supplierId)
+    throw new Error('Номер накладної вже використано іншим постачальником.')
   if (existing && (existing.id !== d.id || d.version === 0))
     return { id: existing.id, duplicate: existing.id !== d.id }
   if (d.version === 0)

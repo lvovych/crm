@@ -22,13 +22,14 @@ model SupplierReceipt {
   lines SupplierReceiptLine[]
   returns SupplierReturn[]
   settlement SupplierEntry?
-  @@unique([organizationId, supplierId, number, documentDate])
+  @@unique([organizationId, number])
   @@unique([organizationId, source, sourceAccount, externalId])
   @@index([organizationId, receivedDate])
   @@index([organizationId, supplierId, status, receivedDate(sort: Desc), id], map: "receipt_return_search_idx")
   @@map("supplier_receipts")
 }
 model SupplierReceiptLine {
+  brandSnapshot String?
   subcontract SubcontractWork?
   id String @id @default(cuid())
   receiptId String

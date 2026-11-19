@@ -38,6 +38,7 @@ import { manifest as vonageSms } from './vonage-sms/manifest'
 import { manifest as whatsappMeta } from './whatsapp-meta/manifest'
 import { manifest as whatsappTwilio } from './whatsapp-twilio/manifest'
 import { manifest as zoom } from './zoom/manifest'
+import { manifest as ukrcar } from './ukrcar/manifest'
 
 interface RegistryEntry {
   manifest: ConnectorManifest
@@ -45,6 +46,7 @@ interface RegistryEntry {
 }
 
 const ALL_ENTRIES: readonly RegistryEntry[] = [
+  { manifest: ukrcar, load: () => import('./ukrcar/server') },
   { manifest: openai, load: () => import('./openai/server') },
   { manifest: anthropic, load: () => import('./anthropic/server') },
   { manifest: openaiCompatible, load: () => import('./openai-compatible/server') },
