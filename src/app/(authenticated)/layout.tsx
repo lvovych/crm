@@ -387,6 +387,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
               </DateSettingsProvider>
             </SidebarProvider>
             <MobileBottomNav
+              receiptsEnabled={
+                receiptsEnabled(data.organizationId) &&
+                (isOwnerOrAdmin || visibleSubjects.includes(PermissionSubject.RECEIPTS))
+              }
               documentsEnabled={
                 isOwnerOrAdmin ||
                 visibleSubjects.some((s) => ['finance', 'services', 'payroll'].includes(s)) ||
