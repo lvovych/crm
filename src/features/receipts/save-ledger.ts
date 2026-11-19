@@ -27,9 +27,16 @@ export async function saveReceiptDraft(
   })
   if (!supplier) throw new Error('Оберіть активного постачальника.')
   if (d.version > 0) {
-    const original = await tx.supplierReceipt.findFirst({ where: { id: d.id, organizationId }, select: { source: true, number: true } })
-    if (original?.source === 'ukrcar' && original.number !== d.number)
-      throw new Error('Номер імпортованої накладної Укркар змінювати не можна.')
+    const original = await tx.supplierReceipt.findFirst({
+      where: { id: d.id, organizationId },
+      select: { source: true, number: true },
+    })
+    if (
+      original &&
+      ['ukrcar', 'bm-parts'].includes(original.source ?? '') &&
+      original.number !== d.number
+    )
+      throw new Error('Номер імпортованої накладної змінювати не можна.')
   }
   const fields = {
     supplierId: d.supplierId,
