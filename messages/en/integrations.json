@@ -650,6 +650,16 @@
         "supplier": "Supplier in CRM",
         "supplierHelp": "After connecting, choose the supplier. Start imports from the receipts page."
       }
+    },
+    "bm-parts": {
+      "description": "BM Parts · API · import supplier receipt drafts",
+      "fields": {
+        "apiKey": "API key"
+      },
+      "settings": {
+        "supplier": "Supplier in CRM",
+        "supplierHelp": "After connecting, choose the supplier. Start imports from the receipts page."
+      }
     }
   },
   "jobKinds": {
@@ -682,8 +692,8 @@
   "receiptImport": {
     "button": "Download receipts",
     "working": "Downloading receipts…",
-    "connect": "Configure UkrCar",
-    "period": "UkrCar · last 14 days · create drafts",
+    "connect": "Configure suppliers",
+    "period": "Connected suppliers · last 14 days · draft creation",
     "queued": "Import queued. You can continue working.",
     "retry": "Waiting to retry. Created drafts are saved.",
     "done": "Import completed.",

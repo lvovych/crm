@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { db, type TxClient } from '@/lib/db'
-import type { ImportedReceipt } from '@/integrations/ukrcar/parser'
+import type { ImportedReceipt } from './import-types'
 import { articleKey } from './articles'
 
 export const RECEIPT_IMPORT_JOB = 'supplier.receipts.import'
@@ -47,6 +47,7 @@ export async function importReceiptDraft(
     connectionId: string
     runId: string
     receivedDate: string
+    source?: 'ukrcar' | 'bm-parts'
     receipt: ImportedReceipt
   }
 ) {
@@ -64,7 +65,7 @@ export async function importReceiptDraft(
   const supplier = await tx.counterparty.findFirst({
     where: { id: supplierId, organizationId, isArchived: false, supplierProfile: { isNot: null } },
   })
-  if (!supplier) throw new Error('Оберіть активного постачальника в налаштуваннях Укркар.')
+  if (!supplier) throw new Error('Оберіть активного постачальника в налаштуваннях інтеграції.')
   const parts = await tx.inventoryPart.findMany({
     where: { organizationId, isArchived: false },
     select: { id: true, partNumber: true, unit: true, brand: { select: { name: true } } },
@@ -79,7 +80,7 @@ export async function importReceiptDraft(
       receivedDate: new Date(`${receivedDate}T00:00:00Z`),
       status: 'draft',
       currency: 'UAH',
-      source: 'ukrcar',
+      source: input.source ?? 'ukrcar',
       sourceAccount: connectionId,
       externalId: receipt.externalId,
       lines: {

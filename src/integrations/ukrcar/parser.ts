@@ -1,3 +1,8 @@
+import type {
+  ReceiptReference,
+  ImportedLine,
+  ImportedReceipt,
+} from '@/features/receipts/import-types'
 import { load } from 'cheerio'
 import { lineCents, decimalAmount } from '@/features/receipts/money'
 import { parseFixed } from '@/lib/exact-money'
@@ -8,23 +13,12 @@ const text = (s: string) => s.replace(/\s+/g, ' ').trim()
 const changed = () =>
   new Error('Укркар: структура документа змінилася або дані неповні. Імпорт зупинено.')
 
-export interface ReceiptReference {
-  externalId: string
-  number: string
-  date: string
-  url: string
-}
-export interface ImportedLine {
-  brand: string
-  article: string
-  name: string
-  quantity: string
-  unitPrice: string
-  amount: string
-}
-export interface ImportedReceipt extends ReceiptReference {
-  lines: ImportedLine[]
-}
+export type {
+  ReceiptReference,
+  ImportedLine,
+  ImportedReceipt,
+} from '@/features/receipts/import-types'
+export { importPeriod } from '@/features/receipts/import-types'
 
 export function isoDay(value: string): string {
   const match = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(value)
@@ -34,19 +28,6 @@ export function isoDay(value: string): string {
   if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== result)
     throw changed()
   return result
-}
-
-/** Fourteen calendar dates, including today, in the supplier's timezone. */
-export function importPeriod(now = new Date()) {
-  const to = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Kyiv',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(now)
-  const start = new Date(`${to}T00:00:00Z`)
-  start.setUTCDate(start.getUTCDate() - 13)
-  return { from: start.toISOString().slice(0, 10), to }
 }
 
 export function listUrl(period: { from: string; to: string }) {

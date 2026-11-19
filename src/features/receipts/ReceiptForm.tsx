@@ -248,7 +248,7 @@ export default function ReceiptForm({
                 required
                 maxLength={100}
                 value={doc.number}
-                readOnly={doc.source === 'ukrcar'}
+                readOnly={['ukrcar', 'bm-parts'].includes(doc.source ?? '')}
                 onChange={(e) => field('number', e.target.value)}
               />
             </label>

@@ -40,12 +40,15 @@ import { manifest as whatsappTwilio } from './whatsapp-twilio/manifest'
 import { manifest as zoom } from './zoom/manifest'
 import { manifest as ukrcar } from './ukrcar/manifest'
 
+import { manifest as bmParts } from './bm-parts/manifest'
+
 interface RegistryEntry {
   manifest: ConnectorManifest
   load: () => Promise<{ connector: ConnectorServer }>
 }
 
 const ALL_ENTRIES: readonly RegistryEntry[] = [
+  { manifest: bmParts, load: () => import('./bm-parts/server') },
   { manifest: ukrcar, load: () => import('./ukrcar/server') },
   { manifest: openai, load: () => import('./openai/server') },
   { manifest: anthropic, load: () => import('./anthropic/server') },

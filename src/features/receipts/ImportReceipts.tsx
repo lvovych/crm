@@ -17,8 +17,10 @@ export function ImportReceipts() {
   const [error, setError] = useState('')
   const [pending, start] = useTransition()
   const [requested, setRequested] = useState(0)
-  const lastFinished = useRef<string | null>(null)
-  const active = status?.job && ['queued', 'running'].includes(status.job.status)
+  const lastFinished = useRef(new Set<string>())
+  const active = status?.suppliers.some(
+    (s) => s.job && ['queued', 'running'].includes(s.job.status)
+  )
   useEffect(() => {
     let stopped = false
     let timer: ReturnType<typeof setTimeout>
@@ -28,14 +30,16 @@ export function ImportReceipts() {
         if (stopped) return
         if (result.data) {
           setStatus(result.data)
-          const job = result.data.job
-          if (
-            job &&
-            ['done', 'failed', 'dead'].includes(job.status) &&
-            lastFinished.current !== job.id
-          ) {
-            lastFinished.current = job.id
-            router.refresh()
+          for (const supplier of result.data.suppliers) {
+            const job = supplier.job
+            if (
+              job &&
+              ['done', 'failed', 'dead'].includes(job.status) &&
+              !lastFinished.current.has(job.id)
+            ) {
+              lastFinished.current.add(job.id)
+              router.refresh()
+            }
           }
         } else setError(result.error || t('error'))
       } catch {
@@ -63,12 +67,34 @@ export function ImportReceipts() {
                 const result = await startReceiptImport()
                 if (!result.success) setError(result.error || t('error'))
                 else {
+                  const results = result.data!.results
+                  setError(
+                    results
+                      .filter((r) => r.error)
+                      .map((r) => r.error)
+                      .join(' ')
+                  )
                   setStatus(
                     (s) =>
                       s && {
                         ...s,
-                        job: { id: result.data!.jobId, status: 'queued', error: null, attempts: 0 },
-                        progress: null,
+                        suppliers: s.suppliers.map((supplier) => {
+                          const queued = results.find(
+                            (r) => r.connectorId === supplier.connectorId && r.jobId
+                          )
+                          return queued
+                            ? {
+                                ...supplier,
+                                job: {
+                                  id: queued.jobId!,
+                                  status: 'queued',
+                                  error: null,
+                                  attempts: 0,
+                                },
+                                progress: null,
+                              }
+                            : supplier
+                        }),
                       }
                   )
                   setRequested((n) => n + 1)
@@ -87,22 +113,39 @@ export function ImportReceipts() {
           {active ? t('working') : t('button')}
         </Button>
         {status && !status.configured && (
-          <Link className="text-sm underline" href="/settings/integrations/ukrcar">
+          <Link className="text-sm underline" href="/settings/integrations">
             {t('connect')}
           </Link>
         )}
       </div>
-      <div role="status" aria-live="polite" className="text-sm text-muted-foreground">
-        {!status?.job && t('period')}
-        {status?.job?.status === 'queued' && (status.job.attempts ? t('retry') : t('queued'))}
-        {status?.job?.status === 'running' && t('working')}
-        {status?.job?.status === 'done' && t('done')}
-        {status?.job && ['failed', 'dead'].includes(status.job.status) && t('failed')}
-        {status?.progress && <span className="block">{t('counts', status.progress)}</span>}
-      </div>
-      {(error || status?.job?.error) && (
+      <p className="text-sm text-muted-foreground">{t('period')}</p>
+      {status?.suppliers.map((supplier) => (
+        <div key={supplier.connectorId} className="w-full text-sm">
+          <Link
+            className="font-medium underline"
+            href={`/settings/integrations/${supplier.connectorId}`}
+          >
+            {supplier.name}
+          </Link>
+          <div role="status" aria-live="polite" className="text-muted-foreground">
+            {!supplier.configured && t('connect')}
+            {supplier.job?.status === 'queued' &&
+              (supplier.job.attempts ? t('retry') : t('queued'))}
+            {supplier.job?.status === 'running' && t('working')}
+            {supplier.job?.status === 'done' && t('done')}
+            {supplier.job && ['failed', 'dead'].includes(supplier.job.status) && t('failed')}
+            {supplier.progress && <span className="block">{t('counts', supplier.progress)}</span>}
+          </div>
+          {supplier.job?.error && (
+            <p role="alert" className="text-destructive">
+              {supplier.job.error}
+            </p>
+          )}
+        </div>
+      ))}
+      {error && (
         <p role="alert" className="text-sm text-destructive">
-          {error || status?.job?.error}
+          {error}
         </p>
       )}
     </div>
