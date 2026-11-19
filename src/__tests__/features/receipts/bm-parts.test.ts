@@ -96,3 +96,21 @@ it('accepts the documented null documents sentinel on the last page', async () =
   const fetcher = vi.fn().mockResolvedValue(Response.json({ documents: null }))
   await expect(new BmPartsClient({ apiKey: 'test' }, fetcher).sales(period, 2)).resolves.toEqual([])
 })
+
+it('rejects oversized API responses before parsing them', async () => {
+  const fetcher = vi.fn().mockResolvedValue(new Response(' '.repeat(5_000_001)))
+  await expect(new BmPartsClient({ apiKey: 'test' }, fetcher).sales(period, 1)).rejects.toThrow(
+    'ліміт'
+  )
+})
+
+it('sanitises network errors and rejects empty HTTP bodies', async () => {
+  const fetcher = vi.fn().mockRejectedValue(new Error('test-secret'))
+  await expect(
+    new BmPartsClient({ apiKey: 'test-secret' }, fetcher).sales(period, 1)
+  ).rejects.not.toThrow('test-secret')
+  fetcher.mockResolvedValue(new Response(null))
+  await expect(new BmPartsClient({ apiKey: 'test' }, fetcher).sales(period, 1)).rejects.toThrow(
+    'порожня'
+  )
+})

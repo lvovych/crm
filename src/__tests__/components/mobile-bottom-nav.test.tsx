@@ -74,3 +74,20 @@ it('shows settlements in More only when access is granted', () => {
   expect(screen.queryByRole('link', { name: 'Cash accounts' })).not.toBeInTheDocument()
   expect(screen.queryByRole('link', { name: 'Settlements' })).not.toBeInTheDocument()
 })
+
+it('exposes supplier receipts in More only with module and read access', () => {
+  const { unmount } = render(
+    <ServiceTypeProvider>
+      <MobileBottomNav receiptsEnabled />
+    </ServiceTypeProvider>
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'More' }))
+  expect(screen.getByRole('link', { name: 'Supplier receipts' })).toHaveAttribute(
+    'href',
+    '/receipts'
+  )
+  unmount()
+  renderNav()
+  fireEvent.click(screen.getByRole('button', { name: 'More' }))
+  expect(screen.queryByRole('link', { name: 'Supplier receipts' })).not.toBeInTheDocument()
+})
