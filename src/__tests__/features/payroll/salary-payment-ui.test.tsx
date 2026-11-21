@@ -21,8 +21,12 @@ beforeEach(() => {
 afterEach(cleanup)
 async function open() {
   render(<SalaryPayment slipId="slip" />)
-  fireEvent.click(screen.getByRole('button', { name: 'Провести виплату' }))
+  const trigger = screen.getByRole('button', { name: 'Провести виплату' })
+  fireEvent.click(trigger)
   await screen.findByRole('dialog')
+  // Options can render before the async transition clears pending; wait for
+  // loading to finish before interacting with the confirmation button.
+  await waitFor(() => expect(trigger).toBeEnabled())
 }
 describe('Pay a salary document', () => {
   it('prefills the balance, category, date and only account, allows editing and posts', async () => {
