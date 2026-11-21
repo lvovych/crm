@@ -133,7 +133,7 @@ for (const width of [1440, 390]) {
       ).toBeVisible()
       await page.getByRole('button', { name: 'Зберегти чернетку', exact: true }).click()
       await expect(page.getByRole('status')).toContainText('Чернетку збережено')
-      await page.reload()
+      await page.goto('/payroll')
       await settle(page)
       await page
         .locator('tbody tr')
