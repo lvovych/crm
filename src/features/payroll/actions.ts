@@ -227,6 +227,8 @@ export async function finishSAL(form: FormData) {
       await lockFinance(tx, organizationId)
       const slip = await tx.paySlip.findFirstOrThrow({ where: { id: String(form.get('slip')), technician: { organizationId } } })
       if (slip.status === 'completed') return
+      if ((slip.lines as { version?: number } | null)?.version === 2)
+        throw new Error('Проведіть документ у розділі зарплати після перевірки розрахунку.')
       await tx.paySlip.update({ where: { id: slip.id }, data: { status: 'completed' } })
       await allocatePayments(tx, slip.technicianId)
     })

@@ -21,7 +21,8 @@
     "seed:demo": "npx tsx prisma/seed_dummy_data.ts",
     "test:finance": "node scripts/test-finance.mjs",
     "test:coverage:check": "node scripts/check-financial-coverage.mjs",
-    "finance:reconcile": "tsx scripts/reconcile-finance.ts"
+    "finance:reconcile": "tsx scripts/reconcile-finance.ts",
+    "test:payroll:coverage": "node scripts/test-payroll-coverage.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-ses": "^3.1045.0",
