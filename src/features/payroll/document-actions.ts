@@ -210,7 +210,7 @@ export async function postSalaryDocument(input: unknown) {
       if (documentRevision(slip) !== p.revision)
         throw new Error('Документ змінився. Оновіть сторінку.')
       // Stabilize closure status and totals while verifying and posting.
-      await tx.$queryRaw`SELECT id FROM service_records WHERE "organizationId" = ${organizationId} AND status = 'completed' FOR SHARE`
+      await tx.$queryRaw`SELECT id FROM "public"."service_records" WHERE "organizationId" = ${organizationId} AND status = 'completed' FOR SHARE`
       const details = await calculateDocument(
         tx,
         organizationId,
