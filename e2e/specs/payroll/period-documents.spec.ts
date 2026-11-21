@@ -27,8 +27,22 @@ for (const width of [1440, 390]) {
     const manager = randomUUID(),
       mechanic = randomUUID(),
       archived = randomUUID(),
-      order = randomUUID()
+      order = randomUUID(),
+      cash = randomUUID(),
+      entity = randomUUID()
     try {
+      await db.query(
+        `INSERT INTO own_legal_entities (id,"organizationId",name) VALUES($1,$2,'Service')`,
+        [entity, owner.organizationId]
+      )
+      await db.query(
+        `INSERT INTO money_accounts (id,"organizationId","legalEntityId",name,kind,"allowNegative") VALUES($1,$2,$3,'Salary cash','cash',true)`,
+        [cash, owner.organizationId, entity]
+      )
+      await db.query(
+        `INSERT INTO finance_settings ("organizationId","activatedOn") VALUES($1,'2026-01-01') ON CONFLICT ("organizationId") DO UPDATE SET "activatedOn"=EXCLUDED."activatedOn"`,
+        [owner.organizationId]
+      )
       for (const [id, name, active, role] of [
         [manager, 'Менеджер Тест', true, 'advisor'],
         [mechanic, 'Механік Тест', true, 'mechanic'],
@@ -90,16 +104,36 @@ for (const width of [1440, 390]) {
       await page.getByRole('button', { name: 'Документи нарахування', exact: true }).click()
       await page.getByRole('button', { name: 'Створити нарахування', exact: true }).click()
       await page.getByLabel('Працівник', { exact: true }).selectOption(manager)
+      const preset = page.getByLabel('Швидкий вибір періоду (необов’язково)')
+      await preset.selectOption('currentFortnight')
+      await expect(page.getByLabel('Початок періоду')).not.toHaveValue('')
       await page.getByLabel('Початок періоду').fill('2026-11-16')
+      await expect(preset).toHaveValue('')
       await page.getByLabel('Кінець періоду включно').fill('2026-11-22')
+      await page.getByRole('button', { name: '+ Додати премію', exact: true }).click()
+      await page.getByLabel('Сума коригування 1').fill('100,25')
+      await page.getByLabel('Пояснення коригування 1').fill('Премія за якість')
+      await page.getByRole('button', { name: '− Додати утримання', exact: true }).click()
+      await page.getByLabel('Сума коригування 2').fill('50,10')
+      await page.getByLabel('Пояснення коригування 2').fill('Узгоджене утримання')
       await page.getByRole('button', { name: 'Заповнити за правилами', exact: true }).click()
       await expect(page.getByRole('heading', { name: 'За що нараховано зарплату' })).toBeVisible()
-      await expect(page.locator('dl').last()).toContainText('450,00')
+      await expect(page.locator('dl').last()).toContainText('500,15')
       await expect(
         page.getByText('Механік Тест · Виконавець, зафіксований при закритті')
       ).toBeVisible()
       await page.getByRole('button', { name: 'Зберегти чернетку', exact: true }).click()
       await expect(page.getByRole('status')).toContainText('Чернетку збережено')
+      await page.reload()
+      await settle(page)
+      await page
+        .locator('tbody tr')
+        .filter({ hasText: 'Менеджер Тест' })
+        .getByRole('button')
+        .click()
+      await expect(page.getByText('Премія за якість', { exact: true })).toBeVisible()
+      await page.getByRole('button', { name: 'Перерахувати', exact: true }).click()
+      await expect(page.locator('dl').last()).toContainText('500,15')
       await page.getByRole('button', { name: 'Провести нарахування', exact: true }).click()
       await expect(page.getByRole('status')).toContainText('Нарахування проведено')
       await expect(page.getByRole('button', { name: 'Провести нарахування' })).toHaveCount(0)
@@ -110,7 +144,32 @@ for (const width of [1440, 390]) {
       ).rows
       expect(saved).toHaveLength(1)
       expect(saved[0].status).toBe('completed')
-      expect(saved[0].total).toBe('450.00')
+      expect(saved[0].lines.adjustments).toHaveLength(2)
+      await expect(page.getByRole('button', { name: 'Змінити премії та утримання' })).toHaveCount(0)
+      expect(saved[0].total).toBe('500.15')
+      await page.getByRole('button', { name: 'Провести виплату', exact: true }).click()
+      await expect(page.getByLabel('Сума виплати, грн')).toHaveValue('500.15')
+      await expect(page.getByLabel('Стаття витрат')).toHaveValue('Зарплати')
+      await page.getByLabel('Каса / рахунок').selectOption(cash)
+      await page.getByLabel('Сума виплати, грн').fill('100,25')
+      await page.getByRole('button', { name: 'Підтвердити виплату', exact: true }).click()
+      await expect(page.getByText('Виплату проведено по касі.')).toBeVisible()
+      await page.getByRole('button', { name: 'Провести виплату', exact: true }).click()
+      await expect(page.getByLabel('Сума виплати, грн')).toHaveValue('399.90')
+      await page.getByRole('button', { name: 'Скасувати', exact: true }).click()
+      const payments = (
+        await db.query(
+          'SELECT f.amount,f.kind,f."sourceAccountId",a."slipId" FROM financial_documents f JOIN "StaffPayment" p ON p."documentId"=f.id JOIN "StaffAllocation" a ON a."paymentId"=p.id WHERE p."technicianId"=$1',
+          [manager]
+        )
+      ).rows
+      expect(payments).toHaveLength(1)
+      expect(payments[0]).toMatchObject({
+        amount: '100.25',
+        kind: 'expense',
+        sourceAccountId: cash,
+      })
+
       expect(
         new Set(saved[0].lines.lines.map((line: { orderId: string }) => line.orderId))
       ).toEqual(new Set([order]))

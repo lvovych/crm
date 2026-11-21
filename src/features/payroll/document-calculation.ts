@@ -10,7 +10,8 @@ export async function calculateDocument(
   employee: string,
   start: Date,
   end: Date,
-  zone: string
+  zone: string,
+  allowWithoutRules = false
 ) {
   if (end < start) throw new Error('Кінець періоду має бути не раніше початку.')
   const people = await tx.technician.findMany({
@@ -22,7 +23,8 @@ export async function calculateDocument(
   const rules = Object.fromEntries(
     people.map((p) => [p.id, [...legacyRules(p.payPlans), ...p.payRuleVersions.map(serializeRule)]])
   )
-  if (!rules[employee].length) throw new Error('Налаштуйте правила нарахування працівника.')
+  if (!rules[employee].length && !allowWithoutRules)
+    throw new Error('Налаштуйте правила нарахування працівника.')
   const from = zonedDate(
     start.getUTCFullYear(),
     start.getUTCMonth() + 1,
