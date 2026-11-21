@@ -71,6 +71,8 @@ import {
   saveCommissionRule,
   payrollWorkspace,
 } from '@/features/payroll/document-actions'
+import { salaryPaymentOptions, paySalaryDocument } from '@/features/payroll/salary-payments'
+import { postMoney } from '@/features/finance/ledger'
 import { calculateDocument } from '@/features/payroll/document-calculation'
 const url = process.env.FINANCE_TEST_DATABASE_URL
 
@@ -244,6 +246,188 @@ describe.skipIf(!url)('Period salary documents on PostgreSQL', () => {
         )
       )
     ).rejects.toThrow()
+  })
+  it('saves, reopens and posts bonuses and deductions with the order snapshot', async () => {
+    const adjustments = [
+      { id: randomUUID(), type: 'bonus', amount: '100.25', reason: 'Якість' },
+      { id: randomUUID(), type: 'deduction', amount: '50.10', reason: 'Коригування' },
+    ]
+    const input = { employee: mechanic, ...period, adjustments }
+    const preview = (await previewDocument(input)).data!
+    expect(preview.details.total).toBe('2050.15')
+    const id = randomUUID()
+    const saved = await saveSalaryDocument({
+      ...input,
+      id,
+      date: '2026-11-21',
+      existing: false,
+      preview: preview.fingerprint,
+    })
+    expect(saved.success, saved.error).toBe(true)
+    expect(
+      (await payrollWorkspace(id)).data!.documents.find((d) => d.id === id)!.details
+    ).toMatchObject({ adjustments, total: '2050.15' })
+    const tampered = await saveSalaryDocument({
+      ...input,
+      adjustments: [{ ...adjustments[0], amount: '9999' }],
+      id,
+      date: '2026-11-21',
+      existing: true,
+      revision: saved.data!.revision,
+      preview: preview.fingerprint,
+    })
+    expect(tampered.success).toBe(false)
+    expect((await postSalaryDocument({ id, revision: saved.data!.revision })).success).toBe(true)
+    expect((await state.db.paySlip.findUniqueOrThrow({ where: { id } })).total.toFixed(2)).toBe(
+      '2050.15'
+    )
+    await expect(
+      state.db.paySlip.update({ where: { id }, data: { lines: { adjustments: [] } } })
+    ).rejects.toThrow()
+  })
+  it('allows a documented bonus without commission rules or orders and rejects invalid rows', async () => {
+    const employee = (
+      await state.db.technician.create({ data: { organizationId: state.org, name: 'Bonus only' } })
+    ).id
+    const adjustments = [
+      { id: randomUUID(), type: 'bonus', amount: '125.00', reason: 'Разова премія' },
+    ]
+    const input = { employee, start: '2026-10-01', end: '2026-10-31', adjustments }
+    const preview = (await previewDocument(input)).data!
+    expect(preview.details.lines).toEqual([])
+    expect(preview.details.total).toBe('125.00')
+    const id = randomUUID()
+    const saved = await saveSalaryDocument({
+      ...input,
+      id,
+      date: '2026-11-21',
+      existing: false,
+      preview: preview.fingerprint,
+    })
+    expect(saved.success, saved.error).toBe(true)
+    expect((await postSalaryDocument({ id, revision: saved.data!.revision })).success).toBe(true)
+    expect(
+      (await previewDocument({ ...input, adjustments: [{ ...adjustments[0], amount: '-1' }] }))
+        .success
+    ).toBe(false)
+    expect(
+      (await previewDocument({ ...input, adjustments: [{ ...adjustments[0], reason: '' }] }))
+        .success
+    ).toBe(false)
+  })
+  async function cashAccount() {
+    const entity = await state.db.ownLegalEntity.create({
+      data: { organizationId: state.org, name: 'Service' },
+    })
+    const account = await state.db.moneyAccount.create({
+      data: { organizationId: state.org, legalEntityId: entity.id, name: 'Каса', kind: 'cash' },
+    })
+    await state.db.financeSettings.create({
+      data: { organizationId: state.org, activatedOn: new Date('2026-01-01') },
+    })
+    await state.db.$transaction((tx) =>
+      postMoney(
+        tx as unknown as TxClient,
+        state.org,
+        state.actor,
+        {
+          requestId: randomUUID(),
+          kind: 'opening',
+          date: '2026-01-01',
+          amount: '10000.00',
+          targetAccountId: account.id,
+          note: 'Opening',
+        },
+        { opening: true }
+      )
+    )
+    return account.id
+  }
+  it('pays a specific posted document partially, defaults the balance, and does not duplicate retries', async () => {
+    const account = await cashAccount()
+    const d = await draft()
+    expect((await salaryPaymentOptions(d.id)).success).toBe(false)
+    await postSalaryDocument({ id: d.id, revision: d.revision })
+    const options = (await salaryPaymentOptions(d.id)).data!
+    expect(options).toMatchObject({
+      remaining: '450.00',
+      categoryName: 'Зарплати',
+      accounts: [{ id: account, name: 'Каса' }],
+    })
+    const input = {
+      slipId: d.id,
+      requestId: randomUUID(),
+      account,
+      amount: '100.25',
+      date: options.today,
+    }
+    const paid = await paySalaryDocument(input)
+    expect(paid.success, paid.error).toBe(true)
+    expect((await paySalaryDocument(input)).data).toEqual(paid.data)
+    expect((await paySalaryDocument({ ...input, amount: '100.26' })).success).toBe(false)
+    expect((await salaryPaymentOptions(d.id)).data!.remaining).toBe('349.75')
+    const doc = await state.db.financialDocument.findUniqueOrThrow({
+      where: { id: paid.data!.documentId },
+      include: { category: true, staffPayment: { include: { allocations: true } } },
+    })
+    expect(doc).toMatchObject({
+      kind: 'expense',
+      sourceAccountId: account,
+      category: { name: 'Зарплати' },
+      staffPayment: { technicianId: manager, allocations: [{ slipId: d.id }] },
+    })
+    expect(await state.db.staffPayment.count({ where: { technicianId: manager } })).toBe(1)
+    const concurrent = await Promise.all(
+      [1, 2].map(() => paySalaryDocument({ ...input, requestId: randomUUID(), amount: '349.75' }))
+    )
+    expect(concurrent.filter((r) => r.success)).toHaveLength(1)
+    expect((await salaryPaymentOptions(d.id)).data!.remaining).toBe('0.00')
+    expect(
+      await state.db.financialDocument.count({
+        where: { organizationId: state.org, kind: 'expense' },
+      })
+    ).toBe(2)
+  })
+  it('reuses the salary expense category, enforces access and rejects wrong accounts or dates', async () => {
+    const account = await cashAccount()
+    const category = await state.db.cashFlowCategory.create({
+      data: { organizationId: state.org, direction: 'expense', name: 'Зарплата' },
+    })
+    const d = await draft()
+    await postSalaryDocument({ id: d.id, revision: d.revision })
+    const options = (await salaryPaymentOptions(d.id)).data!
+    expect(options.categoryName).toBe('Зарплата')
+    const input = {
+      slipId: d.id,
+      requestId: randomUUID(),
+      account,
+      amount: '10',
+      date: options.today,
+    }
+    expect((await paySalaryDocument({ ...input, account: 'foreign-account' })).success).toBe(false)
+    expect((await paySalaryDocument({ ...input, date: '2099-01-01' })).success).toBe(false)
+    expect((await paySalaryDocument({ ...input, amount: '-1' })).success).toBe(false)
+    state.admin = false
+    expect((await salaryPaymentOptions(d.id)).success).toBe(false)
+    expect((await paySalaryDocument(input)).success).toBe(false)
+    state.permissions = [{ action: 'manage', subject: 'payroll' }] as typeof state.permissions
+    expect((await paySalaryDocument(input)).success).toBe(false)
+    state.admin = true
+    const result = await paySalaryDocument(input)
+    expect(result.success, result.error).toBe(true)
+    expect(
+      (
+        await state.db.financialDocument.findUniqueOrThrow({
+          where: { id: result.data!.documentId },
+        })
+      ).categoryId
+    ).toBe(category.id)
+    await state.db.cashFlowCategory.update({
+      where: { id: category.id },
+      data: { systemCode: 'payroll_salary', isArchived: true },
+    })
+    expect((await salaryPaymentOptions(d.id)).success).toBe(false)
+    expect((await paySalaryDocument({ ...input, requestId: randomUUID() })).success).toBe(false)
   })
   it('checks stored totals and rule revisions before posting', async () => {
     const d = await draft()

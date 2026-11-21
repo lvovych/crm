@@ -1,3 +1,4 @@
+import type { SalaryAdjustment } from './adjustments'
 import { Prisma } from '@/generated/prisma/client'
 import { zonedDayKey } from '@/lib/timezone'
 import { rulesAt, type CommissionRule } from './commission-rules'
@@ -29,6 +30,7 @@ export type CommissionLine = SlipLine & {
 }
 export type CommissionDetails = {
   version: 2
+  adjustments?: SalaryAdjustment[]
   lines: CommissionLine[]
   conditions: string[]
   total: string

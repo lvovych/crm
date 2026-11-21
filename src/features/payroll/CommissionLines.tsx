@@ -1,3 +1,4 @@
+import { cents, decimal } from '@/features/finance/money'
 import Link from 'next/link'
 import type { CommissionDetails, CommissionLine } from './commission-calculator'
 
@@ -104,6 +105,23 @@ export function CommissionLines({ details, zone }: { details: CommissionDetails;
           )}
         </details>
       ))}
+      {!!details.adjustments?.length && (
+        <section className="space-y-3 rounded-lg border p-4" aria-label="Премії та утримання">
+          <h3 className="font-semibold">Премії та утримання</h3>
+          {details.adjustments.map((row) => (
+            <div key={row.id} className="flex justify-between gap-4 border-t pt-3">
+              <div className="min-w-0 break-words">
+                <p className="font-medium">{row.type === 'bonus' ? 'Премія' : 'Утримання'}</p>
+                <p className="text-sm text-muted-foreground">{row.reason}</p>
+              </div>
+              <span className="shrink-0 tabular-nums">
+                {row.type === 'bonus' ? '+' : '−'}
+                {payrollMoney(row.amount)} грн
+              </span>
+            </div>
+          ))}
+        </section>
+      )}
       <div className="flex flex-wrap justify-between gap-6 pt-3">
         <p className="max-w-md text-sm text-muted-foreground">
           Проведення фіксує позиції, правила та суми. Виплата оформлюється окремо.
@@ -117,6 +135,23 @@ export function CommissionLines({ details, zone }: { details: CommissionDetails;
             <dt>За запчастини</dt>
             <dd>{payrollMoney(sum(details.lines.filter((l) => l.kind === 'parts')))} грн</dd>
           </div>
+          {!!details.adjustments?.length &&
+            (['bonus', 'deduction'] as const).map((type) => (
+              <div key={type} className="flex justify-between gap-8 text-sm">
+                <dt>{type === 'bonus' ? 'Премії' : 'Утримання'}</dt>
+                <dd>
+                  {type === 'bonus' ? '+' : '−'}
+                  {payrollMoney(
+                    decimal(
+                      details
+                        .adjustments!.filter((row) => row.type === type)
+                        .reduce((sum, row) => sum + cents(row.amount), BigInt(0))
+                    )
+                  )}{' '}
+                  грн
+                </dd>
+              </div>
+            ))}
           <div className="flex items-center justify-between gap-8 border-t pt-3">
             <dt>Усього нараховано</dt>
             <dd className="text-xl font-semibold tabular-nums">

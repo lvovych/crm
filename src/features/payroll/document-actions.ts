@@ -1,5 +1,6 @@
 'use server'
 
+import { adjustmentsSchema, snapshotAdjustments, withAdjustments } from './adjustments'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
@@ -20,7 +21,12 @@ import type { CommissionDetails } from './commission-calculator'
 const read = { requiredPermissions: [{ action: A.READ, subject: S.PAYROLL }] }
 const manage = { requiredPermissions: [{ action: A.MANAGE, subject: S.PAYROLL }] }
 const periodSchema = z
-  .object({ employee: z.string().min(1), start: z.string().date(), end: z.string().date() })
+  .object({
+    employee: z.string().min(1),
+    start: z.string().date(),
+    end: z.string().date(),
+    adjustments: adjustmentsSchema.default([]),
+  })
   .refine((p) => p.start <= p.end, 'Кінець періоду має бути не раніше початку.')
 function documentRevision(
   d: Pick<PaySlip, 'technicianId' | 'start' | 'end' | 'documentDate' | 'total' | 'lines'>
@@ -89,13 +95,17 @@ export async function previewDocument(input: unknown) {
     const p = periodSchema.parse(input)
     const details = await db.$transaction(async (tx) => {
       await lockFinance(tx, organizationId)
-      return calculateDocument(
-        tx,
-        organizationId,
-        p.employee,
-        new Date(p.start),
-        new Date(p.end),
-        await workshopTimeZone(organizationId)
+      return withAdjustments(
+        await calculateDocument(
+          tx,
+          organizationId,
+          p.employee,
+          new Date(p.start),
+          new Date(p.end),
+          await workshopTimeZone(organizationId),
+          p.adjustments.length > 0
+        ),
+        p.adjustments
       )
     })
     return { details, fingerprint: fingerprint(details) }
@@ -171,10 +181,21 @@ export async function saveSalaryDocument(input: unknown) {
       const start = new Date(p.start),
         end = new Date(p.end)
       await noOverlap(tx, p.employee, start, end, p.id)
-      const details = await calculateDocument(tx, organizationId, p.employee, start, end, zone)
+      const details = withAdjustments(
+        await calculateDocument(
+          tx,
+          organizationId,
+          p.employee,
+          start,
+          end,
+          zone,
+          p.adjustments.length > 0
+        ),
+        p.adjustments
+      )
       if (fingerprint(details) !== p.preview)
         throw new Error('Дані або правила змінилися. Повторіть попередній розрахунок.')
-      if (!details.lines.length)
+      if (!details.lines.length && !details.adjustments?.length)
         throw new Error(
           'Немає нарахувань: перевірте закриті наряди, призначення та правила за період.'
         )
@@ -211,16 +232,21 @@ export async function postSalaryDocument(input: unknown) {
         throw new Error('Документ змінився. Оновіть сторінку.')
       // Stabilize closure status and totals while verifying and posting.
       await tx.$queryRaw`SELECT id FROM "public"."service_records" WHERE "organizationId" = ${organizationId} AND status = 'completed' FOR SHARE`
-      const details = await calculateDocument(
-        tx,
-        organizationId,
-        slip.technicianId,
-        slip.start,
-        slip.end,
-        zone
+      const adjustments = snapshotAdjustments(slip.lines)
+      const details = withAdjustments(
+        await calculateDocument(
+          tx,
+          organizationId,
+          slip.technicianId,
+          slip.start,
+          slip.end,
+          zone,
+          adjustments.length > 0
+        ),
+        adjustments
       )
       if (
-        !details.lines.length ||
+        (!details.lines.length && !details.adjustments?.length) ||
         slip.total.toFixed(2) !== details.total ||
         fingerprint(details) !== fingerprint(slip.lines)
       )

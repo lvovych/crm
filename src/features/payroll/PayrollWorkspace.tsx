@@ -1,4 +1,8 @@
 'use client'
+import { SalaryPayment } from './SalaryPayment'
+import { AdjustmentFields } from './AdjustmentFields'
+import { adjustmentsSchema, snapshotAdjustments, type SalaryAdjustment } from './adjustments'
+import { periodPresets, presetPeriod, type PeriodPreset } from './period-presets'
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -65,6 +69,10 @@ export function PayrollWorkspace({
   const [employee, setEmployee] = useState(
     initialDoc?.employee || initial.employee || data.people[0]?.id || ''
   )
+  const [preset, setPreset] = useState<PeriodPreset | ''>('')
+  const [adjustments, setAdjustments] = useState<SalaryAdjustment[]>(
+    snapshotAdjustments(initialDoc?.details)
+  )
   const [selected, setSelected] = useState<SalaryDocument | null>(initialDoc ?? null)
   const [start, setStart] = useState(initialDoc?.start || today.slice(0, 8) + '01'),
     [end, setEnd] = useState(initialDoc?.end || today),
@@ -88,12 +96,16 @@ export function PayrollWorkspace({
   }
   function newDocument() {
     setSelected(null)
+    setAdjustments([])
+    setPreset('')
     setPreview(null)
     setRequestId(crypto.randomUUID())
     navigate('create')
   }
   function openDocument(doc: SalaryDocument) {
     setSelected(doc)
+    setAdjustments(snapshotAdjustments(doc.details))
+    setPreset('')
     setEmployee(doc.employee)
     setStart(doc.start)
     setEnd(doc.end)
@@ -104,7 +116,17 @@ export function PayrollWorkspace({
   function recalculate() {
     run(async () => {
       setError('')
-      const result = await previewDocument({ employee, start, end })
+      const parsed = adjustmentsSchema.safeParse(adjustments)
+      if (!parsed.success) {
+        setError(parsed.error.issues[0].message)
+        return
+      }
+      const result = await previewDocument({
+        employee,
+        start,
+        end,
+        ...(parsed.data.length ? { adjustments: parsed.data } : {}),
+      })
       if (!result.data) {
         setError(result.error || 'Не вдалося розрахувати зарплату.')
         return
@@ -129,6 +151,9 @@ export function PayrollWorkspace({
           end,
           date,
           preview: preview.fingerprint,
+          ...(preview.details.adjustments?.length
+            ? { adjustments: preview.details.adjustments }
+            : {}),
         })
         if (!result.data) {
           setError(result.error || 'Не вдалося зберегти.')
@@ -371,6 +396,30 @@ export function PayrollWorkspace({
                         ))}
                       </select>
                     </label>
+                    <label className={field}>
+                      Швидкий вибір періоду (необов’язково)
+                      <select
+                        className={control}
+                        value={preset}
+                        onChange={(e) => {
+                          const value = e.target.value as PeriodPreset | ''
+                          setPreset(value)
+                          if (value) {
+                            const range = presetPeriod(value, today)
+                            setStart(range.start)
+                            setEnd(range.end)
+                            setPreview(null)
+                          }
+                        }}
+                      >
+                        <option value="">Власні дати</option>
+                        {Object.entries(periodPresets).map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                     <div className="grid gap-4 sm:grid-cols-2">
                       <label className={field}>
                         Початок періоду
@@ -381,6 +430,7 @@ export function PayrollWorkspace({
                           value={start}
                           onChange={(e) => {
                             setStart(e.target.value)
+                            setPreset('')
                             setPreview(null)
                           }}
                         />
@@ -395,6 +445,7 @@ export function PayrollWorkspace({
                           value={end}
                           onChange={(e) => {
                             setEnd(e.target.value)
+                            setPreset('')
                             setPreview(null)
                           }}
                         />
@@ -413,6 +464,13 @@ export function PayrollWorkspace({
                     <p className="text-xs text-muted-foreground">
                       Дата документа не змінює період відбору нарядів.
                     </p>
+                    <AdjustmentFields
+                      rows={adjustments}
+                      onChange={(rows) => {
+                        setAdjustments(rows)
+                        setPreview(null)
+                      }}
+                    />
                     <Condition />
                     <button className={primary}>
                       <Calculator className="size-4" />
@@ -502,6 +560,11 @@ export function PayrollWorkspace({
                       </button>
                     )}
                   </div>
+                  {!posted && data.canManage && (
+                    <button className="text-sm underline" onClick={() => navigate('create')}>
+                      Змінити премії та утримання
+                    </button>
+                  )}
                   <Condition start={start} end={end} />
                   {v2 ? (
                     <CommissionLines details={v2} zone={data.zone} />
@@ -523,18 +586,23 @@ export function PayrollWorkspace({
                     >
                       Взаєморозрахунки та виплати
                     </Link>
+                    {posted && data.canManage && selected && (
+                      <SalaryPayment key={selected.id} slipId={selected.id} />
+                    )}
                     {!posted && data.canManage && (
                       <div className="flex flex-wrap gap-3">
                         <button
                           className={button}
-                          disabled={pending || !preview || !v2?.lines.length}
+                          disabled={
+                            pending || !preview || !(v2?.lines.length || v2?.adjustments?.length)
+                          }
                           onClick={() => save(false)}
                         >
                           Зберегти чернетку
                         </button>
                         <button
                           className={primary}
-                          disabled={pending || !v2?.lines.length}
+                          disabled={pending || !(v2?.lines.length || v2?.adjustments?.length)}
                           onClick={() => save(true)}
                         >
                           <Check className="size-4" />
