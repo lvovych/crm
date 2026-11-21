@@ -1479,5 +1479,7 @@
   "error_b7f026d2d811": "WhatsApp access token is missing.",
   "error_0ad8400482a2": "WhatsApp did not return a media URL.",
   "error_9fd150266090": "Twilio credentials are missing.",
-  "error_3ea29f24dad8": "NEXT_PUBLIC_APP_URL must be set before WhatsApp can send attachments."
+  "error_3ea29f24dad8": "NEXT_PUBLIC_APP_URL must be set before WhatsApp can send attachments.",
+  "cash_allow_negative": "Allow a negative balance",
+  "cash_allow_negative_help": "Expenses may exceed the balance. You can turn this off after replenishing the account to zero or above."
 }

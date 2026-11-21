@@ -103,7 +103,12 @@ export async function financeReport(asOf: string, settingsOnly = false) {
                     refunds: { select: { amount: true } },
                     ...counterpartyRelations,
                     original: { select: counterpartyRelations },
-                    reversalOf: { select: { ...counterpartyRelations, staffPayment: { select: { documentId: true } } } },
+                    reversalOf: {
+                      select: {
+                        ...counterpartyRelations,
+                        staffPayment: { select: { documentId: true } },
+                      },
+                    },
                   },
                 },
               },
@@ -205,6 +210,7 @@ export async function financeReport(asOf: string, settingsOnly = false) {
         active: !!settings?.activatedOn,
         start: settings?.activatedOn ? dateKey(settings.activatedOn) : null,
         isAdmin: capabilities.manageAccounts,
+        ...(ctx.isOrganizationOwner ? { canManageCashOverdraft: true } : {}),
         capabilities,
         roles,
         accountAccess: capabilities.manageAccounts
@@ -221,51 +227,59 @@ export async function financeReport(asOf: string, settingsOnly = false) {
           entity: a.legalEntity.name,
           ...(settingsOnly && capabilities.manageAccounts && a.iban ? { iban: a.iban } : {}),
           archived: a.isArchived,
+          ...(a.allowNegative ? { allowNegative: true } : {}),
           balance: decimal(
             entries
               .filter((e) => e.accountId === a.id)
               .reduce((s, e) => s + cents(e.amount.toFixed(2)), BigInt('0'))
           ),
         })),
-        entries: entries.filter(e => ctx.isOrganizationOwner || (!e.document.staffPayment && !e.document.reversalOf?.staffPayment)).map((e) => {
-          const related =
-            e.document.payment || e.document.supplierEntry
-              ? e.document
-              : (e.document.original ?? e.document.reversalOf)
-          const record = related?.payment?.serviceRecord
-          const customer = record?.customer ?? record?.vehicle?.customer
-          const supplier = related?.supplierEntry?.supplier
-          return {
-            id: e.id,
-            documentId: e.documentId,
-            accountId: e.accountId,
-            date: dateKey(e.date),
-            amount: e.amount.toFixed(2),
-            kind: e.document.kind,
-            note: e.document.note,
-            category: e.document.category?.name ?? '',
-            counterparty: customer?.name ?? supplier?.name ?? e.document.counterpartyLabel ?? '',
-            counterpartyType: related?.payment
-              ? 'customer'
-              : related?.supplierEntry
-                ? 'supplier'
-                : 'other',
-            counterpartyId: customer?.id ?? supplier?.id ?? '',
-            author:
-              authors.find((a) => a.id === e.document.createdById)?.name ?? e.document.createdById,
-            reversalOfId: e.document.reversalOfId,
-            reversed: !!e.document.reversal,
-            refunded: e.document.refunds.length > 0,
-            runningBalance: running.get(e.id)!,
-            link: e.document.payment
-              ? e.document.payment.serviceRecord.vehicleId
-                ? `/vehicles/${e.document.payment.serviceRecord.vehicleId}/service/${e.document.payment.serviceRecord.id}`
-                : `/sales/${e.document.payment.serviceRecord.id}`
-              : e.document.supplierEntry
-                ? `/settlements?supplier=${e.document.supplierEntry.supplierId}`
-                : null,
-          }
-        }),
+        entries: entries
+          .filter(
+            (e) =>
+              ctx.isOrganizationOwner ||
+              (!e.document.staffPayment && !e.document.reversalOf?.staffPayment)
+          )
+          .map((e) => {
+            const related =
+              e.document.payment || e.document.supplierEntry
+                ? e.document
+                : (e.document.original ?? e.document.reversalOf)
+            const record = related?.payment?.serviceRecord
+            const customer = record?.customer ?? record?.vehicle?.customer
+            const supplier = related?.supplierEntry?.supplier
+            return {
+              id: e.id,
+              documentId: e.documentId,
+              accountId: e.accountId,
+              date: dateKey(e.date),
+              amount: e.amount.toFixed(2),
+              kind: e.document.kind,
+              note: e.document.note,
+              category: e.document.category?.name ?? '',
+              counterparty: customer?.name ?? supplier?.name ?? e.document.counterpartyLabel ?? '',
+              counterpartyType: related?.payment
+                ? 'customer'
+                : related?.supplierEntry
+                  ? 'supplier'
+                  : 'other',
+              counterpartyId: customer?.id ?? supplier?.id ?? '',
+              author:
+                authors.find((a) => a.id === e.document.createdById)?.name ??
+                e.document.createdById,
+              reversalOfId: e.document.reversalOfId,
+              reversed: !!e.document.reversal,
+              refunded: e.document.refunds.length > 0,
+              runningBalance: running.get(e.id)!,
+              link: e.document.payment
+                ? e.document.payment.serviceRecord.vehicleId
+                  ? `/vehicles/${e.document.payment.serviceRecord.vehicleId}/service/${e.document.payment.serviceRecord.id}`
+                  : `/sales/${e.document.payment.serviceRecord.id}`
+                : e.document.supplierEntry
+                  ? `/settlements?supplier=${e.document.supplierEntry.supplierId}`
+                  : null,
+            }
+          }),
         categories: categories.map((c) => ({
           id: c.id,
           name: c.name,
@@ -305,6 +319,7 @@ export async function saveFinanceDirectory(raw: unknown) {
           z.object({
             type: z.literal('rename'),
             kind: z.enum(['account', 'entity', 'category']),
+            allowNegative: z.boolean().optional(),
             iban: z
               .string()
               .transform((v) => v.replace(/\s/g, '').toUpperCase())
@@ -358,6 +373,24 @@ export async function saveFinanceDirectory(raw: unknown) {
             if (account.kind !== 'bank')
               throw new Error('IBAN можна вказати лише для банківського рахунку.')
           }
+          if (input.allowNegative !== undefined) {
+            if (input.kind !== 'account')
+              throw new Error('Налаштування доступне лише для кас і рахунків.')
+            const account = await tx.moneyAccount.findFirst({ where })
+            if (!account) throw new Error('Запис недоступний.')
+            if (account.allowNegative !== input.allowNegative) {
+              if (!ctx.isOrganizationOwner)
+                throw new Error('Дозвіл від’ємного залишку може змінювати лише власник.')
+              if (!input.allowNegative) {
+                const balance = await tx.moneyEntry.aggregate({
+                  where: { organizationId: org, accountId: account.id },
+                  _sum: { amount: true },
+                })
+                if (balance._sum.amount?.lt(0))
+                  throw new Error('Спочатку поповніть касу або рахунок до нуля чи вище.')
+              }
+            }
+          }
           const args = { where, data: { name: input.name } }
 
           const result =
@@ -366,6 +399,9 @@ export async function saveFinanceDirectory(raw: unknown) {
                   ...args,
                   data: {
                     ...args.data,
+                    ...(input.allowNegative !== undefined
+                      ? { allowNegative: input.allowNegative }
+                      : {}),
                     ...(input.iban !== undefined ? { iban: input.iban || null } : {}),
                   },
                 })
@@ -394,8 +430,8 @@ export async function saveFinanceDirectory(raw: unknown) {
             where: { id: input.legalEntityId, organizationId: org, isArchived: false },
           })
           if (!own) throw new Error('Власні реквізити недоступні.')
-          if (input.kind === 'cash' && input.allowNegative)
-            throw new Error('Готівкова каса не може мати від’ємний залишок.')
+          if (input.kind === 'cash' && input.allowNegative && !ctx.isOrganizationOwner)
+            throw new Error('Дозвіл від’ємного залишку може змінювати лише власник.')
           await tx.moneyAccount.create({
             data: {
               organizationId: org,

@@ -121,6 +121,9 @@ export function PaymentsSection({
   const paymentForm = (
     <div
       ref={formRef}
+      // Payment fields have their own submit. Letting input reach the order's
+      // autosave rerenders a controlled select before its change event arrives.
+      onInput={(event) => event.stopPropagation()}
       className="space-y-4 rounded-xl border bg-muted/20 p-4"
       onKeyDown={(e) => {
         if (e.key === 'Enter' && e.target instanceof HTMLInputElement) {
