@@ -36,12 +36,21 @@ for (const width of [1440, 390]) {
         [entity, owner.organizationId]
       )
       await db.query(
-        `INSERT INTO money_accounts (id,"organizationId","legalEntityId",name,kind,"allowNegative") VALUES($1,$2,$3,'Salary cash','cash',true)`,
+        `INSERT INTO money_accounts (id,"organizationId","legalEntityId",name,kind,"allowNegative") VALUES($1,$2,$3,'Salary cash','cash',false)`,
         [cash, owner.organizationId, entity]
       )
       await db.query(
         `INSERT INTO finance_settings ("organizationId","activatedOn") VALUES($1,'2026-01-01') ON CONFLICT ("organizationId") DO UPDATE SET "activatedOn"=EXCLUDED."activatedOn"`,
         [owner.organizationId]
+      )
+      const opening = randomUUID()
+      await db.query(
+        `INSERT INTO financial_documents (id,"organizationId","requestId",fingerprint,kind,status,date,amount,"targetAccountId",note,"createdById") VALUES($1,$2,$1,'e2e-opening','opening','posted','2026-01-01',10000,$3,'Opening',$4)`,
+        [opening, owner.organizationId, cash, owner.userId]
+      )
+      await db.query(
+        `INSERT INTO money_entries (id,"organizationId","documentId","accountId",date,amount) VALUES($1,$2,$3,$4,'2026-01-01',10000)`,
+        [randomUUID(), owner.organizationId, opening, cash]
       )
       for (const [id, name, active, role] of [
         [manager, 'Менеджер Тест', true, 'advisor'],
