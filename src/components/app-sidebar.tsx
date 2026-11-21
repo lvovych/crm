@@ -244,6 +244,12 @@ export function AppSidebar({
 
   const businessItems: NavItem[] = [
     {
+      titleKey: 'sidebar.payroll',
+      url: '/payroll',
+      icon: FileText,
+      subject: 'payroll',
+    },
+    {
       titleKey: 'sidebar.finance' as const,
       url: '/finance',
       icon: DollarSign,
@@ -379,7 +385,6 @@ export function AppSidebar({
         (item.url === '/directories' &&
           ([
             '/employees',
-            '/payroll',
             '/employee-settlements',
             '/customers',
             '/vehicles',

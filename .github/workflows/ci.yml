@@ -74,3 +74,10 @@ jobs:
       - run: npx prisma generate
       - run: npx prisma migrate deploy
       - run: npm run test:finance
+      - run: npm run test:payroll:coverage
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: payroll-coverage
+          path: coverage/payroll
+          retention-days: 14

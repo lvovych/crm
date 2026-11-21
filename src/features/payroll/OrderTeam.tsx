@@ -12,8 +12,8 @@ export async function OrderTeam({ id }: { id: string }) {
     </option>
   ))
   return (
-    <details className="m-4 rounded border p-4">
-      <summary>{ot('Працівники для розрахунку зарплати')}</summary>
+    <details open className="m-4 rounded-lg border p-4">
+      <summary className="font-semibold">Команда наряду · нарахування зарплати</summary>
       <form action={saveOrderTeam} className="my-2 grid gap-3">
         <input type="hidden" name="order" value={id} />
         <label>
@@ -24,7 +24,7 @@ export async function OrderTeam({ id }: { id: string }) {
           </select>
         </label>
         <label>
-          {ot('Частка від маржі всього наряду')}{' '}
+          Менеджер наряду{' '}
           <select defaultValue={order.payAssignment?.ownerId || ''} name="ownerId">
             <option value="">{ot('Не призначено')}</option>
             {options}

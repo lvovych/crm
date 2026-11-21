@@ -1,6 +1,7 @@
 'use server'
 
 import { staffCan } from './access'
+import { rosterIdentity, rosterUser } from './roster'
 import { workshopTimeZone } from '@/lib/workshop-timezone'
 import { zonedDayKey } from '@/lib/timezone'
 import { db } from '@/lib/db'
@@ -12,11 +13,11 @@ import { z } from 'zod'
 export async function directory() {
   return withAuth(
     async (ctx) => ({
-      people: await db.technician.findMany({
+      people: (await db.technician.findMany({
         where: { organizationId: ctx.organizationId },
-        orderBy: { name: 'asc' },
-        select: { id: true, name: true, workRoles: true, givenName: true, familyName: true, hiredOn: true, dismissedOn: true, userId: true },
-      }),
+        orderBy: [{ isActive: 'desc' }, { name: 'asc' }],
+        select: { organizationId: true, isActive: true, user: rosterUser, id: true, name: true, workRoles: true, givenName: true, familyName: true, hiredOn: true, dismissedOn: true, userId: true },
+      })).map(({ user, ...person }) => ({ ...person, ...rosterIdentity({ ...person, user }) })),
       canManage: await staffCan(ctx, { subject: S.EMPLOYEES, action: A.MANAGE }),
       canSeePayroll: await staffCan(ctx, { subject: S.PAYROLL, action: A.READ }),
     }),

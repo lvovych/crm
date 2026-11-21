@@ -97,6 +97,11 @@ export async function POST(request: NextRequest) {
       documents: await tx.financialDocument.findMany({ where: financeScope }),
       entries: await tx.moneyEntry.findMany({ where: financeScope }),
       cutovers: await tx.financeCutoverBatch.findMany({ where: financeScope }),
+      payrollRules: await tx.employeePayRule.findMany({ where: { technician: financeScope } }),
+      payrollPlans: await tx.payPlan.findMany({ where: { technician: financeScope } }),
+      payrollDocuments: await tx.paySlip.findMany({ where: { technician: financeScope } }),
+      staffPayments: await tx.staffPayment.findMany({ where: { technician: financeScope } }),
+      staffAllocations: await tx.staffAllocation.findMany({ where: { slip: { technician: financeScope } } }),
     }),
     { isolationLevel: 'RepeatableRead' }
   )

@@ -460,6 +460,7 @@ export const EXCLUDED_MODELS: Readonly<Record<string, string>> = {
   InvoiceCounter:
     'Operational number allocation state. Retained on application restore; bootstrapped from restored invoices on a new installation. Full PostgreSQL backups preserve it.',
   SalaryRule: 'Retired shared salary catalog. Employee plans store the active rates.',
+  EmployeePayRule: 'Append-only payroll rule versions exported in the finance envelope; restore requires a consistent PostgreSQL snapshot.',
   CustomerLedgerDocument:
     'Exported with the immutable finance envelope; restore only through a consistent PostgreSQL snapshot.',
   CustomerLedgerEvent:

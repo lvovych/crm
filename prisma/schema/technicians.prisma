@@ -19,6 +19,7 @@ model Technician {
   partsOrders PayAssignment[] @relation("partsOrders")
   marginOrders PayAssignment[] @relation("marginOrders")
   payPlans PayPlan[]
+  payRuleVersions EmployeePayRule[]
   paySlips PaySlip[]
   staffPayments StaffPayment[]
   workRoles String[] @default(["mechanic"])
@@ -272,6 +273,7 @@ model PayPlan {
 }
 
 model PaySlip {
+  documentDate DateTime @default(now()) @db.Date
   status String @default("completed")
   allocations StaffAllocation[]
   id String @id @default(cuid())
@@ -284,6 +286,27 @@ model PaySlip {
   createdAt DateTime @default(now())
   actorId String
   @@unique([technicianId,start])
+}
+
+// Append-only versions. ruleKey identifies one independently configurable rule.
+model EmployeePayRule {
+  id String @id @default(cuid())
+  technicianId String
+  technician Technician @relation(fields:[technicianId],references:[id],onDelete:Restrict)
+  ruleKey String
+  effective DateTime @db.Date
+  enabled Boolean @default(true)
+  name String
+  basis String
+  scope String
+  rate Decimal @db.Decimal(6,2)
+  afterDiscount Boolean @default(true)
+  deductMechanicPay Boolean @default(false)
+  deductSubcontractCost Boolean @default(true)
+  includeNegative Boolean @default(false)
+  actorId String
+  createdAt DateTime @default(now())
+  @@index([technicianId,ruleKey,effective,createdAt])
 }
 
 model StaffPayment {

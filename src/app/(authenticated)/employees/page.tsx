@@ -10,13 +10,16 @@ import Link from 'next/link'
 export default async function Employees({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; employee?: string; page?: string }>
+  searchParams: Promise<{ tab?: string; employee?: string; page?: string; archive?: string }>
 }) {
   const ot = await getOperationText()
 
   const result = await directory()
   if (!result.data) return <p>{result.error}</p>
   const query = await searchParams
+  const visiblePeople = result.data.people.filter(
+    (p) => query.archive === '1' || (p.isActive && !p.dismissedOn)
+  )
   if (query.employee) redirect('/employees/' + encodeURIComponent(query.employee))
   const payroll = result.data.canSeePayroll ? await settlementData() : null
   if (payroll && !payroll.data) return <p role="alert">{payroll.error}</p>
@@ -84,7 +87,7 @@ export default async function Employees({
                     </td>
                     <td className="p-3">{s.status === 'new' ? ot('Новий') : ot('Завершено')}</td>
                     <td className="p-3 text-right font-semibold">
-                      {s.total.toFixed(2).replace('.', ',')} {ot(" грн")}
+                      {s.total.toFixed(2).replace('.', ',')} {ot(' грн')}
                     </td>
                   </tr>
                 ))}
@@ -98,7 +101,7 @@ export default async function Employees({
                   </Link>
                 )}
                 <span>
-                  {ot("Сторінка ")}
+                  {ot('Сторінка ')}
                   {documents.data.page}
                 </span>
                 {documents.data.page * 50 < documents.data.count && (
@@ -129,6 +132,18 @@ export default async function Employees({
               </form>
             </details>
           )}
+          <p className="text-sm text-muted-foreground">
+            Активні працівники та їхні облікові записи CRM. Імпортовані неактивні картки доступні в
+            архіві.
+          </p>
+          <Link
+            className="text-sm underline"
+            href={query.archive === '1' ? '/employees' : '/employees?archive=1'}
+          >
+            {query.archive === '1'
+              ? 'Показати лише активних'
+              : 'Показати також архівних працівників'}
+          </Link>
           <div className="overflow-hidden rounded-lg border">
             <table className="w-full text-sm">
               <thead className="bg-muted">
@@ -140,7 +155,7 @@ export default async function Employees({
                 </tr>
               </thead>
               <tbody>
-                {result.data.people.map((p) => {
+                {visiblePeople.map((p) => {
                   const account = payroll?.data?.people.find((person) => person.id === p.id)
                   const balance = cents(account?.balance ?? '0')
                   return (
@@ -152,11 +167,17 @@ export default async function Employees({
                         >
                           {p.name}
                         </Link>
-                        {p.dismissedOn && ot(" · Звільнено")}
+                        {p.dismissedOn && ot(' · Звільнено')}
+                        {!p.isActive && ' · Архів'}
+                        <span className="mt-1 block text-xs text-muted-foreground">
+                          {p.crmRole ||
+                            p.workRoles.map((r) => ot(roles[r as keyof typeof roles])).join(', ')}
+                          {p.userId ? ' · Обліковий запис CRM' : ''}
+                        </span>
                       </td>
                       <td className="p-3 text-right font-semibold tabular-nums">
                         {account
-                          ? decimal(balance).replace('.', ',') + ot(" грн")
+                          ? decimal(balance).replace('.', ',') + ot(' грн')
                           : p.workRoles.map((r) => ot(roles[r as keyof typeof roles])).join(', ')}
                       </td>
                     </tr>
