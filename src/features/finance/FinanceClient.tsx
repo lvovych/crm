@@ -245,6 +245,9 @@ export function FinanceClient({
         result = await saveFinanceDirectory({
           type: 'rename',
           kind: modal.split(':')[1],
+          ...(modal === 'rename:account' && data.canManageCashOverdraft
+            ? { allowNegative: f.get('allowNegative') === 'on' }
+            : {}),
           ...(modal === 'rename:account' &&
           data.accounts.find((a) => a.id === selected)?.kind === 'bank'
             ? { iban: v('iban') }
@@ -395,7 +398,7 @@ export function FinanceClient({
         </section>
       ) : (
         <p className="text-sm text-muted-foreground">
-          {ot("Облік активний з ")}
+          {ot('Облік активний з ')}
           {data.start && dayLabel(data.start)}.{' '}
           {data.start && date < data.start ? ot('На цю дату касові залишки не підтверджені.') : ''}
         </p>
@@ -411,8 +414,8 @@ export function FinanceClient({
       {!settingsOnly && data.unlinkedCount > 0 && (
         <aside role="status" className="rounded-xl border border-amber-500 bg-amber-500/10 p-4">
           <strong>
-            {ot("Оплат без каси: ")}
-            {data.unlinkedCount} {ot(" — залишки потребують звірки")}
+            {ot('Оплат без каси: ')}
+            {data.unlinkedCount} {ot(' — залишки потребують звірки')}
           </strong>
           <p className="text-sm">
             {ot('Ці оплати ще не включені в залишки. Не створюйте їх повторно.')}
@@ -456,7 +459,8 @@ export function FinanceClient({
                           data.accounts
                             .filter((a) => a.kind === kind)
                             .reduce((s, a) => s + cents(a.balance), BigInt('0'))
-                        ), ot('грн')
+                        ),
+                        ot('грн')
                       )
                     : '—'}
                 </strong>
@@ -486,7 +490,7 @@ export function FinanceClient({
                   <div className="min-w-0">
                     <h2 className="break-words text-lg font-semibold">
                       {a.name}
-                      {a.archived ? ot(" · Архів") : ''}
+                      {a.archived ? ot(' · Архів') : ''}
                     </h2>
                     <p className="text-sm text-muted-foreground">
                       {a.entity} ·{' '}
@@ -495,7 +499,7 @@ export function FinanceClient({
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">
-                      {ot("Залишок на ")}
+                      {ot('Залишок на ')}
                       {dayLabel(date)}
                     </p>
                     <strong className="text-xl">
@@ -642,7 +646,7 @@ export function FinanceClient({
             data.batches.map((b) => (
               <div key={b.id} className="mt-3 rounded border p-3">
                 <p>
-                  {ot("Залишки на початок ")}
+                  {ot('Залишки на початок ')}
                   {b.date} ·{' '}
                   {b.status === 'activated' ? ot('Активовано') : ot('Потребує погодження')}
                 </p>
@@ -681,8 +685,8 @@ export function FinanceClient({
             )}
             {filter && (
               <Button variant="outline" onClick={() => setFilter('')}>
-                {ot("Операції: ")}
-                {data.accounts.find((a) => a.id === filter)?.name} {ot(" · Скинути ×")}
+                {ot('Операції: ')}
+                {data.accounts.find((a) => a.id === filter)?.name} {ot(' · Скинути ×')}
               </Button>
             )}
           </div>
@@ -696,7 +700,8 @@ export function FinanceClient({
                   className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t pt-3"
                 >
                   <span>
-                    {dayLabel(d.date)} · {ot(labels[d.kind])} · {moneyLabel(d.amount, ot('грн'))} · {d.note}
+                    {dayLabel(d.date)} · {ot(labels[d.kind])} · {moneyLabel(d.amount, ot('грн'))} ·{' '}
+                    {d.note}
                   </span>
                   <div className="flex flex-wrap gap-2">
                     {data.capabilities.draft && (
@@ -743,7 +748,8 @@ export function FinanceClient({
               {data.unlinked.map((p) => (
                 <div key={p.id} className="mt-2 flex flex-wrap justify-between gap-2 border-t pt-2">
                   <span>
-                    {dayLabel(p.date)} · {moneyLabel(p.amount, ot('грн'))} · {p.provider || ot('Оплата')}
+                    {dayLabel(p.date)} · {moneyLabel(p.amount, ot('грн'))} ·{' '}
+                    {p.provider || ot('Оплата')}
                   </span>
                   <Button variant="outline" onClick={() => open('assign', p.id)}>
                     {ot('Визначити касу')}
@@ -755,14 +761,14 @@ export function FinanceClient({
           <section className="rounded-xl border p-4">
             <h2 className="text-lg font-semibold">{ot('Журнал руху коштів')}</h2>
             <p className="text-sm text-muted-foreground">
-              {ot("Рухи до ")}
-              {dayLabel(data.asOf)} {ot(" включно")}
+              {ot('Рухи до ')}
+              {dayLabel(data.asOf)} {ot(' включно')}
             </p>
             <details className="my-4 rounded-lg border p-3">
               <summary className="min-h-11 cursor-pointer font-medium">
                 {ot('Фільтри та період')}
                 {filter || category || query || from || partyType || partyId
-                  ? ot(" · застосовано")
+                  ? ot(' · застосовано')
                   : ''}
               </summary>
               <div className="my-3 flex flex-wrap gap-2">
@@ -951,7 +957,10 @@ export function FinanceClient({
                       }
                     >
                       {!paired && cents(e.amount) > BigInt('0') ? '+' : ''}
-                      {moneyLabel(paired ? decimal(cents(incoming?.amount ?? '0')) : e.amount, ot('грн'))}
+                      {moneyLabel(
+                        paired ? decimal(cents(incoming?.amount ?? '0')) : e.amount,
+                        ot('грн')
+                      )}
                     </strong>
                     <details className="min-w-0 lg:max-w-64">
                       <summary className="flex min-h-11 cursor-pointer items-center rounded-md border px-3 text-sm">
@@ -960,13 +969,13 @@ export function FinanceClient({
                       <div className="mt-3 space-y-3 text-sm">
                         <p className="break-words">{e.note}</p>
                         <p>
-                          {ot("Автор: ")}
+                          {ot('Автор: ')}
                           {e.author}
                         </p>
                         {group.map((r) => (
                           <p key={r.id}>
                             {data.accounts.find((a) => a.id === r.accountId)?.name}
-                            {ot(": залишок після руху ")}
+                            {ot(': залишок після руху ')}
                             {moneyLabel(r.runningBalance, ot('грн'))}
                           </p>
                         ))}
@@ -1199,13 +1208,31 @@ export function FinanceClient({
                         <Field label="IBAN">
                           <Input name="iban" />
                         </Field>
-                        <label className="flex items-center gap-2">
-                          <input type="checkbox" name="allowNegative" />
-                          {ot('Дозволити від’ємний залишок банку')}
-                        </label>
                       </>
                     )}
                   </>
+                )}
+                {((modal === 'account' &&
+                  (accountKind === 'bank' || data.canManageCashOverdraft)) ||
+                  (modal === 'rename:account' && data.canManageCashOverdraft)) && (
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        name="allowNegative"
+                        defaultChecked={
+                          modal === 'rename:account' &&
+                          !!data.accounts.find((a) => a.id === selected)?.allowNegative
+                        }
+                      />
+                      {ot('Дозволити від’ємний залишок')}
+                    </label>
+                    <p className="text-sm text-muted-foreground">
+                      {ot(
+                        'Видатки зможуть перевищувати залишок. Вимкнути дозвіл можна після поповнення до нуля або вище.'
+                      )}
+                    </p>
+                  </div>
                 )}
                 {modal === 'category' && (
                   <Field label={ot('Напрям')}>

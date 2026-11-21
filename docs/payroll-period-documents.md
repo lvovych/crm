@@ -41,3 +41,15 @@ The Playwright `payroll/period-documents.spec.ts` checks desktop/mobile rule con
 ## Release
 
 Follow `infra/RUNBOOK.md`: merge tested changes into main, publish a new stable release, wait for the release workflow. It backs up PostgreSQL and uploads before deploying. The release now gates image creation on financial PostgreSQL tests and the payroll per-file coverage threshold. After deployment, verify the recorded release, migrations, container health, public health/sign-in and authenticated read-only payroll/employee pages. Do not create sample salary documents in production.
+
+### Від’ємний залишок готівкової каси
+
+Власник може відкрити **Налаштування → Фінанси → Редагувати реквізити рахунку**
+та ввімкнути **Дозволити від’ємний залишок** для конкретної готівкової каси.
+Прапорець також доступний під час створення каси. За замовчуванням він вимкнений;
+наявні каси після оновлення зберігають свої налаштування.
+
+Дозвіл поширюється на видатки, зокрема виплати зарплати. Вимкнути його можна,
+коли фактичний залишок каси становить нуль або більше. Зміна налаштування і
+проведення коштів використовують спільне транзакційне блокування, щоб одночасна
+виплата не створила мінус у касі, для якої дозвіл уже вимкнений.

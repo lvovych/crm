@@ -600,3 +600,49 @@ it('does not show IBAN when editing a cash account', () => {
 })
 
 beforeLocale(() => localeMock.mocked(testLocale).mockReturnValue('uk'))
+
+describe('owner cash overdraft settings', () => {
+  it('lets the owner opt in when creating cash and defaults to disabled', async () => {
+    api.saveFinanceDirectory.mockResolvedValue({ success: true })
+    render(
+      <FinanceClient
+        settingsOnly
+        initial={{ ...fixture(), canManageCashOverdraft: true }}
+        today="2026-11-10"
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Додати касу / рахунок' }))
+    expect(screen.getByLabelText('Дозволити від’ємний залишок')).not.toBeChecked()
+    fireEvent.click(screen.getByLabelText('Дозволити від’ємний залишок'))
+    fireEvent.change(screen.getByLabelText('Назва'), { target: { value: 'Cash overdraft' } })
+    fireEvent.submit(screen.getByLabelText('Назва').closest('form')!)
+    await waitFor(() =>
+      expect(api.saveFinanceDirectory).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'account', kind: 'cash', allowNegative: true })
+      )
+    )
+  })
+  it('loads the existing option and saves disabling explicitly', async () => {
+    api.saveFinanceDirectory.mockResolvedValue({ success: true })
+    const data = {
+      ...fixture(),
+      canManageCashOverdraft: true,
+      accounts: [{ ...fixture().accounts[0], allowNegative: true }],
+    }
+    render(<FinanceClient settingsOnly initial={data} today="2026-11-10" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Редагувати реквізити рахунку' }))
+    expect(screen.getByLabelText('Дозволити від’ємний залишок')).toBeChecked()
+    fireEvent.click(screen.getByLabelText('Дозволити від’ємний залишок'))
+    fireEvent.submit(screen.getByLabelText('Назва').closest('form')!)
+    await waitFor(() =>
+      expect(api.saveFinanceDirectory).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'rename', id: 'cash', allowNegative: false })
+      )
+    )
+  })
+  it('does not offer the cash setting to a non-owner account administrator', () => {
+    render(<FinanceClient settingsOnly initial={fixture()} today="2026-11-10" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Додати касу / рахунок' }))
+    expect(screen.queryByLabelText('Дозволити від’ємний залишок')).not.toBeInTheDocument()
+  })
+})
