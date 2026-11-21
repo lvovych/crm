@@ -9,7 +9,7 @@ beforeEach(() => {
   save.mockResolvedValue({ success: true })
 })
 afterEach(cleanup)
-const click = (name: string) => fireEvent.click(screen.getByRole('button', { name, exact: true }))
+const click = (name: string) => fireEvent.click(screen.getByRole('button', { name }))
 const date = () =>
   fireEvent.change(screen.getByLabelText('Діє з'), { target: { value: '2026-11-01' } })
 describe('Individual percentage rules', () => {

@@ -2,6 +2,7 @@
 import { beforeAll, beforeEach, afterAll, describe, it, expect, vi } from 'vitest'
 import { randomUUID } from 'node:crypto'
 import { PrismaClient } from '@/generated/prisma/client'
+import type { TxClient } from '@/lib/db'
 import { PrismaPg } from '@prisma/adapter-pg'
 const state = vi.hoisted(() => ({
   db: null as unknown as PrismaClient,
@@ -234,7 +235,7 @@ describe.skipIf(!url)('Period salary documents on PostgreSQL', () => {
     await expect(
       state.db.$transaction((tx) =>
         calculateDocument(
-          tx,
+          tx as unknown as TxClient,
           state.org,
           mechanic,
           new Date(period.end),

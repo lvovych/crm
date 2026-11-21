@@ -18,7 +18,7 @@ vi.mock('@/features/payroll/document-actions', () => ({
 }))
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: actions.refresh }) }))
 const click = async (name: string) => {
-  const button = screen.getByRole('button', { name, exact: true })
+  const button = screen.getByRole('button', { name })
   await waitFor(() => expect(button).toBeEnabled())
   fireEvent.click(button)
 }
@@ -47,7 +47,7 @@ describe('Salary workspace', () => {
     await click('ЗП-87654321')
     expect(screen.queryByRole('button', { name: 'Провести нарахування' })).not.toBeInTheDocument()
     fireEvent.click(
-      screen.getAllByRole('button', { name: 'Документи нарахування', exact: true }).at(-1)!
+      screen.getAllByRole('button', { name: 'Документи нарахування' }).at(-1)!
     )
     expect(screen.getByRole('heading', { name: 'Документи нарахування' })).toBeInTheDocument()
   })
